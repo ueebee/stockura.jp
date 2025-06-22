@@ -1,0 +1,71 @@
+services:
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "8000:8000"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/stockura
+      - ENCRYPTION_KEY=your-super-secure-encryption-key-here-change-in-production
+      - ENCRYPTION_SALT=your-super-secure-salt-here-change-in-production
+      - ENCRYPTION_ITERATIONS=100000
+      - ENCRYPTION_KEY_LENGTH=32
+      - ENCRYPTION_ALGORITHM=SHA256
+    depends_on:
+      - redis
+      - db
+
+  worker:
+    build: .
+    command: celery -A app.core.celery_app worker --loglevel=info --logfile=logs/celery.log
+    volumes:
+      - .:/usr/src/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/stockura
+      - ENCRYPTION_KEY=your-super-secure-encryption-key-here-change-in-production
+      - ENCRYPTION_SALT=your-super-secure-salt-here-change-in-production
+      - ENCRYPTION_ITERATIONS=100000
+      - ENCRYPTION_KEY_LENGTH=32
+      - ENCRYPTION_ALGORITHM=SHA256
+    depends_on:
+      - web
+      - redis
+      - db
+
+  redis:
+    image: redis:7.2-bookworm
+    ports:
+      - "6379:6379"
+
+  flower:
+    build: .
+    command: celery -A app.core.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - web
+      - redis
+      - worker
+
+  db:
+    image: postgres:17-bookworm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=stockura
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data: 

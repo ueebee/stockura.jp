@@ -1,0 +1,74 @@
+from fastapi import FastAPI
+from fastapi.templating import Jinja2Templates
+import logging
+
+from app.api.v1.endpoints import data_sources
+from app.services.encryption import get_encryption_service
+from app.db.session import check_database_connection
+
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="Stockura",
+    description="株価データ取得・表示システム",
+    version="1.0.0",
+)
+
+# テンプレートの設定
+templates = Jinja2Templates(directory="app/templates")
+
+# APIルーターの登録
+app.include_router(
+    data_sources.router,
+    prefix="/api/v1/data-sources",
+    tags=["data-sources"]
+)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時の処理"""
+    logger.info("Starting Stockura application...")
+    
+    # データベース接続の健全性チェック
+    try:
+        if await check_database_connection():
+            logger.info("Database connection check passed")
+        else:
+            logger.error("Database connection check failed")
+            raise Exception("Database connection failed")
+    except Exception as e:
+        logger.error(f"Failed to check database connection: {e}")
+        raise
+    
+    # 暗号化サービスのテスト
+    try:
+        encryption_service = get_encryption_service()
+        if encryption_service.test_encryption():
+            logger.info("Encryption service test passed")
+        else:
+            logger.error("Encryption service test failed")
+            raise Exception("Encryption service test failed")
+    except Exception as e:
+        logger.error(f"Failed to initialize encryption service: {e}")
+        raise
+    
+    logger.info("Application startup completed successfully")
+
+
+@app.get("/")
+async def root():
+    """ルートエンドポイント"""
+    return {"message": "Welcome to Stockura API"}
+
+
+@app.get("/health")
+async def health_check():
+    """ヘルスチェックエンドポイント"""
+    return {
+        "status": "healthy",
+        "message": "Application is running",
+        "version": "1.0.0"
+    } 
