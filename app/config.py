@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # API設定
     API_KEY_JQUANTS: Optional[str] = None
 
+    # データソース認証情報（J-Quantsのみ）
+    JQUANTS_MAILADDRESS: str = Field("system@stockura.jp", description="J-Quantsメールアドレス")
+    JQUANTS_PASSWORD: str = Field("system_password_placeholder", description="J-Quantsパスワード")
+
     # 暗号化設定
     ENCRYPTION_KEY: str = Field(..., description="暗号化キー（必須）")
     ENCRYPTION_SALT: str = Field(..., description="暗号化ソルト（必須）")
