@@ -8,8 +8,8 @@ from alembic import context
 # プロジェクトの設定とモデルをインポート
 from app.config import settings
 from app.db.base_class import Base
-from app.db.models import stock  # 既存のモデルをインポート
 from app.models import data_source  # データソースモデルをインポート
+from app.models import company  # 上場企業関連モデルをインポート
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
