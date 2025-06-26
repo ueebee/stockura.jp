@@ -34,8 +34,8 @@ class JQuantsStrategy(AuthStrategy):
                 response.raise_for_status()
                 refresh_token = response.json()["refreshToken"]
 
-                # 有効期限は24時間
-                expired_at = datetime.utcnow() + timedelta(hours=24)
+                # 有効期限は1週間（7日間）
+                expired_at = datetime.utcnow() + timedelta(days=7)
 
                 return refresh_token, expired_at
         except Exception as e:
@@ -54,16 +54,15 @@ class JQuantsStrategy(AuthStrategy):
         """
         try:
             with httpx.Client() as client:
-                # IDトークンの取得
+                # IDトークンの取得（クエリパラメータでリフレッシュトークンを送信）
                 response = client.post(
-                    f"{self.base_url}/v1/token/auth_refresh",
-                    headers={"Authorization": f"Bearer {refresh_token}"}
+                    f"{self.base_url}/v1/token/auth_refresh?refreshtoken={refresh_token}"
                 )
                 response.raise_for_status()
                 id_token = response.json()["idToken"]
 
-                # 有効期限は1時間
-                expired_at = datetime.utcnow() + timedelta(hours=1)
+                # 有効期限は24時間
+                expired_at = datetime.utcnow() + timedelta(hours=24)
 
                 return id_token, expired_at
         except Exception as e:

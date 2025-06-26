@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 from sqlalchemy import Column, String, Boolean, Integer, DateTime, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
 from app.services.encryption import encrypt_data, decrypt_data
+from app.services.auth import StrategyRegistry
 
 
 class DataSource(Base):
@@ -49,4 +50,70 @@ class DataSource(Base):
 
         import json
         decrypted_data = decrypt_data(self.encrypted_credentials)
-        return json.loads(decrypted_data) 
+        return json.loads(decrypted_data)
+
+    def get_refresh_token(self) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        リフレッシュトークンを取得します。
+
+        Returns:
+            Tuple[bool, Optional[Dict[str, Any]]]: (成功フラグ, レスポンスデータ)
+        """
+        try:
+            # 認証情報を取得
+            credentials = self.get_credentials()
+            if not credentials:
+                return False, {"error": "No credentials found"}
+
+            # 認証ストラテジーを取得
+            strategy_class = StrategyRegistry.get_strategy(self.provider_type)
+            if not strategy_class:
+                return False, {"error": f"Unsupported provider type: {self.provider_type}"}
+
+            # ストラテジーインスタンスを作成
+            strategy = strategy_class(base_url=self.base_url)
+
+            # リフレッシュトークンを取得
+            token, expired_at = strategy.get_refresh_token(credentials)
+            if not token or not expired_at:
+                return False, {"error": "Failed to get refresh token"}
+
+            return True, {
+                "refresh_token": token,
+                "expired_at": expired_at.isoformat()
+            }
+
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def get_id_token(self, refresh_token: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        IDトークンを取得します。
+
+        Args:
+            refresh_token: リフレッシュトークン
+
+        Returns:
+            Tuple[bool, Optional[Dict[str, Any]]]: (成功フラグ, レスポンスデータ)
+        """
+        try:
+            # 認証ストラテジーを取得
+            strategy_class = StrategyRegistry.get_strategy(self.provider_type)
+            if not strategy_class:
+                return False, {"error": f"Unsupported provider type: {self.provider_type}"}
+
+            # ストラテジーインスタンスを作成
+            strategy = strategy_class(base_url=self.base_url)
+
+            # IDトークンを取得
+            token, expired_at = strategy.get_id_token(refresh_token)
+            if not token or not expired_at:
+                return False, {"error": "Failed to get ID token"}
+
+            return True, {
+                "id_token": token,
+                "expired_at": expired_at.isoformat()
+            }
+
+        except Exception as e:
+            return False, {"error": str(e)} 

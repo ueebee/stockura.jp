@@ -2,9 +2,14 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
+from datetime import datetime
+import logging
 
 from app.models.data_source import DataSource
 from app.schemas.data_source import DataSourceCreate, DataSourceUpdate, TokenResponse
+from app.services.token_manager import get_token_manager, AutoTokenRefresh
+
+logger = logging.getLogger(__name__)
 
 
 class DataSourceService:
@@ -12,6 +17,8 @@ class DataSourceService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.token_manager = None
+        self.auto_refresh = None
 
     async def create_data_source(self, data: DataSourceCreate) -> DataSource:
         """データソースを作成します"""
@@ -137,22 +144,50 @@ class DataSourceService:
         """リフレッシュトークンを取得します"""
         data_source = await self.get_data_source(data_source_id)
         if not data_source:
+            logger.error(f"Data source not found: {data_source_id}")
             return None
 
+        # トークンマネージャーを初期化
+        if self.token_manager is None:
+            self.token_manager = await get_token_manager()
+
         try:
-            # データソースモデルのメソッドを使用してトークンを取得
-            result = data_source.get_refresh_token()
-            if result and isinstance(result, tuple) and len(result) == 2:
-                success, data = result
-                if success:
-                    return TokenResponse(
-                        token=data.get("refresh_token"),
-                        expired_at=data.get("expired_at"),
-                        token_type="refresh_token"
-                    )
+            # 既存の有効なトークンがあるかチェック
+            existing_token = await self.token_manager.get_valid_refresh_token(data_source_id)
+            if existing_token:
+                # 既存トークンの有効期限を取得
+                token_status = await self.token_manager.get_token_status(data_source_id)
+                refresh_info = token_status.get("refresh_token", {})
+                expired_at = datetime.fromisoformat(refresh_info["expired_at"]) if refresh_info.get("expired_at") else None
+                
+                logger.info(f"Using existing refresh token for data_source_id: {data_source_id}")
+                return TokenResponse(
+                    token=existing_token,
+                    expired_at=expired_at,
+                    token_type="refresh_token"
+                )
+
+            # 新しいトークンを取得
+            success, data = data_source.get_refresh_token()
+            if success and data:
+                token = data.get("refresh_token")
+                expired_at = datetime.fromisoformat(data.get("expired_at")) if data.get("expired_at") else None
+                
+                # トークンマネージャーに保存
+                if token and expired_at:
+                    await self.token_manager.store_refresh_token(data_source_id, token, expired_at)
+                    logger.info(f"New refresh token obtained and stored for data_source_id: {data_source_id}")
+                
+                return TokenResponse(
+                    token=token,
+                    expired_at=expired_at,
+                    token_type="refresh_token"
+                )
+            else:
+                error_msg = data.get('error') if data else 'Unknown error'
+                logger.error(f"Failed to get refresh token for data_source_id {data_source_id}: {error_msg}")
         except Exception as e:
-            # ログ出力やエラーハンドリングを追加
-            print(f"Error getting refresh token: {e}")
+            logger.error(f"Error getting refresh token for data_source_id {data_source_id}: {e}")
         
         return None
 
@@ -164,21 +199,72 @@ class DataSourceService:
         """IDトークンを取得します"""
         data_source = await self.get_data_source(data_source_id)
         if not data_source:
+            logger.error(f"Data source not found: {data_source_id}")
             return None
 
+        # トークンマネージャーを初期化
+        if self.token_manager is None:
+            self.token_manager = await get_token_manager()
+
         try:
-            # データソースモデルのメソッドを使用してトークンを取得
-            result = data_source.get_id_token(refresh_token)
-            if result and isinstance(result, tuple) and len(result) == 2:
-                success, data = result
-                if success:
-                    return TokenResponse(
-                        token=data.get("id_token"),
-                        expired_at=data.get("expired_at"),
-                        token_type="id_token"
-                    )
+            # 既存の有効なIDトークンがあるかチェック
+            existing_token = await self.token_manager.get_valid_id_token(data_source_id)
+            if existing_token:
+                # 既存トークンの有効期限を取得
+                token_status = await self.token_manager.get_token_status(data_source_id)
+                id_info = token_status.get("id_token", {})
+                expired_at = datetime.fromisoformat(id_info["expired_at"]) if id_info.get("expired_at") else None
+                
+                logger.info(f"Using existing ID token for data_source_id: {data_source_id}")
+                return TokenResponse(
+                    token=existing_token,
+                    expired_at=expired_at,
+                    token_type="id_token"
+                )
+
+            # 新しいIDトークンを取得
+            success, data = data_source.get_id_token(refresh_token)
+            if success and data:
+                token = data.get("id_token")
+                expired_at = datetime.fromisoformat(data.get("expired_at")) if data.get("expired_at") else None
+                
+                # トークンマネージャーに保存
+                if token and expired_at:
+                    await self.token_manager.store_id_token(data_source_id, token, expired_at)
+                    logger.info(f"New ID token obtained and stored for data_source_id: {data_source_id}")
+                
+                return TokenResponse(
+                    token=token,
+                    expired_at=expired_at,
+                    token_type="id_token"
+                )
+            else:
+                error_msg = data.get('error') if data else 'Unknown error'
+                logger.error(f"Failed to get ID token for data_source_id {data_source_id}: {error_msg}")
         except Exception as e:
-            # ログ出力やエラーハンドリングを追加
-            print(f"Error getting id token: {e}")
+            logger.error(f"Error getting ID token for data_source_id {data_source_id}: {e}")
         
-        return None 
+        return None
+
+    async def get_valid_api_token(self, data_source_id: int) -> Optional[str]:
+        """
+        APIアクセス用の有効なトークンを取得（自動更新対応）
+        
+        Args:
+            data_source_id: データソースID
+            
+        Returns:
+            Optional[str]: 有効なIDトークン
+        """
+        # トークンマネージャーとオートリフレッシュを初期化
+        if self.token_manager is None:
+            self.token_manager = await get_token_manager()
+        if self.auto_refresh is None:
+            self.auto_refresh = AutoTokenRefresh(self.token_manager, self)
+        
+        try:
+            # 自動更新機能を使用して有効なIDトークンを取得
+            return await self.auto_refresh.ensure_valid_id_token(data_source_id)
+        except Exception as e:
+            logger.error(f"Error getting valid API token for data_source_id {data_source_id}: {e}")
+            return None 

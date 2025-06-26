@@ -69,10 +69,10 @@ async def update_data_source_endpoint(
 ):
     """データソースを更新します。"""
     service = DataSourceService(db)
-    updated_data_source = await service.update_data_source(data_source_id, data_source)
-    if not updated_data_source:
+    result = await service.update_data_source(data_source_id, data_source)
+    if not result:
         raise HTTPException(status_code=404, detail="Data source not found")
-    return updated_data_source
+    return result
 
 
 @router.delete("/{data_source_id}")
@@ -82,7 +82,8 @@ async def delete_data_source_endpoint(
 ):
     """データソースを削除します。"""
     service = DataSourceService(db)
-    if not await service.delete_data_source(data_source_id):
+    success = await service.delete_data_source(data_source_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Data source not found")
     return {"message": "Data source deleted successfully"}
 
@@ -103,12 +104,79 @@ async def get_refresh_token_endpoint(
 @router.post("/{data_source_id}/id-token", response_model=TokenResponse)
 async def get_id_token_endpoint(
     data_source_id: int,
-    refresh_token: str = Query(..., description="リフレッシュトークン"),
+    refresh_token_request: dict,
     db: AsyncSession = Depends(get_session)
 ):
     """IDトークンを取得します。"""
+    refresh_token = refresh_token_request.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="refresh_token is required")
+    
     service = DataSourceService(db)
     token_response = await service.get_id_token(data_source_id, refresh_token)
     if not token_response:
         raise HTTPException(status_code=404, detail="Data source not found or token retrieval failed")
-    return token_response 
+    return token_response
+
+
+@router.get("/{data_source_id}/token-status")
+async def get_token_status_endpoint(
+    data_source_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    """トークンの状態を取得します。"""
+    service = DataSourceService(db)
+    
+    # データソースの存在確認
+    data_source = await service.get_data_source(data_source_id)
+    if not data_source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    
+    # トークン状態を取得
+    from app.services.token_manager import get_token_manager
+    token_manager = await get_token_manager()
+    token_status = await token_manager.get_token_status(data_source_id)
+    
+    return token_status
+
+
+@router.post("/{data_source_id}/clear-tokens")
+async def clear_tokens_endpoint(
+    data_source_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    """データソースのトークンをクリアします。"""
+    service = DataSourceService(db)
+    
+    # データソースの存在確認
+    data_source = await service.get_data_source(data_source_id)
+    if not data_source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    
+    # トークンをクリア
+    from app.services.token_manager import get_token_manager
+    token_manager = await get_token_manager()
+    await token_manager.clear_tokens(data_source_id)
+    
+    return {"message": "Tokens cleared successfully"}
+
+
+@router.get("/{data_source_id}/api-token")
+async def get_api_token_endpoint(
+    data_source_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    """APIアクセス用の有効なトークンを取得します（自動更新対応）。"""
+    service = DataSourceService(db)
+    
+    # データソースの存在確認
+    data_source = await service.get_data_source(data_source_id)
+    if not data_source:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    
+    # 有効なAPIトークンを取得
+    token = await service.get_valid_api_token(data_source_id)
+    if not token:
+        raise HTTPException(status_code=400, detail="Failed to get valid API token")
+    
+    return {"token": token, "token_type": "id_token"} 
