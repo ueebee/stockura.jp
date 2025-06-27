@@ -97,7 +97,8 @@ def upgrade() -> None:
         ('7150', '保険業', 'Insurance', '保険業', '16', 30, true, :created_at, :updated_at),
         ('7200', 'その他金融業', 'Other Financial Services', 'その他金融業', '16', 31, true, :created_at, :updated_at),
         ('8050', '不動産業', 'Real Estate', '不動産業', '17', 32, true, :created_at, :updated_at),
-        ('9050', 'サービス業', 'Services', 'サービス業', '10', 33, true, :created_at, :updated_at)
+        ('9050', 'サービス業', 'Services', 'サービス業', '10', 33, true, :created_at, :updated_at),
+        ('9999', 'その他', 'Others', 'その他の業種', '99', 34, true, :created_at, :updated_at)
     """), {"created_at": current_time, "updated_at": current_time})
 
 

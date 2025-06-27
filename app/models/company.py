@@ -29,7 +29,6 @@ class Company(Base):
     margin_code: Mapped[Optional[str]] = mapped_column(String(10), comment="信用区分")
     
     # メタデータ
-    reference_date: Mapped[date] = mapped_column(Date, nullable=False, comment="情報基準日")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, comment="アクティブフラグ")
     
     # タイムスタンプ
@@ -43,7 +42,6 @@ class Company(Base):
     
     # 複合インデックス
     __table_args__ = (
-        Index('ix_companies_code_date', 'code', 'reference_date'),
         Index('ix_companies_market_sector', 'market_code', 'sector17_code'),
         Index('ix_companies_active_market', 'is_active', 'market_code'),
         Index('ix_companies_active_sector17', 'is_active', 'sector17_code'),

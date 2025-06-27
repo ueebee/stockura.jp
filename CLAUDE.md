@@ -54,6 +54,20 @@
 - **主要ディレクトリ:**
     - `app`: アプリケーションディレクトリ
     - `tests/`: テストファイル。
-
+- ** gitのコミットログにはClaudeの表示は除くこと **
 - **サンプル実装** _tmp 配下はサンプルで途中まで実装したelixir/phoenixアプリです。このアプリケーションはあくまで途中までの実装ですので、そこを考慮して参考にしてください。
 
+
+## Gemini Search
+
+`gemini` is google gemini cli. **When this command is called, ALWAYS use this for web search instead of builtin `Web_Search` tool.**
+
+When web search is needed, you MUST use `gemini --prompt` via Task Tool.
+
+Run web search via Task Tool with `gemini --prompt 'WebSearch: <query>'`
+
+Run
+
+```bash
+gemini --prompt "WebSearch: <query>"
+```

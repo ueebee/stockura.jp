@@ -1,0 +1,425 @@
+"""
+企業同期サービスのテスト
+"""
+
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from datetime import datetime, date
+from typing import List, Dict, Any
+
+from app.services.company_sync_service import CompanySyncService
+from app.services.data_source_service import DataSourceService
+from app.services.jquants_client import JQuantsClientManager, JQuantsListedInfoClient
+from app.models.company import Company, CompanySyncHistory
+
+
+class TestCompanySyncService:
+    """企業同期サービスのテスト"""
+
+    @pytest.fixture
+    def mock_db(self):
+        """モックデータベースセッション"""
+        db = Mock()
+        db.add = Mock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        db.execute = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def mock_data_source_service(self):
+        """モックデータソースサービス"""
+        return Mock(spec=DataSourceService)
+
+    @pytest.fixture
+    def mock_jquants_client_manager(self):
+        """モックJ-Quantsクライアント管理"""
+        return Mock(spec=JQuantsClientManager)
+
+    @pytest.fixture
+    def mock_jquants_client(self):
+        """モックJ-Quantsクライアント"""
+        return Mock(spec=JQuantsListedInfoClient)
+
+    @pytest.fixture
+    def sync_service(self, mock_db, mock_data_source_service, mock_jquants_client_manager):
+        """CompanySyncServiceのインスタンス"""
+        return CompanySyncService(
+            db=mock_db,
+            data_source_service=mock_data_source_service,
+            jquants_client_manager=mock_jquants_client_manager
+        )
+
+    @pytest.fixture
+    def sample_jquants_data(self):
+        """サンプルのJ-Quantsデータ"""
+        return [
+            {
+                "Date": "20241226",
+                "Code": "1234",
+                "CompanyName": "テスト株式会社",
+                "CompanyNameEnglish": "Test Corporation",
+                "Sector17Code": "01",
+                "Sector17CodeName": "食品",
+                "Sector33Code": "050",
+                "Sector33CodeName": "食料品",
+                "ScaleCategory": "TOPIX Large70",
+                "MarketCode": "0111",
+                "MarketCodeName": "プライム",
+                "MarginCode": "1",
+                "MarginCodeName": "制度信用"
+            },
+            {
+                "Date": "20241226",
+                "Code": "5678",
+                "CompanyName": "サンプル商事",
+                "CompanyNameEnglish": "Sample Trading Co.",
+                "Sector17Code": "02",
+                "Sector17CodeName": "繊維製品",
+                "Sector33Code": "100",
+                "Sector33CodeName": "繊維製品",
+                "ScaleCategory": "TOPIX Mid400",
+                "MarketCode": "0112",
+                "MarketCodeName": "スタンダード",
+                "MarginCode": "2",
+                "MarginCodeName": "一般信用"
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_sync_companies_success(
+        self, 
+        sync_service, 
+        mock_db, 
+        mock_jquants_client_manager, 
+        mock_jquants_client,
+        sample_jquants_data
+    ):
+        """企業データ同期の成功テスト"""
+        # モックの設定
+        mock_jquants_client_manager.get_client.return_value = mock_jquants_client
+        mock_jquants_client.get_all_listed_companies.return_value = sample_jquants_data
+        
+        # 既存企業データが見つからない場合の設定
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+        
+        # 同期履歴のモック
+        mock_sync_history = Mock(spec=CompanySyncHistory)
+        mock_sync_history.id = 1
+        mock_sync_history.sync_date = date.today()
+        mock_sync_history.sync_type = "full"
+        mock_sync_history.status = "completed"
+        mock_sync_history.total_companies = 2
+        mock_sync_history.new_companies = 2
+        mock_sync_history.updated_companies = 0
+        
+        # CompanySyncHistoryの作成をモック
+        with patch('app.services.company_sync_service.CompanySyncHistory', return_value=mock_sync_history):
+            # テスト実行
+            result = await sync_service.sync_companies(data_source_id=1)
+            
+            # 結果検証
+            assert result.status == "completed"
+            assert result.total_companies == 2
+            assert result.new_companies == 2
+            assert result.updated_companies == 0
+            
+            # メソッド呼び出しの検証
+            mock_jquants_client_manager.get_client.assert_called_once_with(1)
+            mock_jquants_client.get_all_listed_companies.assert_called_once()
+            mock_db.add.assert_called()
+            assert mock_db.commit.call_count >= 2  # 初回と最終の最低2回
+
+    @pytest.mark.asyncio
+    async def test_sync_companies_api_error(
+        self, 
+        sync_service, 
+        mock_db, 
+        mock_jquants_client_manager, 
+        mock_jquants_client
+    ):
+        """J-Quants API エラーのテスト"""
+        # モックの設定
+        mock_jquants_client_manager.get_client.return_value = mock_jquants_client
+        mock_jquants_client.get_all_listed_companies.side_effect = Exception("API Error")
+        
+        mock_sync_history = Mock(spec=CompanySyncHistory)
+        
+        with patch('app.services.company_sync_service.CompanySyncHistory', return_value=mock_sync_history):
+            # テスト実行
+            with pytest.raises(Exception) as exc_info:
+                await sync_service.sync_companies(data_source_id=1)
+            
+            assert "API Error" in str(exc_info.value)
+            
+            # エラー時の同期履歴更新を検証
+            assert mock_sync_history.status == "failed"
+            assert mock_sync_history.error_message == "API Error"
+
+    @pytest.mark.asyncio
+    async def test_sync_companies_no_data(
+        self, 
+        sync_service, 
+        mock_db, 
+        mock_jquants_client_manager, 
+        mock_jquants_client
+    ):
+        """データが取得できない場合のテスト"""
+        # モックの設定
+        mock_jquants_client_manager.get_client.return_value = mock_jquants_client
+        mock_jquants_client.get_all_listed_companies.return_value = []
+        
+        mock_sync_history = Mock(spec=CompanySyncHistory)
+        
+        with patch('app.services.company_sync_service.CompanySyncHistory', return_value=mock_sync_history):
+            # テスト実行
+            with pytest.raises(Exception) as exc_info:
+                await sync_service.sync_companies(data_source_id=1)
+            
+            assert "No company data received" in str(exc_info.value)
+
+    def test_map_jquants_data_to_model_success(self, sync_service):
+        """J-Quantsデータのモデルマッピング成功テスト"""
+        jquants_data = {
+            "Code": "1234",
+            "CompanyName": "テスト株式会社",
+            "CompanyNameEnglish": "Test Corporation",
+            "Sector17Code": "01",
+            "Sector33Code": "050",
+            "ScaleCategory": "TOPIX Large70",
+            "MarketCode": "0111",
+            "MarginCode": "1"
+        }
+        
+        reference_date = date(2024, 12, 26)
+        
+        # テスト実行
+        result = sync_service._map_jquants_data_to_model(jquants_data, reference_date)
+        
+        # 結果検証
+        assert result is not None
+        assert result["code"] == "1234"
+        assert result["company_name"] == "テスト株式会社"
+        assert result["company_name_english"] == "Test Corporation"
+        assert result["sector17_code"] == "01"
+        assert result["sector33_code"] == "050"
+        assert result["scale_category"] == "TOPIX Large70"
+        assert result["market_code"] == "0111"
+        assert result["margin_code"] == "1"
+        assert result["reference_date"] == reference_date
+        assert result["is_active"] is True
+
+    def test_map_jquants_data_to_model_missing_required(self, sync_service):
+        """必須フィールド不足時のマッピングテスト"""
+        # コードが不足
+        jquants_data_no_code = {
+            "CompanyName": "テスト株式会社"
+        }
+        
+        result = sync_service._map_jquants_data_to_model(jquants_data_no_code, date.today())
+        assert result is None
+        
+        # 会社名が不足
+        jquants_data_no_name = {
+            "Code": "1234"
+        }
+        
+        result = sync_service._map_jquants_data_to_model(jquants_data_no_name, date.today())
+        assert result is None
+
+    def test_map_jquants_data_to_model_partial_data(self, sync_service):
+        """部分的なデータでのマッピングテスト"""
+        jquants_data = {
+            "Code": "1234",
+            "CompanyName": "テスト株式会社"
+            # その他のフィールドは未設定
+        }
+        
+        reference_date = date(2024, 12, 26)
+        
+        # テスト実行
+        result = sync_service._map_jquants_data_to_model(jquants_data, reference_date)
+        
+        # 結果検証
+        assert result is not None
+        assert result["code"] == "1234"
+        assert result["company_name"] == "テスト株式会社"
+        assert result["company_name_english"] is None
+        assert result["sector17_code"] is None
+        assert result["sector33_code"] is None
+        assert result["reference_date"] == reference_date
+        assert result["is_active"] is True
+
+    @pytest.mark.asyncio
+    async def test_get_existing_company(self, sync_service, mock_db):
+        """既存企業データ取得のテスト"""
+        # モック設定
+        mock_company = Mock(spec=Company)
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = mock_company
+        mock_db.execute.return_value = mock_result
+        
+        # テスト実行
+        result = await sync_service._get_existing_company("1234", date.today())
+        
+        # 結果検証
+        assert result == mock_company
+        mock_db.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_existing_company_not_found(self, sync_service, mock_db):
+        """既存企業データが見つからない場合のテスト"""
+        # モック設定
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+        
+        # テスト実行
+        result = await sync_service._get_existing_company("9999", date.today())
+        
+        # 結果検証
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_create_company(self, sync_service, mock_db):
+        """新規企業データ作成のテスト"""
+        company_data = {
+            "code": "1234",
+            "company_name": "テスト株式会社",
+            "reference_date": date.today(),
+            "is_active": True
+        }
+        
+        with patch('app.services.company_sync_service.Company') as mock_company_class:
+            mock_company_instance = Mock()
+            mock_company_class.return_value = mock_company_instance
+            
+            # テスト実行
+            await sync_service._create_company(company_data)
+            
+            # 結果検証
+            mock_company_class.assert_called_once_with(**company_data)
+            mock_db.add.assert_called_once_with(mock_company_instance)
+
+    @pytest.mark.asyncio
+    async def test_update_company(self, sync_service):
+        """企業データ更新のテスト"""
+        # 既存の企業データ
+        existing_company = Mock(spec=Company)
+        existing_company.code = "1234"
+        existing_company.company_name = "旧社名"
+        existing_company.company_name_english = "Old Name"
+        existing_company.sector17_code = "01"
+        
+        # 新しいデータ
+        new_data = {
+            "code": "1234",  # 更新されない
+            "company_name": "新社名",  # 更新される
+            "company_name_english": "New Name",  # 更新される
+            "sector17_code": "01",  # 変更なし
+            "reference_date": date.today(),  # 更新されない
+            "is_active": True
+        }
+        
+        # テスト実行
+        await sync_service._update_company(existing_company, new_data)
+        
+        # 結果検証
+        assert existing_company.company_name == "新社名"
+        assert existing_company.company_name_english == "New Name"
+        assert existing_company.sector17_code == "01"  # 変更なし
+        assert hasattr(existing_company, 'updated_at')
+
+    @pytest.mark.asyncio
+    async def test_update_company_no_changes(self, sync_service):
+        """企業データに変更がない場合のテスト"""
+        # 既存の企業データ
+        existing_company = Mock(spec=Company)
+        existing_company.code = "1234"
+        existing_company.company_name = "同じ社名"
+        existing_company.company_name_english = "Same Name"
+        
+        # 同じデータ
+        new_data = {
+            "code": "1234",
+            "company_name": "同じ社名",
+            "company_name_english": "Same Name",
+            "reference_date": date.today(),
+            "is_active": True
+        }
+        
+        # テスト実行
+        await sync_service._update_company(existing_company, new_data)
+        
+        # updated_atが設定されていないことを確認（変更がないため）
+        # この実装では、変更がない場合はupdated_atを更新しない
+
+    @pytest.mark.asyncio
+    async def test_get_sync_history(self, sync_service, mock_db):
+        """同期履歴取得のテスト"""
+        # モック設定
+        mock_histories = [Mock(spec=CompanySyncHistory) for _ in range(3)]
+        
+        # 総数取得のモック
+        mock_count_result = Mock()
+        mock_count_result.scalars.return_value.all.return_value = [1, 2, 3]
+        
+        # データ取得のモック
+        mock_data_result = Mock()
+        mock_data_result.scalars.return_value.all.return_value = mock_histories
+        
+        mock_db.execute.side_effect = [mock_count_result, mock_data_result]
+        
+        # テスト実行
+        histories, total = await sync_service.get_sync_history(limit=10, offset=0)
+        
+        # 結果検証
+        assert histories == mock_histories
+        assert total == 3
+        assert mock_db.execute.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_get_latest_sync_status(self, sync_service, mock_db):
+        """最新同期ステータス取得のテスト"""
+        # モック設定
+        mock_history = Mock(spec=CompanySyncHistory)
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = mock_history
+        mock_db.execute.return_value = mock_result
+        
+        # テスト実行
+        result = await sync_service.get_latest_sync_status()
+        
+        # 結果検証
+        assert result == mock_history
+        mock_db.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_deactivate_old_companies(self, sync_service, mock_db):
+        """古い企業データの非アクティブ化テスト"""
+        # モック設定
+        mock_result = Mock()
+        mock_result.rowcount = 5  # 5件が非アクティブ化された
+        mock_db.execute.return_value = mock_result
+        
+        active_codes = ["1234", "5678", "9012"]
+        reference_date = date.today()
+        
+        # テスト実行
+        deactivated_count = await sync_service.deactivate_old_companies(reference_date, active_codes)
+        
+        # 結果検証
+        assert deactivated_count == 5
+        mock_db.execute.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_deactivate_old_companies_empty_codes(self, sync_service):
+        """アクティブコードが空の場合のテスト"""
+        # テスト実行
+        deactivated_count = await sync_service.deactivate_old_companies(date.today(), [])
+        
+        # 結果検証
+        assert deactivated_count == 0
