@@ -106,7 +106,7 @@ async def get_companies(
     pages = math.ceil(total / per_page) if total > 0 else 1
     
     return CompanyList(
-        items=[CompanySchema.from_orm(company) for company in companies],
+        items=[CompanySchema.model_validate(company) for company in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -128,7 +128,7 @@ async def get_company(
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    return CompanySchema.from_orm(company)
+    return CompanySchema.model_validate(company)
 
 
 @router.post("/sync", response_model=CompanySyncHistorySchema)
@@ -146,7 +146,7 @@ async def sync_companies(
             sync_type=request.sync_type
         )
         
-        return CompanySyncHistorySchema.from_orm(sync_history)
+        return CompanySyncHistorySchema.model_validate(sync_history)
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -171,7 +171,7 @@ async def get_sync_history(
     pages = math.ceil(total / per_page) if total > 0 else 1
     
     return CompanySyncHistoryList(
-        items=[CompanySyncHistorySchema.from_orm(history) for history in histories],
+        items=[CompanySyncHistorySchema.model_validate(history) for history in histories],
         total=total,
         page=page,
         per_page=per_page,
@@ -188,7 +188,7 @@ async def get_latest_sync_status(
     latest_sync = await company_sync_service.get_latest_sync_status()
     
     if latest_sync:
-        return CompanySyncHistorySchema.from_orm(latest_sync)
+        return CompanySyncHistorySchema.model_validate(latest_sync)
     else:
         return None
 
@@ -210,7 +210,7 @@ async def get_sector17_masters(
     result = await db.execute(query)
     sectors = result.scalars().all()
     
-    return [Sector17MasterSchema.from_orm(sector) for sector in sectors]
+    return [Sector17MasterSchema.model_validate(sector) for sector in sectors]
 
 
 @router.get("/masters/sectors33", response_model=List[Sector33MasterSchema])
@@ -237,7 +237,7 @@ async def get_sector33_masters(
     result = await db.execute(query)
     sectors = result.scalars().all()
     
-    return [Sector33MasterSchema.from_orm(sector) for sector in sectors]
+    return [Sector33MasterSchema.model_validate(sector) for sector in sectors]
 
 
 @router.get("/masters/markets", response_model=List[MarketMasterSchema])
@@ -257,7 +257,7 @@ async def get_market_masters(
     result = await db.execute(query)
     markets = result.scalars().all()
     
-    return [MarketMasterSchema.from_orm(market) for market in markets]
+    return [MarketMasterSchema.model_validate(market) for market in markets]
 
 
 @router.post("/search", response_model=CompanyList)
