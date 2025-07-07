@@ -129,7 +129,6 @@ async def test_company_sync():
             # 同期実行
             sync_history = await sync_service.sync_companies(
                 data_source_id=jquants_data_source_id,
-                sync_date=dt.date.today(),
                 sync_type="full"
             )
             

@@ -49,3 +49,7 @@ celery_app.conf.update(
 
 # タスクの自動検出
 celery_app.autodiscover_tasks()
+
+# Beat scheduleの読み込み
+from app.core.celery_beat_schedule import CELERY_BEAT_SCHEDULE
+celery_app.conf.beat_schedule = CELERY_BEAT_SCHEDULE

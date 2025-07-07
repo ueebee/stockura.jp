@@ -43,6 +43,24 @@ services:
     ports:
       - "6379:6379"
 
+  beat:
+    build: .
+    command: celery -A app.core.celery_app beat --loglevel=info
+    volumes:
+      - .:/usr/src/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/stockura
+      - ENCRYPTION_KEY=your-super-secure-encryption-key-here-change-in-production
+      - ENCRYPTION_SALT=your-super-secure-salt-here-change-in-production
+      - ENCRYPTION_ITERATIONS=100000
+      - ENCRYPTION_KEY_LENGTH=32
+      - ENCRYPTION_ALGORITHM=SHA256
+    depends_on:
+      - redis
+      - db
+
   flower:
     build: .
     command: celery -A app.core.celery_app flower --port=5555
@@ -51,6 +69,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/stockura
+      - FLOWER_UNAUTHENTICATED_API=true
     depends_on:
       - web
       - redis

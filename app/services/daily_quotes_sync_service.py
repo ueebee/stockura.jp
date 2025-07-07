@@ -323,11 +323,23 @@ class DailyQuotesSyncService:
                     skipped_count += 1
                     continue
                 
-                # 既存レコードをチェック
+                # 企業コードの取得
                 code = quote_data.get("Code")
                 trade_date_str = quote_data.get("Date")
                 trade_date = datetime.strptime(trade_date_str, "%Y-%m-%d").date()
                 
+                # 企業マスタに存在するかチェック
+                from app.models.company import Company
+                company_stmt = select(Company).where(Company.code == code)
+                company_result = await session.execute(company_stmt)
+                company = company_result.scalar_one_or_none()
+                
+                if not company:
+                    logger.warning(f"Company code {code} not found in master data, skipping")
+                    skipped_count += 1
+                    continue
+                
+                # 既存レコードをチェック
                 stmt = select(DailyQuote).where(
                     and_(DailyQuote.code == code, DailyQuote.trade_date == trade_date)
                 )
