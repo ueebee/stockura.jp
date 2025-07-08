@@ -33,6 +33,8 @@ os.environ["APP_ENV"] = "test"
 
 from app.core.config import settings
 from app.db.base_class import Base
+# モデルをインポートして、メタデータに登録されるようにする
+from app.models import *  # noqa: F401, F403
 
 
 # テスト用データベースURL（非同期ドライバを使用）

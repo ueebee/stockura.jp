@@ -22,9 +22,12 @@ class TestDailyQuote:
         
         assert quote.code == "1234"
         assert quote.trade_date == date(2024, 12, 26)
-        assert quote.adjustment_factor == Decimal("1.0")
-        assert quote.upper_limit_flag is False
-        assert quote.lower_limit_flag is False
+        # adjustment_factorはデータベースレベルでのデフォルト値なので、
+        # Pythonオブジェクトレベルではまだ設定されていない
+        assert quote.adjustment_factor is None
+        # upper_limit_flagとlower_limit_flagもデータベースレベルのデフォルト値
+        assert quote.upper_limit_flag is None
+        assert quote.lower_limit_flag is None
 
     def test_create_daily_quote_full_data(self):
         """全データ項目でDailyQuote作成テスト"""
