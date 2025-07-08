@@ -354,8 +354,9 @@ class TestCompaniesAPI:
         
         # サービスが正しいパラメータで呼ばれたことを確認
         mock_sync_service.get_sync_history.assert_called_once()
-        call_args = mock_sync_service.get_sync_history.call_args
-        assert call_args[1]["status"] == "failed"
+        # キーワード引数の確認
+        call_kwargs = mock_sync_service.get_sync_history.call_args.kwargs
+        assert call_kwargs["status"] == "failed"
 
     @pytest.mark.asyncio
     async def test_get_latest_sync_status_success(self, client: AsyncClient, sample_sync_history):
@@ -418,17 +419,9 @@ class TestCompaniesAPI:
             master.is_active = True
             master.created_at = datetime.now()
             master.updated_at = datetime.now()
-            # Pydanticモデル変換用のdict属性
-            master.__dict__ = {
-                "id": master.id,
-                "code": master.code,
-                "name": master.name,
-                "name_english": master.name_english,
-                "display_order": master.display_order,
-                "is_active": master.is_active,
-                "created_at": master.created_at,
-                "updated_at": master.updated_at
-            }
+            # model_validateで必要な属性を設定
+            for attr in ["id", "code", "name", "name_english", "display_order", "is_active", "created_at", "updated_at"]:
+                setattr(master, attr, getattr(master, attr))
             masters.append(master)
         
         # データベースセッションをモック
@@ -472,18 +465,10 @@ class TestCompaniesAPI:
             master.is_active = True
             master.created_at = datetime.now()
             master.updated_at = datetime.now()
-            # Pydanticモデル変換用のdict属性
-            master.__dict__ = {
-                "id": master.id,
-                "code": master.code,
-                "name": master.name,
-                "name_english": None,
-                "sector17_code": master.sector17_code,
-                "display_order": master.display_order,
-                "is_active": master.is_active,
-                "created_at": master.created_at,
-                "updated_at": master.updated_at
-            }
+            # model_validateで必要な属性を設定
+            master.name_english = None
+            for attr in ["id", "code", "name", "name_english", "sector17_code", "display_order", "is_active", "created_at", "updated_at"]:
+                setattr(master, attr, getattr(master, attr))
             masters.append(master)
         
         # データベースセッションをモック
@@ -528,18 +513,9 @@ class TestCompaniesAPI:
             master.is_active = True
             master.created_at = datetime.now()
             master.updated_at = datetime.now()
-            # Pydanticモデル変換用のdict属性
-            master.__dict__ = {
-                "id": master.id,
-                "code": master.code,
-                "name": master.name,
-                "name_english": master.name_english,
-                "description": master.description,
-                "display_order": master.display_order,
-                "is_active": master.is_active,
-                "created_at": master.created_at,
-                "updated_at": master.updated_at
-            }
+            # model_validateで必要な属性を設定
+            for attr in ["id", "code", "name", "name_english", "description", "display_order", "is_active", "created_at", "updated_at"]:
+                setattr(master, attr, getattr(master, attr))
             masters.append(master)
         
         # データベースセッションをモック
