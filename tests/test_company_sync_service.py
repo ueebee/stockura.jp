@@ -193,10 +193,8 @@ class TestCompanySyncService:
             "MarginCode": "1"
         }
         
-        reference_date = date(2024, 12, 26)
-        
         # テスト実行
-        result = sync_service._map_jquants_data_to_model(jquants_data, reference_date)
+        result = sync_service._map_jquants_data_to_model(jquants_data)
         
         # 結果検証
         assert result is not None
@@ -208,7 +206,6 @@ class TestCompanySyncService:
         assert result["scale_category"] == "TOPIX Large70"
         assert result["market_code"] == "0111"
         assert result["margin_code"] == "1"
-        assert result["reference_date"] == reference_date
         assert result["is_active"] is True
 
     def test_map_jquants_data_to_model_missing_required(self, sync_service):
@@ -218,7 +215,7 @@ class TestCompanySyncService:
             "CompanyName": "テスト株式会社"
         }
         
-        result = sync_service._map_jquants_data_to_model(jquants_data_no_code, date.today())
+        result = sync_service._map_jquants_data_to_model(jquants_data_no_code)
         assert result is None
         
         # 会社名が不足
@@ -226,7 +223,7 @@ class TestCompanySyncService:
             "Code": "1234"
         }
         
-        result = sync_service._map_jquants_data_to_model(jquants_data_no_name, date.today())
+        result = sync_service._map_jquants_data_to_model(jquants_data_no_name)
         assert result is None
 
     def test_map_jquants_data_to_model_partial_data(self, sync_service):
@@ -237,10 +234,8 @@ class TestCompanySyncService:
             # その他のフィールドは未設定
         }
         
-        reference_date = date(2024, 12, 26)
-        
         # テスト実行
-        result = sync_service._map_jquants_data_to_model(jquants_data, reference_date)
+        result = sync_service._map_jquants_data_to_model(jquants_data)
         
         # 結果検証
         assert result is not None
@@ -249,7 +244,6 @@ class TestCompanySyncService:
         assert result["company_name_english"] is None
         assert result["sector17_code"] is None
         assert result["sector33_code"] is None
-        assert result["reference_date"] == reference_date
         assert result["is_active"] is True
 
     @pytest.mark.asyncio
@@ -262,7 +256,7 @@ class TestCompanySyncService:
         mock_db.execute.return_value = mock_result
         
         # テスト実行
-        result = await sync_service._get_existing_company("1234", date.today())
+        result = await sync_service._get_existing_company("1234")
         
         # 結果検証
         assert result == mock_company
@@ -277,7 +271,7 @@ class TestCompanySyncService:
         mock_db.execute.return_value = mock_result
         
         # テスト実行
-        result = await sync_service._get_existing_company("9999", date.today())
+        result = await sync_service._get_existing_company("9999")
         
         # 結果検証
         assert result is None
@@ -319,7 +313,6 @@ class TestCompanySyncService:
             "company_name": "新社名",  # 更新される
             "company_name_english": "New Name",  # 更新される
             "sector17_code": "01",  # 変更なし
-            "reference_date": date.today(),  # 更新されない
             "is_active": True
         }
         
@@ -340,13 +333,13 @@ class TestCompanySyncService:
         existing_company.code = "1234"
         existing_company.company_name = "同じ社名"
         existing_company.company_name_english = "Same Name"
+        existing_company.is_active = True
         
         # 同じデータ
         new_data = {
             "code": "1234",
             "company_name": "同じ社名",
             "company_name_english": "Same Name",
-            "reference_date": date.today(),
             "is_active": True
         }
         
@@ -405,10 +398,9 @@ class TestCompanySyncService:
         mock_db.execute.return_value = mock_result
         
         active_codes = ["1234", "5678", "9012"]
-        reference_date = date.today()
         
         # テスト実行
-        deactivated_count = await sync_service.deactivate_old_companies(reference_date, active_codes)
+        deactivated_count = await sync_service.deactivate_missing_companies(active_codes)
         
         # 結果検証
         assert deactivated_count == 5
@@ -419,7 +411,7 @@ class TestCompanySyncService:
     async def test_deactivate_old_companies_empty_codes(self, sync_service):
         """アクティブコードが空の場合のテスト"""
         # テスト実行
-        deactivated_count = await sync_service.deactivate_old_companies(date.today(), [])
+        deactivated_count = await sync_service.deactivate_missing_companies([])
         
         # 結果検証
         assert deactivated_count == 0
