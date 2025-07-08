@@ -1,12 +1,18 @@
 from celery import Celery
 from app.core.config import settings
+from app.utils.rate_limit import RateLimitManager
 
 # Celeryアプリケーションの作成
 celery_app = Celery(
     "stockura",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.stock_tasks", "app.tasks.sample_tasks"]
+    include=[
+        "app.tasks.stock_tasks",
+        "app.tasks.sample_tasks",
+        "app.tasks.company_tasks",
+        "app.tasks.daily_quotes_tasks"
+    ]
 )
 
 # Celery設定
@@ -30,11 +36,36 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.stock_tasks.*": {"queue": "stock_data"},
         "app.tasks.sample_tasks.*": {"queue": "default"},
+        "app.tasks.company_tasks.*": {"queue": "jquants"},
+        "app.tasks.daily_quotes_tasks.*": {"queue": "jquants"},
     },
     
     # レート制限の設定
+    # データソースから動的に取得するが、フォールバックとして静的な値も設定
     task_annotations={
-        "app.tasks.stock_tasks.fetch_stock_data": {"rate_limit": "10/m"},
+        # yfinance API タスク
+        "app.tasks.stock_tasks.fetch_stock_data": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("yfinance")
+        },
+        "app.tasks.stock_tasks.fetch_stock_data_with_retry": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("yfinance")
+        },
+        
+        # J-Quants API タスク
+        "app.tasks.company_tasks.sync_companies_task": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("jquants")
+        },
+        "app.tasks.company_tasks.sync_companies_with_retry": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("jquants")
+        },
+        "app.tasks.company_tasks.test_jquants_connection": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("jquants")
+        },
+        "app.tasks.daily_quotes_tasks.sync_daily_quotes_task": {
+            "rate_limit": RateLimitManager.get_rate_limit_for_provider("jquants")
+        },
+        
+        # サンプルタスクのレート制限
         "app.tasks.sample_tasks.heavy_task": {"rate_limit": "5/m"},
     },
     
