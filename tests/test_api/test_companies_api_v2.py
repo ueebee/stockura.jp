@@ -155,32 +155,38 @@ class TestCompaniesAPIv2:
         assert response.status_code == 404
         assert "Company not found" in response.json()["detail"]
 
-    @patch('app.api.v1.endpoints.companies.get_company_sync_service')
-    def test_sync_companies_success(self, mock_get_sync_service, client, sample_sync_history):
+    def test_sync_companies_success(self, client, sample_sync_history):
         """企業データ同期の成功テスト"""
         # 同期サービスをモック
         mock_sync_service = Mock()
         mock_sync_service.sync_companies = AsyncMock(return_value=sample_sync_history)
-        mock_get_sync_service.return_value = mock_sync_service
         
-        # テスト実行
-        response = client.post(
-            "/api/v1/companies/sync",
-            json={
-                "data_source_id": 1,
-                "sync_type": "full"
-            }
-        )
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
         
-        # 結果検証
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == 1
-        assert data["sync_type"] == "full"
-        assert data["status"] == "completed"
-        assert data["total_companies"] == 4412
-        assert data["new_companies"] == 3
-        assert data["updated_companies"] == 4409
+        try:
+            # テスト実行
+            response = client.post(
+                "/api/v1/companies/sync",
+                json={
+                    "data_source_id": 1,
+                    "sync_type": "full"
+                }
+            )
+            
+            # 結果検証
+            assert response.status_code == 200
+            data = response.json()
+            assert data["id"] == 1
+            assert data["sync_type"] == "full"
+            assert data["status"] == "completed"
+            assert data["total_companies"] == 100
+            assert data["new_companies"] == 10
+            assert data["updated_companies"] == 5
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @patch('app.api.v1.endpoints.companies.get_company_sync_service')
     def test_sync_companies_error(self, mock_get_sync_service, client):

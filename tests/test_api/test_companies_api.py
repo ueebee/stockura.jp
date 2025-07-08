@@ -326,6 +326,12 @@ class TestCompaniesAPI:
         failed_history.sync_date = date(2024, 12, 26)
         failed_history.sync_type = "full"
         failed_history.status = "failed"
+        failed_history.total_companies = 0
+        failed_history.new_companies = 0
+        failed_history.updated_companies = 0
+        failed_history.deleted_companies = 0
+        failed_history.started_at = datetime(2024, 12, 26, 9, 0, 0)
+        failed_history.completed_at = datetime(2024, 12, 26, 9, 0, 30)
         failed_history.error_message = "API Error"
         
         # 同期サービスをモック
