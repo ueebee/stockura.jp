@@ -347,14 +347,19 @@ class TestJQuantsClientManager:
     def test_clear_client_cache(self, manager):
         """クライアントキャッシュのクリアテスト"""
         # キャッシュにダミーデータを設定
-        manager._clients[1] = Mock()
-        manager._clients[2] = Mock()
+        manager._listed_clients[1] = Mock()
+        manager._listed_clients[2] = Mock()
+        manager._daily_quotes_clients[1] = Mock()
+        manager._daily_quotes_clients[2] = Mock()
         
         # 特定のクライアントをクリア
         manager.clear_client_cache(1)
-        assert 1 not in manager._clients
-        assert 2 in manager._clients
+        assert 1 not in manager._listed_clients
+        assert 2 in manager._listed_clients
+        assert 1 not in manager._daily_quotes_clients
+        assert 2 in manager._daily_quotes_clients
         
         # 全てクリア
         manager.clear_client_cache()
-        assert len(manager._clients) == 0
+        assert len(manager._listed_clients) == 0
+        assert len(manager._daily_quotes_clients) == 0
