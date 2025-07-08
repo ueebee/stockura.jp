@@ -36,6 +36,7 @@ def company_factory():
         sector17_code: Optional[str] = None,
         sector33_code: Optional[str] = None,
         scale_category: Optional[str] = None,
+        margin_code: Optional[str] = None,
         is_active: bool = True
     ) -> Company:
         
@@ -47,6 +48,7 @@ def company_factory():
             sector17_code=sector17_code or str(random.randint(1, 17)),
             sector33_code=sector33_code or f"{random.randint(1000, 9999)}",
             scale_category=scale_category or random.choice(["TOPIX Core30", "TOPIX Large70", "TOPIX Mid400", "TOPIX Small"]),
+            margin_code=margin_code,
             is_active=is_active,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
