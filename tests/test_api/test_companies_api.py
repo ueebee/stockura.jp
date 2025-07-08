@@ -59,12 +59,12 @@ class TestCompaniesAPI:
         history.error_message = None
         return history
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_companies_success(self, mock_get_db, client, sample_companies):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_companies_success(self, mock_get_session, client, sample_companies):
         """企業一覧取得の成功テスト"""
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         # クエリ結果をモック
         mock_count_result = Mock()
@@ -90,12 +90,12 @@ class TestCompaniesAPI:
         assert data["page"] == 1
         assert data["per_page"] == 50
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_companies_with_filters(self, mock_get_db, client, sample_companies):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_companies_with_filters(self, mock_get_session, client, sample_companies):
         """フィルタ付き企業一覧取得のテスト"""
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         # フィルタされた結果をモック
         filtered_companies = sample_companies[:2]
@@ -127,12 +127,12 @@ class TestCompaniesAPI:
         assert data["total"] == len(filtered_companies)
         assert data["per_page"] == 10
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_company_by_code_success(self, mock_get_db, client, sample_companies):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_company_by_code_success(self, mock_get_session, client, sample_companies):
         """特定企業取得の成功テスト"""
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         # 特定の企業を返すモック
         target_company = sample_companies[0]
@@ -149,12 +149,12 @@ class TestCompaniesAPI:
         assert data["code"] == "1001"
         assert data["company_name"] == "テスト企業1"
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_company_by_code_not_found(self, mock_get_db, client):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_company_by_code_not_found(self, mock_get_session, client):
         """企業が見つからない場合のテスト"""
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         # 企業が見つからない場合
         mock_result = Mock()
@@ -316,8 +316,8 @@ class TestCompaniesAPI:
         assert response.status_code == 200
         assert response.json() is None
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_sector17_masters(self, mock_get_db, client):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_sector17_masters(self, mock_get_session, client):
         """17業種区分マスター取得のテスト"""
         # サンプルマスターデータ
         masters = []
@@ -335,7 +335,7 @@ class TestCompaniesAPI:
         
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         mock_result = Mock()
         mock_result.scalars.return_value.all.return_value = masters
@@ -351,8 +351,8 @@ class TestCompaniesAPI:
         assert data[0]["code"] == "01"
         assert data[0]["name"] == "業種1"
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_sector33_masters_with_filter(self, mock_get_db, client):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_sector33_masters_with_filter(self, mock_get_session, client):
         """17業種フィルタ付き33業種区分マスター取得のテスト"""
         # サンプルマスターデータ
         masters = []
@@ -370,7 +370,7 @@ class TestCompaniesAPI:
         
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         mock_result = Mock()
         mock_result.scalars.return_value.all.return_value = masters
@@ -388,8 +388,8 @@ class TestCompaniesAPI:
         assert len(data) == 2
         assert all(item["sector17_code"] == "01" for item in data)
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_get_market_masters(self, mock_get_db, client):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_get_market_masters(self, mock_get_session, client):
         """市場区分マスター取得のテスト"""
         # サンプルマスターデータ
         masters = []
@@ -408,7 +408,7 @@ class TestCompaniesAPI:
         
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         mock_result = Mock()
         mock_result.scalars.return_value.all.return_value = masters
@@ -425,12 +425,12 @@ class TestCompaniesAPI:
         assert data[1]["name"] == "スタンダード"
         assert data[2]["name"] == "グロース"
 
-    @patch('app.api.v1.endpoints.companies.get_db')
-    def test_search_companies_post(self, mock_get_db, client, sample_companies):
+    @patch('app.api.v1.endpoints.companies.get_session')
+    def test_search_companies_post(self, mock_get_session, client, sample_companies):
         """POST形式での企業検索テスト"""
         # データベースセッションをモック
         mock_db = Mock()
-        mock_get_db.return_value = mock_db
+        mock_get_session.return_value = mock_db
         
         # 検索結果をモック
         search_results = sample_companies[:2]

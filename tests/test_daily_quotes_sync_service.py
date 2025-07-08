@@ -89,25 +89,36 @@ class TestDailyQuotesSyncService:
         # データベースセッションをモック
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
-            # 既存レコードなし（新規作成）
-            mock_session.execute.return_value.scalar_one_or_none.return_value = None
+            # 同期履歴をモック
+            mock_sync_history = Mock(spec=DailyQuotesSyncHistory)
+            mock_sync_history.id = 1
+            mock_sync_history.sync_type = "incremental"
+            mock_sync_history.status = "completed"
+            mock_sync_history.total_records = 2
+            mock_sync_history.new_records = 2
+            mock_sync_history.updated_records = 0
+            mock_sync_history.skipped_records = 0
             
-            # テスト実行
-            result = await sync_service.sync_daily_quotes(
-                data_source_id=1,
-                sync_type="incremental",
-                target_date=date(2024, 12, 26)
-            )
-            
-            # 結果検証
-            assert result.sync_type == "incremental"
-            assert result.status == "completed"
-            assert result.total_records == 2
-            assert result.new_records == 2
-            assert result.updated_records == 0
-            assert result.skipped_records == 0
+            with patch('app.services.daily_quotes_sync_service.DailyQuotesSyncHistory', return_value=mock_sync_history):
+                # 既存レコードなし（新規作成）
+                mock_session.execute.return_value.scalar_one_or_none.return_value = None
+                
+                # テスト実行
+                result = await sync_service.sync_daily_quotes(
+                    data_source_id=1,
+                    sync_type="incremental",
+                    target_date=date(2024, 12, 26)
+                )
+                
+                # 結果検証
+                assert result.sync_type == "incremental"
+                assert result.status == "completed"
+                assert result.total_records == 2
+                assert result.new_records == 2
+                assert result.updated_records == 0
+                assert result.skipped_records == 0
 
     @pytest.mark.asyncio
     async def test_sync_full_data_success(
@@ -119,7 +130,7 @@ class TestDailyQuotesSyncService:
         
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             mock_session.execute.return_value.scalar_one_or_none.return_value = None
             
             # テスト実行（1日分のみ）
@@ -146,7 +157,7 @@ class TestDailyQuotesSyncService:
         
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             mock_session.execute.return_value.scalar_one_or_none.return_value = None
             
             # テスト実行
@@ -178,7 +189,7 @@ class TestDailyQuotesSyncService:
         """無効な同期タイプエラーテスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             with pytest.raises(ValueError, match="Unknown sync_type"):
                 await sync_service.sync_daily_quotes(
@@ -196,7 +207,7 @@ class TestDailyQuotesSyncService:
         
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             # テスト実行
             with pytest.raises(Exception, match="API Error"):
@@ -212,6 +223,7 @@ class TestDailyQuotesSyncService:
         """既存レコード更新のテスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             # 既存レコードをモック
             existing_quote = Mock(spec=DailyQuote)
@@ -372,7 +384,7 @@ class TestDailyQuotesSyncService:
         """同期履歴取得テスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             # サンプル履歴データ
             sample_histories = [Mock(spec=DailyQuotesSyncHistory) for _ in range(3)]
@@ -390,7 +402,7 @@ class TestDailyQuotesSyncService:
         """ステータスフィルタ付き同期履歴取得テスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             sample_histories = [Mock(spec=DailyQuotesSyncHistory)]
             mock_session.execute.return_value.scalars.return_value.all.return_value = sample_histories
@@ -406,7 +418,7 @@ class TestDailyQuotesSyncService:
         """同期ステータス取得テスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             sample_history = Mock(spec=DailyQuotesSyncHistory)
             mock_session.execute.return_value.scalar_one_or_none.return_value = sample_history
@@ -422,7 +434,7 @@ class TestDailyQuotesSyncService:
         """同期ステータス取得（見つからない場合）テスト"""
         with patch('app.services.daily_quotes_sync_service.get_session') as mock_get_session:
             mock_session = AsyncMock()
-            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_get_session.return_value.__aiter__.return_value = [mock_session]
             
             mock_session.execute.return_value.scalar_one_or_none.return_value = None
             
