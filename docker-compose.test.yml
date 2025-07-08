@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  db-test:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: stockura_test
+    ports:
+      - "5433:5432"  # 本番DBと別ポートを使用
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7.2-alpine
+    ports:
+      - "6380:6379"  # 本番Redisと別ポートを使用
+    volumes:
+      - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test  # テスト用のステージを指定
+    environment:
+      - APP_ENV=test
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db-test:5432/stockura_test
+      - REDIS_URL=redis://redis-test:6379/1
+    env_file:
+      - .env.test
+    volumes:
+      - ./app:/usr/src/app/app
+      - ./tests:/usr/src/app/tests
+      - ./alembic:/usr/src/app/alembic
+      - ./conftest.py:/usr/src/app/conftest.py
+      - ./pytest.ini:/usr/src/app/pytest.ini
+      - ./.coveragerc:/usr/src/app/.coveragerc
+      - ./.env.test:/usr/src/app/.env.test
+    depends_on:
+      db-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    command: pytest -v
+
+volumes:
+  test_postgres_data:
+  test_redis_data:

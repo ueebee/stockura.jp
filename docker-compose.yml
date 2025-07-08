@@ -1,6 +1,8 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      target: production
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/usr/src/app
@@ -20,7 +22,9 @@ services:
       - db
 
   worker:
-    build: .
+    build:
+      context: .
+      target: production
     command: celery -A app.core.celery_app worker --loglevel=info --logfile=logs/celery.log
     volumes:
       - .:/usr/src/app
@@ -44,7 +48,9 @@ services:
       - "6379:6379"
 
   beat:
-    build: .
+    build:
+      context: .
+      target: production
     command: celery -A app.core.celery_app beat --loglevel=info
     volumes:
       - .:/usr/src/app
@@ -62,7 +68,9 @@ services:
       - db
 
   flower:
-    build: .
+    build:
+      context: .
+      target: production
     command: celery -A app.core.celery_app flower --port=5555
     ports:
       - "5555:5555"

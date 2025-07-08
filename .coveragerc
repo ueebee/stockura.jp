@@ -1,0 +1,102 @@
+[run]
+# カバレッジ測定の対象となるソースコードのパス
+source = app
+
+# カバレッジ測定から除外するパターン
+omit = 
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */venv/*
+    */virtualenv/*
+    */.venv/*
+    */migrations/*
+    */alembic/*
+    # 設定ファイルは除外
+    */config.py
+    */settings.py
+    # __init__.pyファイルは除外（通常は空か最小限のコード）
+    */__init__.py
+
+# ブランチカバレッジを有効化
+branch = True
+
+# 並列実行時のデータファイル名
+parallel = True
+
+# カバレッジデータファイルの保存場所
+data_file = .coverage
+
+[report]
+# カバレッジレポートから除外する行のパターン
+exclude_lines =
+    # デフォルトの除外パターンを維持
+    pragma: no cover
+    
+    # デバッグ用のコード
+    def __repr__
+    def __str__
+    
+    # 例外処理
+    raise AssertionError
+    raise NotImplementedError
+    except ImportError
+    
+    # メインブロック
+    if __name__ == .__main__.:
+    
+    # 型チェック用のコード
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+    
+    # 抽象メソッド
+    @abstractmethod
+    @abc.abstractmethod
+    
+    # プロトコル定義
+    class .*\(Protocol\):
+    class .*\(typing.Protocol\):
+    
+    # パスしない条件分岐
+    if False:
+    if 0:
+    
+    # 防御的プログラミング
+    assert False
+    
+    # ログ関連
+    logger.debug
+    logging.debug
+
+# レポートの精度（小数点以下の桁数）
+precision = 2
+
+# 出力時にスキップするファイル（カバレッジ100%のファイルなど）
+skip_covered = False
+
+# カバレッジが低いファイルを表示
+show_missing = True
+
+# カバレッジの閾値（これを下回るとwarning）
+fail_under = 80
+
+[html]
+# HTMLレポートの出力ディレクトリ
+directory = htmlcov
+
+# HTMLレポートのタイトル
+title = Stockura.jp Coverage Report
+
+[xml]
+# XMLレポートの出力ファイル名（CI/CD用）
+output = coverage.xml
+
+[paths]
+# 異なる環境でのパスを統一するためのマッピング
+source =
+    app/
+    */app/
+    */site-packages/app/
+
+[run:plugins]
+# 使用するプラグイン（必要に応じて追加）
