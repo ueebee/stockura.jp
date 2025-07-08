@@ -68,6 +68,33 @@ def event_loop():
     loop.close()
 
 
+@pytest_asyncio.fixture(scope="session")
+async def setup_test_database():
+    """
+    テストセッション開始時にデータベースをセットアップ
+    
+    全テストで共通のテーブル構造を使用するため、
+    セッションスコープで一度だけ実行します。
+    """
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
+    )
+    
+    async with engine.begin() as conn:
+        # 既存のテーブルを削除
+        await conn.run_sync(Base.metadata.drop_all)
+        # テーブルを作成
+        await conn.run_sync(Base.metadata.create_all)
+    
+    await engine.dispose()
+    
+    # このフィクスチャは値を返さないが、
+    # autouseにすることで全テストの前に実行される
+    return None
+
+
 @pytest_asyncio.fixture(scope="function")
 async def async_db_engine():
     """
@@ -166,6 +193,10 @@ def pytest_configure(config):
     
     カスタムマーカーの登録や、プラグインの設定を行います。
     """
+    # setup_test_databaseフィクスチャを自動実行
+    config.addinivalue_line(
+        "usefixtures", "setup_test_database"
+    )
     config.addinivalue_line(
         "markers", "slow: 実行に時間がかかるテスト"
     )
@@ -212,6 +243,18 @@ def pytest_runtest_setup(item):
     """
     # テスト環境であることを示す環境変数を設定
     os.environ["TESTING"] = "1"
+    
+    # データベースが利用可能か確認（初回のみ）
+    if not hasattr(pytest_runtest_setup, '_db_checked'):
+        import subprocess
+        result = subprocess.run(
+            ['docker', 'ps', '--filter', 'name=db-test', '--format', '{{.Names}}'],
+            capture_output=True,
+            text=True
+        )
+        if 'db-test' not in result.stdout:
+            pytest.skip("Test database container is not running. Run 'make test-up' first.")
+        pytest_runtest_setup._db_checked = True
     
     # ログレベルをDEBUGに設定（必要に応じて調整）
     import logging

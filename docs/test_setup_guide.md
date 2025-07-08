@@ -258,6 +258,21 @@ GitHub ActionsやGitLab CIでテストを実行する場合は、docker-compose.
   run: docker compose -f docker-compose.test.yml down -v
 ```
 
+## 現在の進捗状況
+
+詳細な進捗状況については、[テスト環境構築・修正進捗レポート](./test_progress_report.md)を参照してください。
+
+### 修正済みテスト
+- ✅ test_company_sync_service.py（15/15テスト成功）
+- ✅ test_jquants_client.py（15/15テスト成功）
+- ✅ test_token_manager.py（12/12テスト成功）
+- ✅ test_daily_quote_models.py（13/13テスト成功）
+- ✅ test_daily_quote_schemas.py（27/27テスト成功）
+
+### 作業中のテスト
+- 🔄 test_api/test_companies_api.py
+- 🔄 test_daily_quotes_sync_service.py
+
 ## ベストプラクティス
 
 1. **常にDocker環境でテストを実行する**
