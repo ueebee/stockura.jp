@@ -58,12 +58,10 @@ class TestCompaniesAPIv2:
         history.error_message = None
         return history
 
-    @patch('app.api.v1.endpoints.companies.get_session')
-    def test_get_companies_success(self, mock_get_session, client, sample_companies):
+    def test_get_companies_success(self, client, sample_companies):
         """企業一覧取得の成功テスト"""
         # 非同期データベースセッションのモック
         mock_db = AsyncMock()
-        mock_get_session.return_value = mock_db
         
         # クエリ結果をモック
         mock_count_result = Mock()
@@ -74,27 +72,37 @@ class TestCompaniesAPIv2:
         
         mock_db.execute.side_effect = [mock_count_result, mock_data_result]
         
-        # テスト実行
-        response = client.get("/api/v1/companies/?page=1&per_page=5")
+        # 依存性注入のオーバーライド
+        from app.db.session import get_session
         
-        # 結果検証
-        assert response.status_code == 200
-        data = response.json()
-        assert "items" in data
-        assert "total" in data
-        assert "page" in data
-        assert "per_page" in data
-        assert "pages" in data
-        assert data["total"] == len(sample_companies)
-        assert data["page"] == 1
-        assert data["per_page"] == 5
+        async def mock_get_session():
+            yield mock_db
+        
+        app.dependency_overrides[get_session] = mock_get_session
+        
+        try:
+            # テスト実行
+            response = client.get("/api/v1/companies/?page=1&per_page=5")
+            
+            # 結果検証
+            assert response.status_code == 200
+            data = response.json()
+            assert "items" in data
+            assert "total" in data
+            assert "page" in data
+            assert "per_page" in data
+            assert "pages" in data
+            assert data["total"] == len(sample_companies)
+            assert data["page"] == 1
+            assert data["per_page"] == 5
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
-    @patch('app.api.v1.endpoints.companies.get_session')
-    def test_get_company_by_code_success(self, mock_get_session, client, sample_companies):
+    def test_get_company_by_code_success(self, client, sample_companies):
         """特定企業取得の成功テスト（5桁コード）"""
         # 非同期データベースセッションのモック
         mock_db = AsyncMock()
-        mock_get_session.return_value = mock_db
         
         # 特定の企業を返すモック
         target_company = sample_companies[0]
@@ -106,15 +114,27 @@ class TestCompaniesAPIv2:
         mock_result.scalar_one_or_none.return_value = target_company
         mock_db.execute.return_value = mock_result
         
-        # テスト実行
-        response = client.get("/api/v1/companies/72030")
+        # 依存性注入のオーバーライド
+        from app.db.session import get_session
         
-        # 結果検証
-        assert response.status_code == 200
-        data = response.json()
-        assert data["code"] == "72030"
-        assert data["company_name"] == "トヨタ自動車"
-        assert data["company_name_english"] == "TOYOTA MOTOR CORPORATION"
+        async def mock_get_session():
+            yield mock_db
+        
+        app.dependency_overrides[get_session] = mock_get_session
+        
+        try:
+            # テスト実行
+            response = client.get("/api/v1/companies/72030")
+            
+            # 結果検証
+            assert response.status_code == 200
+            data = response.json()
+            assert data["code"] == "72030"
+            assert data["company_name"] == "トヨタ自動車"
+            assert data["company_name_english"] == "TOYOTA MOTOR CORPORATION"
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @patch('app.api.v1.endpoints.companies.get_session')
     def test_get_company_by_code_not_found(self, mock_get_session, client):
