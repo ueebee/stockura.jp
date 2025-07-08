@@ -1,5 +1,20 @@
 """
 企業データ機能の統合テスト
+
+テスト状況（2025-01-08 時点）:
+- ✅ test_sync_service_integration_with_real_models: PASSED
+- ✅ test_schema_validation_integration: PASSED  
+- ✅ test_client_manager_data_source_validation: PASSED
+- ❌ test_end_to_end_company_sync_flow: FAILED (400 Bad Request - CompanySyncRequestスキーマの問題)
+- ❌ test_api_database_error_handling: FAILED (例外処理の問題)
+- ❌ test_celery_task_integration: FAILED (SQLAlchemy greenlet エラー)
+- ⚠️ test_jquants_client_error_handling: 未確認
+- ⚠️ test_api_input_validation: 未確認
+
+主な課題:
+1. CompanySyncRequestスキーマのバリデーションエラー（sync_dateフィールドの問題）
+2. 非同期処理とgreenletの競合問題
+3. データベース接続エラーハンドリングの修正が必要
 """
 
 import pytest
