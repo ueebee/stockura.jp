@@ -5,12 +5,16 @@ export DATABASE_URL := postgresql+asyncpg://postgres:postgres@localhost:5433/sto
 export REDIS_URL := redis://localhost:6380/1
 
 # Docker環境でテスト実行（推奨）
-test-docker:
+test-docker: test-clean test-up wait-for-test-db
 	docker compose -f docker-compose.test.yml run --rm test
 
 # Docker環境でテスト実行（詳細出力）
-test-docker-verbose:
+test-docker-verbose: test-clean test-up wait-for-test-db
 	docker compose -f docker-compose.test.yml run --rm test pytest -v
+
+# Docker環境でテスト実行（DBをリセットしない高速版）
+test-docker-fast:
+	docker compose -f docker-compose.test.yml run --rm test
 
 # Docker環境でカバレッジ付きテスト
 test-docker-coverage:
@@ -96,6 +100,19 @@ test-down:
 test-clean:
 	docker compose -f docker-compose.test.yml down -v
 	@echo "Test environment cleaned"
+
+# テストDBが準備できるまで待つ
+wait-for-test-db:
+	@echo "Waiting for test database to be ready..."
+	@for i in $$(seq 1 30); do \
+		docker compose -f docker-compose.test.yml exec db-test pg_isready -U postgres -d stockura_test -h localhost >/dev/null 2>&1 && break || \
+		(echo "Waiting for database... $$i/30" && sleep 1); \
+		if [ $$i -eq 30 ]; then \
+			echo "Database did not become ready in time"; \
+			exit 1; \
+		fi; \
+	done
+	@echo "Test database is ready!"
 
 # ヘルプ
 help:

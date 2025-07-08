@@ -18,8 +18,8 @@ class DailyQuote(Base):
     
     # 基本情報
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    code: Mapped[str] = mapped_column(String(10), ForeignKey("companies.code"), nullable=False, index=True, comment="銘柄コード")
-    trade_date: Mapped[date] = mapped_column(Date, nullable=False, index=True, comment="取引日")
+    code: Mapped[str] = mapped_column(String(10), ForeignKey("companies.code"), nullable=False, comment="銘柄コード")
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False, comment="取引日")
     
     # 調整前価格データ
     open_price: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(10, 2), comment="始値")

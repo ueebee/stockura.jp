@@ -55,17 +55,19 @@ else:
     TEST_DATABASE_URL = db_url
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def event_loop():
     """
-    セッションスコープのイベントループを作成
+    イベントループを作成
     
-    これにより、セッション全体で同じイベントループを使用し、
-    非同期フィクスチャの問題を回避します。
+    各テスト関数に対して新しいイベントループを作成します。
     """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
+    asyncio.set_event_loop(None)
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -135,9 +137,13 @@ async def async_session(async_db_engine) -> AsyncGenerator[AsyncSession, None]:
     )
     
     async with async_session_maker() as session:
-        async with session.begin():
+        # begin()を使わずに、手動でトランザクションを管理
+        await session.begin()
+        try:
             yield session
-            # トランザクションは自動的にロールバック
+        finally:
+            await session.rollback()
+            await session.close()
 
 
 @pytest.fixture
@@ -245,16 +251,23 @@ def pytest_runtest_setup(item):
     os.environ["TESTING"] = "1"
     
     # データベースが利用可能か確認（初回のみ）
+    # Docker環境内で実行されている場合はスキップ
     if not hasattr(pytest_runtest_setup, '_db_checked'):
-        import subprocess
-        result = subprocess.run(
-            ['docker', 'ps', '--filter', 'name=db-test', '--format', '{{.Names}}'],
-            capture_output=True,
-            text=True
-        )
-        if 'db-test' not in result.stdout:
-            pytest.skip("Test database container is not running. Run 'make test-up' first.")
-        pytest_runtest_setup._db_checked = True
+        # Docker環境内で実行されているかチェック
+        if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER'):
+            # Docker環境内なのでチェックをスキップ
+            pytest_runtest_setup._db_checked = True
+        else:
+            # ローカル環境の場合のみDockerコンテナの確認を実行
+            import subprocess
+            result = subprocess.run(
+                ['docker', 'ps', '--filter', 'name=db-test', '--format', '{{.Names}}'],
+                capture_output=True,
+                text=True
+            )
+            if 'db-test' not in result.stdout:
+                pytest.skip("Test database container is not running. Run 'make test-up' first.")
+            pytest_runtest_setup._db_checked = True
     
     # ログレベルをDEBUGに設定（必要に応じて調整）
     import logging

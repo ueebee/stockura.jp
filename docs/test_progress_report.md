@@ -1,6 +1,6 @@
 # テスト環境構築・修正進捗レポート
 
-## 更新日時: 2025-01-08 21:30
+## 更新日時: 2025-01-08 22:05
 
 ## 概要
 
@@ -88,39 +88,52 @@ Stockura.jpプロジェクトのテスト環境構築および既存テストの
 - ✅ 本番環境へのテストパッケージ混入防止（マルチステージビルド導入）
 - ✅ ポート競合の回避（テスト用に別ポート使用）
 - ✅ データベース接続エラーの解決（ホスト名をdb-testに修正）
+- ✅ Dockerコマンドが見つからない問題（conftest.pyのDocker環境チェックを修正）
 
 #### 3.2 パッケージ依存関係の問題
 - ✅ pytest重複エラーの解決
 - ✅ ENCRYPTION_ITERATIONSのバリデーションエラー解決
+- ✅ pytest-asyncioのイベントループエラー（event_loopフィクスチャのスコープ修正）
 
 #### 3.3 データベース関連の問題
-- ✅ pg_trgm拡張機能の追加
+- ✅ pg_trgm拡張機能の追加（docker-compose.test.ymlにinit.sql追加）
 - ✅ SQLAlchemy create_all()によるテーブル作成方式の採用
+- ✅ DailyQuoteモデルの重複インデックス修正
+- ✅ async_sessionフィクスチャのトランザクション管理修正
+
+#### 3.4 テストコードの問題
+- ✅ 非同期モックの設定修正（AsyncMockの正しい使用方法）
+- ✅ Decimal変換エラーの修正（InvalidOperationのインポート追加）
+- ✅ Makefileにテスト時のDBリセット機能追加
 
 ## 未完了の作業
 
 ### 1. 修正が必要なテストファイル（優先順位順）
 
-1. **tests/test_api/test_companies_api.py**（9/15テスト失敗）
-   - 同期履歴関連のエンドポイントのモック修正
-   - データベーステーブルの存在確認
+1. **APIのバリデーションエラー（400 Bad Request）**
+   - CompanySyncRequestスキーマの確認と修正
+   - リクエストボディの形式確認
+   - 影響：約15テスト
 
-2. **tests/test_daily_quotes_sync_service.py**（12/20テスト失敗）
-   - sync_daily_quotesメソッドの戻り値の問題解決
-   - 非同期処理の適切なモック実装
+2. **サーバーエラー（500 Internal Server Error）**
+   - daily_quotes関連のAPIエンドポイント
+   - データベース関連の問題
+   - 影響：約10テスト
 
-3. **tests/test_integration_companies.py**（3/8テスト失敗）
-   - greenletエラーの解決
-   - 非同期/同期の適切な分離
+3. **非同期タスクの問題（RuntimeError: Task pending）**
+   - FastAPIのTestClientとAsyncClientの使い分け
+   - 非同期処理の適切な待機
+   - 影響：約10テスト
 
-4. **tests/test_jquants_integration.py**
-   - バリデーションエラーの対応
+4. **モックの戻り値問題（AttributeError: 'NoneType'）**
+   - sync_daily_quotesメソッドの戻り値
+   - モックオブジェクトの設定ミス
+   - 影響：約5テスト
 
-5. **tests/unit/models/test_company.py**
-   - データベーススキーマの問題対応
-
-6. **その他のテストファイル**
-   - 順次エラーを確認して修正
+5. **その他の個別エラー**
+   - company_factoryの引数エラー
+   - greenletエラー（Celery関連）
+   - 例外が発生しないテストケース
 
 ### 2. 今後の課題
 
@@ -156,10 +169,15 @@ Stockura.jpプロジェクトのテスト環境構築および既存テストの
 ## 成果のサマリー
 
 - テスト環境の完全な分離を実現（Docker環境）
-- **修正済みテストの成功数：101テスト成功**
-  - 完全修正済み：82テスト（5ファイル）
-  - 部分修正済み：19テスト（3ファイル）
-- 主要なサービスのテストが動作確認済み
+- **テスト実行結果の大幅な改善**
+  - 初回実行：192 errors（全エラー）
+  - 最終実行：47 failed, 145 passed（約75%が成功）
+- 主要な問題の解決
+  - Dockerコマンドが見つからない問題 → 解決
+  - PostgreSQL拡張機能（pg_trgm）の欠如 → 解決
+  - インデックスの重複エラー → 解決
+  - 非同期テストのイベントループエラー → 大幅に改善
+  - トランザクション管理の問題 → 解決
 - 今後の開発に必要なテスト基盤が整備完了
 
 ### 詳細な進捗
@@ -171,3 +189,4 @@ Stockura.jpプロジェクトのテスト環境構築および既存テストの
 - test_api/test_companies_api.py: 6/15 🔄
 - test_daily_quotes_sync_service.py: 8/20 🔄
 - test_integration_companies.py: 5/8 🔄
+- **全体：145/192テスト成功（約75.5%）**

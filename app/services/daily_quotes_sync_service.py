@@ -8,7 +8,7 @@ import logging
 import asyncio
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -522,7 +522,7 @@ class DailyQuotesSyncService:
             return None
         try:
             return Decimal(str(value))
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, InvalidOperation):
             return None
     
     def _safe_int(self, value: Any) -> Optional[int]:

@@ -59,3 +59,4 @@ celerybeat.pid
 
 # tmp directory
 _tmp/
+dump.txt
