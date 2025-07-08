@@ -55,6 +55,56 @@ def get_daily_quotes_sync_service(
     return DailyQuotesSyncService(data_source_service, jquants_client_manager)
 
 
+# ヘルスチェック用エンドポイント
+@router.get("/daily-quotes/health")
+async def health_check():
+    """
+    株価データAPIのヘルスチェック
+    """
+    return {
+        "status": "healthy",
+        "service": "daily_quotes",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+# 統計情報取得エンドポイント
+@router.get("/daily-quotes/stats")
+async def get_daily_quotes_stats(
+    db: AsyncSession = Depends(get_session)
+):
+    """
+    株価データの統計情報を取得
+    """
+    try:
+        # 総レコード数
+        total_records_result = await db.execute(select(func.count(DailyQuote.id)))
+        total_records = total_records_result.scalar()
+        
+        # ユニーク銘柄数
+        unique_codes_result = await db.execute(select(func.count(func.distinct(DailyQuote.code))))
+        unique_codes = unique_codes_result.scalar()
+        
+        # 最新取引日
+        latest_date_result = await db.execute(select(func.max(DailyQuote.trade_date)))
+        latest_date = latest_date_result.scalar()
+        
+        # 最古取引日
+        earliest_date_result = await db.execute(select(func.min(DailyQuote.trade_date)))
+        earliest_date = earliest_date_result.scalar()
+        
+        return {
+            "total_records": total_records,
+            "unique_codes": unique_codes,
+            "latest_date": latest_date.isoformat() if latest_date else None,
+            "earliest_date": earliest_date.isoformat() if earliest_date else None,
+            "last_updated": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"統計情報の取得に失敗しました: {str(e)}")
+
+
 @router.get("/daily-quotes/{code}", response_model=DailyQuoteList)
 async def get_daily_quotes_by_code(
     code: str = Path(..., description="銘柄コード"),
@@ -329,51 +379,3 @@ async def get_sync_status(
         raise HTTPException(status_code=500, detail=f"同期ステータスの取得に失敗しました: {str(e)}")
 
 
-# ヘルスチェック用エンドポイント
-@router.get("/daily-quotes/health")
-async def health_check():
-    """
-    株価データAPIのヘルスチェック
-    """
-    return {
-        "status": "healthy",
-        "service": "daily_quotes",
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-
-# 統計情報取得エンドポイント
-@router.get("/daily-quotes/stats")
-async def get_daily_quotes_stats(
-    db: AsyncSession = Depends(get_session)
-):
-    """
-    株価データの統計情報を取得
-    """
-    try:
-        # 総レコード数
-        total_records_result = await db.execute(select(func.count(DailyQuote.id)))
-        total_records = total_records_result.scalar()
-        
-        # ユニーク銘柄数
-        unique_codes_result = await db.execute(select(func.count(func.distinct(DailyQuote.code))))
-        unique_codes = unique_codes_result.scalar()
-        
-        # 最新取引日
-        latest_date_result = await db.execute(select(func.max(DailyQuote.trade_date)))
-        latest_date = latest_date_result.scalar()
-        
-        # 最古取引日
-        earliest_date_result = await db.execute(select(func.min(DailyQuote.trade_date)))
-        earliest_date = earliest_date_result.scalar()
-        
-        return {
-            "total_records": total_records,
-            "unique_codes": unique_codes,
-            "latest_date": latest_date.isoformat() if latest_date else None,
-            "earliest_date": earliest_date.isoformat() if earliest_date else None,
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"統計情報の取得に失敗しました: {str(e)}")
