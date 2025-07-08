@@ -208,18 +208,20 @@ class TestCompaniesAPI:
     @pytest.mark.asyncio
     async def test_sync_companies_success(self, client: AsyncClient, sample_sync_history):
         """企業データ同期の成功テスト"""
-        # 同期サービスをモック
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.sync_companies = AsyncMock(return_value=sample_sync_history)
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        # 同期サービスのモック
+        mock_sync_service = Mock()
+        mock_sync_service.sync_companies = AsyncMock(return_value=sample_sync_history)
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.post(
                 "/api/v1/companies/sync",
                 json={
                     "data_source_id": 1,
-                    "sync_date": "2024-12-26",
                     "sync_type": "full"
                 }
             )
@@ -235,33 +237,42 @@ class TestCompaniesAPI:
             
             # 結果検証
             assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == 1
-        assert data["sync_type"] == "full"
-        assert data["status"] == "completed"
-        assert data["total_companies"] == 100
+            data = response.json()
+            assert data["id"] == 1
+            assert data["sync_type"] == "full"
+            assert data["status"] == "completed"
+            assert data["total_companies"] == 100
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_sync_companies_error(self, client: AsyncClient):
         """企業データ同期のエラーテスト"""
         # 同期サービスでエラーが発生
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.sync_companies = AsyncMock(side_effect=Exception("Sync failed"))
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        mock_sync_service = Mock()
+        mock_sync_service.sync_companies = AsyncMock(side_effect=Exception("Sync failed"))
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.post(
-            "/api/v1/companies/sync",
-            json={
-                "data_source_id": 1,
-                "sync_type": "full"
-            }
-        )
-        
-        # 結果検証
-        assert response.status_code == 400
-        assert "Sync failed" in response.json()["detail"]
+                "/api/v1/companies/sync",
+                json={
+                    "data_source_id": 1,
+                    "sync_type": "full"
+                }
+            )
+            
+            # 結果検証
+            assert response.status_code == 400
+            assert "Sync failed" in response.json()["detail"]
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_get_sync_history_success(self, client: AsyncClient):
@@ -284,16 +295,22 @@ class TestCompaniesAPI:
             histories.append(history)
         
         # 同期サービスをモック
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.get_sync_history = AsyncMock(return_value=(histories, len(histories)))
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        mock_sync_service = Mock()
+        mock_sync_service.get_sync_history = AsyncMock(return_value=(histories, len(histories)))
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.get("/api/v1/companies/sync/history")
-        
-        # 結果検証
-        assert response.status_code == 200
+            
+            # 結果検証
+            assert response.status_code == 200
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
         data = response.json()
         assert "items" in data
         assert "total" in data
@@ -312,19 +329,25 @@ class TestCompaniesAPI:
         failed_history.error_message = "API Error"
         
         # 同期サービスをモック
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.get_sync_history = AsyncMock(return_value=([failed_history], 1))
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        mock_sync_service = Mock()
+        mock_sync_service.get_sync_history = AsyncMock(return_value=([failed_history], 1))
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.get(
-            "/api/v1/companies/sync/history",
-            params={"status": "failed"}
-        )
-        
-        # 結果検証
-        assert response.status_code == 200
+                "/api/v1/companies/sync/history",
+                params={"status": "failed"}
+            )
+            
+            # 結果検証
+            assert response.status_code == 200
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
         data = response.json()
         assert data["total"] == 1
         assert data["items"][0]["status"] == "failed"
@@ -338,35 +361,47 @@ class TestCompaniesAPI:
     async def test_get_latest_sync_status_success(self, client: AsyncClient, sample_sync_history):
         """最新同期ステータス取得の成功テスト"""
         # 同期サービスをモック
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.get_latest_sync_status = AsyncMock(return_value=sample_sync_history)
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        mock_sync_service = Mock()
+        mock_sync_service.get_latest_sync_status = AsyncMock(return_value=sample_sync_history)
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.get("/api/v1/companies/sync/status")
-        
-        # 結果検証
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == 1
-        assert data["status"] == "completed"
+            
+            # 結果検証
+            assert response.status_code == 200
+            data = response.json()
+            assert data["id"] == 1
+            assert data["status"] == "completed"
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_get_latest_sync_status_none(self, client: AsyncClient):
         """同期履歴がない場合のテスト"""
         # 同期サービスをモック
-        with patch('app.api.v1.endpoints.companies.get_company_sync_service') as mock_get_sync_service:
-            mock_sync_service = Mock()
-            mock_sync_service.get_latest_sync_status = AsyncMock(return_value=None)
-            mock_get_sync_service.return_value = mock_sync_service
-            
+        mock_sync_service = Mock()
+        mock_sync_service.get_latest_sync_status = AsyncMock(return_value=None)
+        
+        # 依存性注入のオーバーライド
+        from app.api.v1.endpoints.companies import get_company_sync_service
+        app.dependency_overrides[get_company_sync_service] = lambda: mock_sync_service
+        
+        try:
             # テスト実行
             response = await client.get("/api/v1/companies/sync/status")
-        
-        # 結果検証
-        assert response.status_code == 200
-        assert response.json() is None
+            
+            # 結果検証
+            assert response.status_code == 200
+            assert response.json() is None
+        finally:
+            # クリーンアップ
+            app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_get_sector17_masters(self, client: AsyncClient):
