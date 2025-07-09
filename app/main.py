@@ -48,6 +48,21 @@ app.include_router(
     tags=["daily-quotes"]
 )
 
+# HTMXビュールーターの登録
+from app.api.v1.views import (
+    dashboard_router,
+    data_sources_router as ds_view_router,
+    jobs_router,
+    analysis_router,
+    settings_router
+)
+
+app.include_router(dashboard_router, prefix="", tags=["pages"])
+app.include_router(ds_view_router, prefix="/data-sources", tags=["pages"])
+app.include_router(jobs_router, prefix="/jobs", tags=["pages"])
+app.include_router(analysis_router, prefix="/analysis", tags=["pages"])
+app.include_router(settings_router, prefix="/settings", tags=["pages"])
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -97,46 +112,7 @@ async def startup_event():
     logger.info("Application startup completed successfully")
 
 
-# ページルート
-@app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """ダッシュボードページ"""
-    return templates.TemplateResponse("pages/dashboard.html", {"request": request})
-
-@app.get("/data-sources", response_class=HTMLResponse)
-async def data_sources_page(request: Request):
-    """データソース管理ページ"""
-    return templates.TemplateResponse("pages/data_sources.html", {"request": request})
-
-@app.get("/jobs", response_class=HTMLResponse)
-async def jobs_page(request: Request):
-    """ジョブ管理ページ"""
-    return templates.TemplateResponse("pages/jobs.html", {"request": request})
-
-@app.get("/analysis", response_class=HTMLResponse)
-async def analysis_page(request: Request):
-    """分析ページ"""
-    return templates.TemplateResponse("pages/analysis.html", {"request": request})
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    """設定ページ"""
-    return templates.TemplateResponse("pages/settings.html", {"request": request})
-
-# HTMX API エンドポイント
-@app.get("/api/v1/dashboard/activities", response_class=HTMLResponse)
-async def get_activities(request: Request):
-    """最新アクティビティの取得"""
-    # サンプルデータ（実際はDBから取得）
-    activities = [
-        {"time": "10分前", "action": "J-Quantsから企業データを同期", "status": "success"},
-        {"time": "30分前", "action": "日次株価データの取得", "status": "success"},
-        {"time": "1時間前", "action": "Yahoo Financeからのデータ取得", "status": "error"},
-    ]
-    return templates.TemplateResponse(
-        "partials/activity_list.html", 
-        {"request": request, "activities": activities}
-    )
+# ページルートはすべてビューモジュールに移動済み
 
 @app.get("/api")
 async def api_root():

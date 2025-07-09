@@ -60,3 +60,8 @@ celerybeat.pid
 # tmp directory
 _tmp/
 dump.txt
+
+# Node.js
+node_modules/
+package-lock.json
+

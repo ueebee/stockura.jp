@@ -1,0 +1,24 @@
+{
+  "name": "stockura.jp",
+  "version": "1.0.0",
+  "description": "J-Quants APIを使用して日本の上場銘柄情報を取得・管理するWebアプリケーションです。効率的な検索、フィルタリング、リアルタイム同期機能を提供します。",
+  "main": "test-playwright-mcp.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com.sub:ueebee/stockura.jp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.53.2"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp", "--port", "3001", "--headless"],
+      "env": {}
+    }
+  }
+} 
