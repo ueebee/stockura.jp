@@ -55,7 +55,7 @@ class TokenResponse(BaseModel):
 
 class DataSourceListResponse(BaseModel):
     """データソース一覧レスポンス用スキーマ"""
-    data_sources: list[DataSourceResponse] = Field(..., description="データソース一覧")
+    items: list[DataSourceResponse] = Field(..., description="データソース一覧")
     total: int = Field(..., description="総件数")
-    page: int = Field(1, description="現在のページ")
-    per_page: int = Field(10, description="1ページあたりの件数") 
+    skip: int = Field(0, description="スキップ件数")
+    limit: int = Field(100, description="取得件数") 

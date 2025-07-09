@@ -1,12 +1,12 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 import logging
 
 from app.models.data_source import DataSource
-from app.schemas.data_source import DataSourceCreate, DataSourceUpdate, TokenResponse
+from app.schemas.data_source import DataSourceCreate, DataSourceUpdate, TokenResponse, DataSourceListResponse
 from app.services.token_manager import get_token_manager, AutoTokenRefresh
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,10 @@ class DataSourceService:
         skip: int = 0, 
         limit: int = 100,
         is_enabled: Optional[bool] = None
-    ) -> tuple[List[DataSource], int]:
+    ) -> DataSourceListResponse:
         """データソース一覧を取得します"""
+        from app.schemas.data_source import DataSourceListResponse, DataSourceResponse
+        
         # クエリを構築
         query = select(DataSource)
         
@@ -68,19 +70,29 @@ class DataSourceService:
             query = query.where(DataSource.is_enabled == is_enabled)
         
         # 総件数を取得
-        count_result = await self.db.execute(
-            select(DataSource.id).select_from(query.subquery())
-        )
-        total = len(count_result.scalars().all())
+        count_query = select(func.count()).select_from(DataSource)
+        if is_enabled is not None:
+            count_query = count_query.where(DataSource.is_enabled == is_enabled)
+        
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar()
         
         # ページネーション
-        query = query.offset(skip).limit(limit)
+        query = query.offset(skip).limit(limit).order_by(DataSource.id)
         
         # データを取得
         result = await self.db.execute(query)
         data_sources = result.scalars().all()
         
-        return data_sources, total
+        # レスポンスを構築
+        items = [DataSourceResponse.model_validate(ds) for ds in data_sources]
+        
+        return DataSourceListResponse(
+            items=items,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
 
     async def update_data_source(
         self, 

@@ -10,13 +10,86 @@
             <h1 class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                 データソース管理
             </h1>
-            <p class="text-gray-600 mt-2">データソースの設定と管理</p>
+            <p class="text-gray-600 mt-2">外部データソースの接続状態と設定を管理します</p>
         </div>
     </div>
 
-    <!-- コンテンツ -->
-    <div class="bg-white rounded-2xl shadow-soft p-8">
-        <p class="text-gray-500">データソース管理画面は準備中です...</p>
+    <!-- データソース一覧 -->
+    <div class="bg-white rounded-2xl shadow-soft overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+            <h2 class="text-xl font-semibold text-gray-800">登録済みデータソース</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            データソース名
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            プロバイダー
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            APIバージョン
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            レート制限
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            状態
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            アクション
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="data-sources-tbody">
+                    {% for data_source in data_sources %}
+                    {% include "partials/data_sources/data_source_row.html" %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 情報パネル -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- APIトークン状態 -->
+        <div class="bg-white rounded-2xl shadow-soft p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <svg class="w-5 h-5 inline-block mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                </svg>
+                APIトークン管理
+            </h3>
+            <p class="text-gray-600 text-sm">
+                各データソースのAPIトークンは自動的に管理されます。トークンの有効期限が近づくと、システムが自動的に更新を行います。
+            </p>
+        </div>
+
+        <!-- 使用制限情報 -->
+        <div class="bg-white rounded-2xl shadow-soft p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <svg class="w-5 h-5 inline-block mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                レート制限について
+            </h3>
+            <p class="text-gray-600 text-sm">
+                各データソースには、APIプロバイダーによって設定されたレート制限があります。制限を超えないよう、システムが自動的にリクエストを調整します。
+            </p>
+        </div>
     </div>
 </div>
+
+<script>
+    // データソースの有効/無効切り替え処理
+    document.addEventListener('htmx:afterRequest', function(event) {
+        if (event.detail.pathInfo.requestPath.includes('/toggle')) {
+            // トグル後の成功メッセージなどを表示できます
+            console.log('データソースの状態が更新されました');
+        }
+    });
+</script>
 {% endblock %}
