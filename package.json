@@ -19,6 +19,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@playwright/mcp": "^0.0.29",
     "playwright": "^1.53.2"
   }
 }
