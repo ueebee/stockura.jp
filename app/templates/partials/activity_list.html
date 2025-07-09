@@ -1,0 +1,38 @@
+<!-- 最新アクティビティリスト（部分テンプレート） -->
+<div class="space-y-4">
+    {% for activity in activities %}
+    <div class="group flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
+        <div class="flex items-center space-x-4">
+            <!-- ステータスアイコン -->
+            {% if activity.status == "success" %}
+            <div class="p-2 bg-green-100 rounded-lg">
+                <i data-feather="check-circle" class="w-5 h-5 text-green-600"></i>
+            </div>
+            {% elif activity.status == "error" %}
+            <div class="p-2 bg-red-100 rounded-lg">
+                <i data-feather="alert-circle" class="w-5 h-5 text-red-600"></i>
+            </div>
+            {% else %}
+            <div class="p-2 bg-yellow-100 rounded-lg">
+                <i data-feather="info" class="w-5 h-5 text-yellow-600"></i>
+            </div>
+            {% endif %}
+            
+            <!-- アクティビティ内容 -->
+            <div>
+                <p class="font-semibold text-gray-800">{{ activity.action }}</p>
+                <p class="text-sm text-gray-500 mt-1">{{ activity.time }}</p>
+            </div>
+        </div>
+        
+        <!-- 詳細ボタン -->
+        <button class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-gray-600">
+            <i data-feather="chevron-right" class="w-5 h-5"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+<script>
+    // Feather icons を再初期化
+    feather.replace();
+</script>

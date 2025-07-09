@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stockura - 株式データ管理システム{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS + DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.6.0/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX -->
+    <script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/modern-theme.css') }}">
+    
+    <!-- カスタムCSS -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-request.htmx-indicator {
+            display: inline-block;
+        }
+    </style>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-gradient': '#667eea',
+                        'secondary-gradient': '#764ba2',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-gray-50">
+    <!-- パララックス背景 -->
+    <div class="parallax-bg"></div>
+    
+    <!-- ヘッダー -->
+    <div class="navbar navbar-modern sticky top-0 z-50 px-6">
+        <div class="flex-1">
+            <a href="/" class="text-2xl font-bold gradient-text">Stockura</a>
+        </div>
+        <div class="flex-none">
+            <!-- テーマ切り替え -->
+            <button class="btn btn-square btn-ghost" onclick="toggleTheme()">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
+            
+            <!-- 通知 -->
+            <button class="btn btn-square btn-ghost">
+                <div class="indicator">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                    <span class="badge badge-xs badge-primary indicator-item"></span>
+                </div>
+            </button>
+            
+            <!-- ユーザーメニュー -->
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                    <div class="w-10 rounded-full">
+                        <img alt="ユーザー" src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" />
+                    </div>
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
+                    <li><a>プロフィール</a></li>
+                    <li><a>設定</a></li>
+                    <li><a>ログアウト</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="flex">
+        <!-- サイドバー -->
+        <aside class="w-64 min-h-screen sidebar-modern">
+            <ul class="menu p-4 w-64 space-y-2">
+                <li class="menu-title text-xs font-semibold text-gray-500 uppercase tracking-wider">メイン</li>
+                <li><a href="/" class="rounded-lg hover:bg-gray-100 transition-colors {% if request.url.path == '/' %}active bg-gray-100{% endif %}">
+                    <i data-feather="home" class="w-5 h-5"></i>
+                    <span class="font-medium">ダッシュボード</span>
+                </a></li>
+                
+                <li class="menu-title text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6">データ管理</li>
+                <li><a href="/data-sources" class="rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-feather="database" class="w-5 h-5"></i>
+                    <span class="font-medium">データソース</span>
+                </a></li>
+                <li><a href="/jobs" class="rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-feather="server" class="w-5 h-5"></i>
+                    <span class="font-medium">ジョブ管理</span>
+                </a></li>
+                
+                <li class="menu-title text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6">分析</li>
+                <li><a href="/analysis" class="rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-feather="bar-chart-2" class="w-5 h-5"></i>
+                    <span class="font-medium">株価分析</span>
+                </a></li>
+                
+                <li class="menu-title text-xs font-semibold text-gray-500 uppercase tracking-wider mt-6">システム</li>
+                <li><a href="/settings" class="rounded-lg hover:bg-gray-100 transition-colors">
+                    <i data-feather="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">設定</span>
+                </a></li>
+            </ul>
+        </aside>
+
+        <!-- ページコンテンツ -->
+        <main class="flex-1 p-6">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- フッター -->
+    <footer class="footer footer-center p-8 text-gray-600">
+        <div>
+            <p class="text-sm">&copy; 2024 Stockura - Modern Stock Data Management</p>
+        </div>
+    </footer>
+
+    <!-- 共通JavaScript -->
+    <script>
+        // テーマ切り替え
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // テーマの初期化
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // HTMX設定
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            // CSRF対策などが必要な場合はここで設定
+        });
+
+        // Feather icons初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+        });
+        
+        // HTMXの後でもアイコンを更新
+        document.body.addEventListener('htmx:afterSwap', function() {
+            feather.replace();
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
