@@ -29,9 +29,12 @@ async def get_endpoints(
     if not data_source:
         raise HTTPException(status_code=404, detail="Data source not found")
     
-    # エンドポイント一覧を取得
+    # エンドポイント一覧を取得（データ種別で並び替え）
     endpoints = db.query(APIEndpoint).filter(
         APIEndpoint.data_source_id == data_source_id
+    ).order_by(
+        APIEndpoint.data_type,
+        APIEndpoint.id
     ).all()
     
     # エンドポイントがない場合は初期データを作成
@@ -173,15 +176,6 @@ def _create_initial_endpoints(db: Session, data_source: DataSource) -> list[APIE
     if data_source.provider_type == "jquants":
         # J-Quants用エンドポイント
         jquants_endpoints = [
-            {
-                "name": "認証トークン取得",
-                "description": "リフレッシュトークンからIDトークンを取得",
-                "endpoint_path": "/idtoken",
-                "http_method": "POST",
-                "data_type": EndpointDataType.AUTHENTICATION,
-                "required_parameters": ["refresh_token"],
-                "rate_limit_per_minute": 10
-            },
             {
                 "name": "上場企業一覧",
                 "description": "全上場企業の基本情報を取得",
