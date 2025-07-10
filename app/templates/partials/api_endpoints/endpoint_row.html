@@ -1,0 +1,110 @@
+<tr id="endpoint-row-{{ endpoint.id }}" class="hover:bg-gray-50 cursor-pointer" 
+    hx-get="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/details"
+    hx-target="#endpoint-details"
+    hx-trigger="click">
+    <td class="px-6 py-4 whitespace-nowrap">
+        <div class="text-sm font-medium text-gray-900">{{ endpoint.name }}</div>
+        <div class="text-sm text-gray-500">{{ endpoint.http_method }} {{ endpoint.endpoint_path }}</div>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+            {% if endpoint.data_type == 'authentication' %}bg-purple-100 text-purple-800
+            {% elif endpoint.data_type == 'listed_companies' %}bg-blue-100 text-blue-800
+            {% elif endpoint.data_type == 'daily_quotes' %}bg-green-100 text-green-800
+            {% elif endpoint.data_type == 'financial_statements' %}bg-yellow-100 text-yellow-800
+            {% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ endpoint.data_type }}
+        </span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-center">
+        <button hx-post="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/toggle"
+                hx-target="#endpoint-row-{{ endpoint.id }}"
+                hx-swap="outerHTML"
+                hx-trigger="click consume"
+                class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium transition-colors
+                {% if endpoint.is_enabled %}bg-green-100 text-green-700 hover:bg-green-200
+                {% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+            {{ '有効' if endpoint.is_enabled else '無効' }}
+        </button>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-center">
+        <span class="text-sm text-gray-900">
+            {% if endpoint.execution_mode == 'manual_only' %}
+                手動のみ
+            {% elif endpoint.execution_mode == 'scheduled' %}
+                <span class="inline-flex items-center">
+                    <svg class="h-4 w-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    定期実行
+                </span>
+            {% endif %}
+        </span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {% if endpoint.last_execution_at %}
+            <div>{{ endpoint.last_execution_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            {% if endpoint.last_error_at and endpoint.last_error_at > endpoint.last_success_at %}
+                <div class="text-xs text-red-600">エラー</div>
+            {% else %}
+                <div class="text-xs text-green-600">成功</div>
+            {% endif %}
+        {% else %}
+            <span class="text-gray-500">未実行</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-900">
+        {% if endpoint.last_data_count %}
+            {{ '{:,}'.format(endpoint.last_data_count) }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-center">
+        {% if endpoint.total_executions > 0 %}
+            {% set success_rate = (endpoint.successful_executions / endpoint.total_executions * 100) | round(1) %}
+            <div class="flex items-center justify-center">
+                <span class="text-sm font-medium
+                    {% if success_rate >= 90 %}text-green-600
+                    {% elif success_rate >= 70 %}text-yellow-600
+                    {% else %}text-red-600{% endif %}">
+                    {{ success_rate }}%
+                </span>
+            </div>
+            <div class="text-xs text-gray-500">
+                {{ endpoint.successful_executions }}/{{ endpoint.total_executions }}
+            </div>
+        {% else %}
+            <span class="text-sm text-gray-500">-</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onclick="event.stopPropagation();">
+        <div class="flex items-center justify-end space-x-2">
+            <button id="execute-btn-{{ endpoint.id }}"
+                    hx-post="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/execute"
+                    hx-target="#execution-result-{{ endpoint.id }}"
+                    hx-swap="innerHTML"
+                    hx-vals='{"test_mode": false}'
+                    onclick="showExecutionProgress({{ endpoint.id }})"
+                    {% if not endpoint.is_enabled %}disabled{% endif %}
+                    class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md
+                    {% if endpoint.is_enabled %}
+                        text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                    {% else %}
+                        text-gray-400 bg-gray-200 cursor-not-allowed
+                    {% endif %}">
+                実行
+            </button>
+            <button hx-get="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/settings"
+                    hx-target="#endpoint-settings-modal"
+                    hx-swap="innerHTML"
+                    class="inline-flex items-center p-1 border border-transparent rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="execution-result-{{ endpoint.id }}" class="mt-2"></div>
+    </td>
+</tr>

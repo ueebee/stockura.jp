@@ -52,6 +52,7 @@ app.include_router(
 from app.api.v1.views import (
     dashboard_router,
     data_sources_router as ds_view_router,
+    api_endpoints_router,
     jobs_router,
     analysis_router,
     settings_router
@@ -59,6 +60,7 @@ from app.api.v1.views import (
 
 app.include_router(dashboard_router, prefix="", tags=["pages"])
 app.include_router(ds_view_router, prefix="/data-sources", tags=["pages"])
+app.include_router(api_endpoints_router, prefix="", tags=["pages"])
 app.include_router(jobs_router, prefix="/jobs", tags=["pages"])
 app.include_router(analysis_router, prefix="/analysis", tags=["pages"])
 app.include_router(settings_router, prefix="/settings", tags=["pages"])

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}APIエンドポイント管理 - {{ data_source.name }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <!-- ヘッダー -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <nav class="flex items-center text-sm text-gray-500 space-x-2">
+                        <a href="/data-sources" class="hover:text-gray-700">データソース管理</a>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                        <span class="text-gray-900">{{ data_source.name }}</span>
+                    </nav>
+                    <h1 class="mt-2 text-2xl font-bold text-gray-900">APIエンドポイント管理</h1>
+                    <p class="mt-1 text-sm text-gray-600">{{ data_source.description or 'エンドポイントごとの設定と実行管理' }}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        {% if data_source.is_enabled %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ '有効' if data_source.is_enabled else '無効' }}
+                    </span>
+                    <a href="/data-sources/{{ data_source.id }}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                        データソース設定
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- エンドポイント一覧 -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">エンドポイント一覧</h2>
+        </div>
+        
+        <div class="overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            エンドポイント
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            データ種別
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ステータス
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            実行モード
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            最終実行
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            データ件数
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            成功率
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            アクション
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="endpoints-table">
+                    {% for endpoint in endpoints %}
+                    {% include 'partials/api_endpoints/endpoint_row.html' %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- エンドポイント詳細パネル -->
+    <div id="endpoint-details" class="mt-6">
+        <!-- HTMXで動的に読み込まれる -->
+    </div>
+</div>
+
+<script>
+    // エンドポイント実行の進捗表示
+    function showExecutionProgress(endpointId) {
+        const button = document.querySelector(`#execute-btn-${endpointId}`);
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `
+            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            実行中...
+        `;
+        
+        // タイムアウト処理
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }, 30000);
+    }
+</script>
+{% endblock %}

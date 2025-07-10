@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 from sqlalchemy import Column, String, Boolean, Integer, DateTime, LargeBinary
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
 from app.services.encryption import encrypt_data, decrypt_data
@@ -32,6 +32,9 @@ class DataSource(Base):
         onupdate=datetime.utcnow,
         nullable=False
     )
+    
+    # リレーション
+    endpoints = relationship("APIEndpoint", back_populates="data_source", cascade="all, delete-orphan")
 
     def set_credentials(self, credentials: Dict[str, Any]) -> None:
         """認証情報を暗号化して保存します。"""
