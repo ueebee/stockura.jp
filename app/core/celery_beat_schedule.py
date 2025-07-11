@@ -36,4 +36,17 @@ CELERY_BEAT_SCHEDULE = {
     #         'queue': 'default',
     #     }
     # },
+    
+    # 上場企業一覧の日次同期（デフォルト: 毎日午前5時）
+    # 注: 実際のスケジュールはAPIEndpointScheduleテーブルで管理され、
+    # ScheduleServiceによって動的に更新されます
+    'sync_companies_default': {
+        'task': 'sync_listed_companies',
+        'schedule': crontab(hour=5, minute=0),
+        'options': {
+            'queue': 'default',
+            'timezone': 'Asia/Tokyo',
+            'expires': 3600,  # 1時間でタスクを期限切れに
+        }
+    },
 }

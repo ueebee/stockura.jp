@@ -12,6 +12,7 @@ from app.db.session import async_session_maker
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
+from app.models.api_endpoint import APIEndpointSchedule
 
 
 def get_sync_service():
@@ -23,7 +24,12 @@ def get_sync_service():
         jquants_client_manager = JQuantsClientManager(data_source_service)
         return CompanySyncService(db, data_source_service, jquants_client_manager)
     
-    return asyncio.run(_get_service())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_get_service())
+    finally:
+        loop.close()
 
 
 @celery_app.task(bind=True)
@@ -105,8 +111,13 @@ def sync_companies_task(
                     "message": f"Successfully synced {sync_history.total_companies} companies"
                 }
         
-        # 非同期処理を実行
-        result = asyncio.run(_sync())
+        # 非同期処理を実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_sync())
+        finally:
+            loop.close()
         
         print(f"Company sync completed successfully: {result}")
         return result
@@ -271,7 +282,12 @@ def test_jquants_connection(self, data_source_id: int) -> Dict:
                     "message": "J-Quants API connection test completed"
                 }
         
-        result = asyncio.run(_test())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_test())
+        finally:
+            loop.close()
         print(f"Connection test result: {result}")
         return result
         
@@ -284,4 +300,64 @@ def test_jquants_connection(self, data_source_id: int) -> Dict:
             "data_source_id": data_source_id,
             "connected": False,
             "tested_at": datetime.utcnow().isoformat()
+        }
+
+
+@celery_app.task(bind=True, name="sync_listed_companies")
+def sync_listed_companies(self):
+    """
+    上場企業一覧の同期タスク（シンプル版）
+    
+    Returns:
+        Dict: 同期結果
+    """
+    print("Starting simple company sync task")
+    
+    try:
+        async def _sync():
+            async with async_session_maker() as db:
+                # サービス初期化
+                data_source_service = DataSourceService(db)
+                jquants_client_manager = JQuantsClientManager(data_source_service)
+                sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
+                
+                # 同期実行
+                result = await sync_service.sync_all_companies_simple()
+                
+                # スケジュール履歴更新（上場企業一覧エンドポイントのスケジュールを更新）
+                from sqlalchemy import select
+                from app.models.api_endpoint import APIEndpoint
+                stmt = select(APIEndpointSchedule).join(
+                    APIEndpoint
+                ).where(
+                    APIEndpoint.data_type == "listed_companies"
+                )
+                schedule_result = await db.execute(stmt)
+                schedule = schedule_result.scalar_one_or_none()
+                
+                if schedule:
+                    schedule.last_execution_at = result["executed_at"]
+                    schedule.last_execution_status = result["status"]
+                    schedule.last_sync_count = result.get("sync_count", 0)
+                    await db.commit()
+                
+                return result
+        
+        # 非同期実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_sync())
+            print(f"Simple company sync completed: {result}")
+            return result
+        finally:
+            loop.close()
+        
+    except Exception as e:
+        error_msg = f"Simple company sync failed: {str(e)}"
+        print(error_msg)
+        return {
+            "status": "failed",
+            "error": str(e),
+            "executed_at": datetime.utcnow()
         }
