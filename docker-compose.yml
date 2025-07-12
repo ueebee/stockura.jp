@@ -25,7 +25,7 @@ services:
     build:
       context: .
       target: production
-    command: celery -A app.core.celery_app worker --loglevel=info --logfile=logs/celery.log
+    command: celery -A app.core.celery_app worker --loglevel=info --logfile=logs/celery.log --pool=solo
     volumes:
       - .:/usr/src/app
     environment:

@@ -1,0 +1,41 @@
+{% for log in execution_logs[:5] %}
+<tr>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+        {{ log.started_at | to_jst_with_seconds }}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-center">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if log.execution_type == 'scheduled' %}bg-blue-100 text-blue-800
+            {% elif log.execution_type == 'manual' %}bg-gray-100 text-gray-800
+            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+            {{ log.execution_type }}
+        </span>
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-center">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if log.success %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+            {{ '成功' if log.success else '失敗' }}
+        </span>
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if log.data_count %}
+            {{ '{:,}'.format(log.data_count) }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if log.response_time_ms %}
+            {{ '{:,.1f}'.format(log.response_time_ms / 1000) }}秒
+        {% else %}
+            -
+        {% endif %}
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
+        実行履歴がありません
+    </td>
+</tr>
+{% endfor %}

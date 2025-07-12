@@ -3,9 +3,9 @@
 """
 
 import math
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
@@ -26,6 +26,8 @@ from app.schemas.company import (
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
+from app.services.schedule_service import ScheduleService
+from app.tasks.company_tasks import sync_listed_companies
 
 
 router = APIRouter()
@@ -50,6 +52,13 @@ def get_company_sync_service(
 ) -> CompanySyncService:
     """企業同期サービスを取得"""
     return CompanySyncService(db, data_source_service, jquants_client_manager)
+
+
+def get_schedule_service(
+    db: AsyncSession = Depends(get_session)
+) -> ScheduleService:
+    """スケジュール管理サービスを取得"""
+    return ScheduleService(db)
 
 
 @router.get("/", response_model=CompanyList)
@@ -279,3 +288,153 @@ async def search_companies(
         is_active=request.is_active,
         db=db
     )
+
+
+@router.post("/sync/manual")
+async def sync_companies_manual(
+    db: AsyncSession = Depends(get_session)
+):
+    """上場企業一覧を手動で同期"""
+    # Celeryタスクを即座に実行（execution_type="manual"を指定）
+    task = sync_listed_companies.delay("manual")
+    
+    return {
+        "task_id": task.id,
+        "status": "started",
+        "message": "同期処理を開始しました"
+    }
+
+
+@router.get("/sync/task/{task_id}")
+async def get_sync_task_status(
+    task_id: str
+):
+    """同期タスクの状態を取得"""
+    from celery.result import AsyncResult
+    
+    result = AsyncResult(task_id)
+    
+    if result.state == 'PENDING':
+        response = {
+            'state': result.state,
+            'current': 0,
+            'total': 1,
+            'status': '処理待機中...'
+        }
+    elif result.state == 'PROGRESS':
+        response = {
+            'state': result.state,
+            'current': result.info.get('current', 0),
+            'total': result.info.get('total', 1),
+            'status': result.info.get('message', '処理中...')
+        }
+    elif result.state == 'SUCCESS':
+        response = {
+            'state': result.state,
+            'current': 1,
+            'total': 1,
+            'status': '同期完了',
+            'result': result.info
+        }
+    else:  # FAILURE
+        response = {
+            'state': result.state,
+            'current': 1,
+            'total': 1,
+            'status': f'エラー: {str(result.info)}',
+            'error': str(result.info)
+        }
+    
+    return response
+
+
+@router.get("/sync/schedule")
+async def get_company_sync_schedule(
+    schedule_service: ScheduleService = Depends(get_schedule_service),
+    db: AsyncSession = Depends(get_session)
+):
+    """同期スケジュールの状態を取得"""
+    # 上場企業一覧エンドポイントのIDを取得
+    from app.models.api_endpoint import APIEndpoint
+    result = await db.execute(
+        select(APIEndpoint).where(APIEndpoint.data_type == "listed_companies")
+    )
+    endpoint = result.scalar_one_or_none()
+    
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
+    
+    status = await schedule_service.get_schedule_status(endpoint.id)
+    return status
+
+
+@router.post("/sync/schedule")
+async def create_company_sync_schedule(
+    hour: int = Form(..., ge=0, le=23),
+    minute: int = Form(..., ge=0, le=59),
+    schedule_service: ScheduleService = Depends(get_schedule_service),
+    db: AsyncSession = Depends(get_session)
+):
+    """同期スケジュールを作成"""
+    # 上場企業一覧エンドポイントのIDを取得
+    from app.models.api_endpoint import APIEndpoint
+    result = await db.execute(
+        select(APIEndpoint).where(APIEndpoint.data_type == "listed_companies")
+    )
+    endpoint = result.scalar_one_or_none()
+    
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
+    
+    try:
+        execution_time = time(hour=hour, minute=minute)
+        created_schedule = await schedule_service.create_schedule(
+            endpoint_id=endpoint.id,
+            execution_time=execution_time
+        )
+        
+        return {
+            "status": "success",
+            "execution_time": created_schedule.execution_time.strftime("%H:%M"),
+            "timezone": created_schedule.timezone,
+            "message": f"スケジュールを {execution_time.strftime('%H:%M')} で作成しました"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/sync/schedule")
+async def update_company_sync_schedule(
+    hour: int = Form(..., ge=0, le=23),
+    minute: int = Form(..., ge=0, le=59),
+    schedule_service: ScheduleService = Depends(get_schedule_service),
+    db: AsyncSession = Depends(get_session)
+):
+    """同期スケジュールを更新"""
+    # 上場企業一覧エンドポイントのIDを取得
+    from app.models.api_endpoint import APIEndpoint
+    result = await db.execute(
+        select(APIEndpoint).where(APIEndpoint.data_type == "listed_companies")
+    )
+    endpoint = result.scalar_one_or_none()
+    
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
+    
+    try:
+        execution_time = time(hour=hour, minute=minute)
+        updated_schedule = await schedule_service.update_schedule_time(
+            endpoint_id=endpoint.id,
+            execution_time=execution_time
+        )
+        
+        return {
+            "status": "success",
+            "execution_time": updated_schedule.execution_time.strftime("%H:%M"),
+            "timezone": updated_schedule.timezone,
+            "message": f"スケジュールを {execution_time.strftime('%H:%M')} に更新しました"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

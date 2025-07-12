@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, JSON, ForeignKey, Text, Float
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, JSON, ForeignKey, Text, Float, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
@@ -84,6 +84,7 @@ class APIEndpoint(Base):
     data_source = relationship("DataSource", back_populates="endpoints")
     execution_logs = relationship("APIEndpointExecutionLog", back_populates="endpoint", cascade="all, delete-orphan")
     parameter_presets = relationship("APIEndpointParameterPreset", back_populates="endpoint", cascade="all, delete-orphan")
+    schedule = relationship("APIEndpointSchedule", back_populates="endpoint", uselist=False, cascade="all, delete-orphan")
 
 
 class APIEndpointExecutionLog(Base):
@@ -128,3 +129,34 @@ class APIEndpointParameterPreset(Base):
     
     # リレーション
     endpoint = relationship("APIEndpoint", back_populates="parameter_presets")
+
+
+class APIEndpointSchedule(Base):
+    """APIエンドポイントの実行スケジュール"""
+    __tablename__ = "api_endpoint_schedules"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    endpoint_id: Mapped[int] = mapped_column(ForeignKey("api_endpoints.id"), nullable=False, unique=True)
+    
+    # スケジュール設定
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    schedule_type: Mapped[str] = mapped_column(String(20), default="daily", nullable=False)  # daily only for now
+    execution_time: Mapped[time] = mapped_column(Time, default=time(5, 0), nullable=False)  # デフォルト 5:00
+    timezone: Mapped[str] = mapped_column(String(50), default="Asia/Tokyo", nullable=False)
+    
+    # 実行履歴
+    last_execution_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_execution_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # success/failed
+    last_sync_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # メタデータ
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        default=datetime.utcnow, 
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+    
+    # リレーション
+    endpoint = relationship("APIEndpoint", back_populates="schedule")

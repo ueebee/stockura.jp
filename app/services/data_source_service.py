@@ -94,6 +94,16 @@ class DataSourceService:
             limit=limit
         )
 
+    async def get_jquants_source(self) -> Optional[DataSource]:
+        """有効なJ-Quantsデータソースを取得します"""
+        result = await self.db.execute(
+            select(DataSource).where(
+                DataSource.provider_type == "jquants",
+                DataSource.is_enabled == True
+            ).limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def update_data_source(
         self, 
         data_source_id: int, 

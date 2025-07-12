@@ -1,6 +1,13 @@
 from celery import Celery
+from celery.signals import worker_ready
 from app.core.config import settings
 from app.utils.rate_limit import RateLimitManager
+from app.services.auth import StrategyRegistry
+from app.services.auth.strategies.jquants_strategy import JQuantsStrategy
+from app.services.auth.strategies.yfinance_strategy import YFinanceStrategy
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Celeryアプリケーションの作成
 celery_app = Celery(
@@ -25,6 +32,9 @@ celery_app.conf.update(
     
     # ワーカーの同時実行数
     worker_concurrency=4,
+    
+    # ワーカープールの設定（soloを使用してシングルスレッドで実行）
+    worker_pool="solo",
     
     # タスクの優先度
     task_default_priority=5,
@@ -84,3 +94,18 @@ celery_app.autodiscover_tasks()
 # Beat scheduleの読み込み
 from app.core.celery_beat_schedule import CELERY_BEAT_SCHEDULE
 celery_app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
+
+# ワーカー起動時に認証ストラテジーを登録
+@worker_ready.connect
+def setup_worker(sender=None, **kwargs):
+    """ワーカー起動時の初期化処理"""
+    logger.info("Initializing worker...")
+    
+    # 認証ストラテジーを登録
+    try:
+        StrategyRegistry.register("jquants", JQuantsStrategy)
+        StrategyRegistry.register("yfinance", YFinanceStrategy)
+        logger.info(f"Registered authentication strategies: jquants, yfinance")
+    except Exception as e:
+        logger.error(f"Failed to register authentication strategies: {e}")
+        raise

@@ -43,7 +43,7 @@
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
         {% if endpoint.last_execution_at %}
-            <div>{{ endpoint.last_execution_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            <div>{{ endpoint.last_execution_at | to_jst }}</div>
             {% if endpoint.last_error_at and endpoint.last_error_at > endpoint.last_success_at %}
                 <div class="text-xs text-red-600">エラー</div>
             {% else %}

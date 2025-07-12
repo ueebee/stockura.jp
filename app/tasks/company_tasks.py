@@ -12,6 +12,7 @@ from app.db.session import async_session_maker
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
+from app.models.api_endpoint import APIEndpointSchedule
 
 
 def get_sync_service():
@@ -23,7 +24,12 @@ def get_sync_service():
         jquants_client_manager = JQuantsClientManager(data_source_service)
         return CompanySyncService(db, data_source_service, jquants_client_manager)
     
-    return asyncio.run(_get_service())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_get_service())
+    finally:
+        loop.close()
 
 
 @celery_app.task(bind=True)
@@ -105,8 +111,13 @@ def sync_companies_task(
                     "message": f"Successfully synced {sync_history.total_companies} companies"
                 }
         
-        # 非同期処理を実行
-        result = asyncio.run(_sync())
+        # 非同期処理を実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_sync())
+        finally:
+            loop.close()
         
         print(f"Company sync completed successfully: {result}")
         return result
@@ -271,7 +282,12 @@ def test_jquants_connection(self, data_source_id: int) -> Dict:
                     "message": "J-Quants API connection test completed"
                 }
         
-        result = asyncio.run(_test())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_test())
+        finally:
+            loop.close()
         print(f"Connection test result: {result}")
         return result
         
@@ -284,4 +300,191 @@ def test_jquants_connection(self, data_source_id: int) -> Dict:
             "data_source_id": data_source_id,
             "connected": False,
             "tested_at": datetime.utcnow().isoformat()
+        }
+
+
+@celery_app.task(bind=True, name="sync_listed_companies")
+def sync_listed_companies(self, execution_type: str = "manual"):
+    """
+    上場企業一覧の同期タスク（シンプル版）
+    
+    Args:
+        execution_type: 実行タイプ（manual/scheduled）
+        
+    Returns:
+        Dict: 同期結果
+    """
+    print(f"Starting simple company sync task (execution_type: {execution_type})")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"sync_listed_companies started with execution_type: {execution_type}")
+    
+    try:
+        # タスクIDを記録（デバッグ用）
+        task_id = self.request.id
+        logger.info(f"Task ID: {task_id}")
+        
+        # 同期版のデータベースセッションを使用
+        from app.db.session import SessionLocal
+        from sqlalchemy import select
+        from app.models.api_endpoint import APIEndpoint, APIEndpointExecutionLog
+        
+        # 実行開始時刻を記録
+        start_time = datetime.utcnow()
+        
+        with SessionLocal() as db:
+            try:
+                # 上場企業一覧エンドポイントを取得
+                endpoint = db.query(APIEndpoint).filter(
+                    APIEndpoint.data_type == "listed_companies"
+                ).first()
+                
+                logger.info(f"Found endpoint: {endpoint.id if endpoint else 'None'}")
+                
+                # 進捗を更新
+                self.update_state(
+                    state='PROGRESS',
+                    meta={
+                        'current': 0,
+                        'total': 1,
+                        'message': '同期処理を準備中...'
+                    }
+                )
+                
+                # エンドポイントIDを保存（実行ログは非同期実行後に作成）
+                endpoint_id = endpoint.id if endpoint else None
+                
+                # 非同期処理を同期的に実行
+                async def _sync():
+                    # 各タスク実行で新しいセッションメーカーを作成
+                    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+                    from app.config import settings
+                    
+                    # 新しい非同期エンジンを作成
+                    task_async_engine = create_async_engine(
+                        settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+                        echo=False,
+                        future=True,
+                        pool_pre_ping=True,
+                    )
+                    
+                    # 新しいセッションメーカーを作成
+                    task_session_maker = async_sessionmaker(
+                        task_async_engine,
+                        class_=AsyncSession,
+                        expire_on_commit=False,
+                        autocommit=False,
+                        autoflush=False,
+                    )
+                    
+                    try:
+                        async with task_session_maker() as async_db:
+                            # サービス初期化
+                            data_source_service = DataSourceService(async_db)
+                            jquants_client_manager = JQuantsClientManager(data_source_service)
+                            sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
+                            
+                            # 同期実行
+                            result = await sync_service.sync_all_companies_simple()
+                            return result
+                    finally:
+                        # エンジンをクリーンアップ
+                        await task_async_engine.dispose()
+                
+                # 新しいイベントループで実行
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    # 進捗を更新
+                    self.update_state(
+                        state='PROGRESS',
+                        meta={
+                            'current': 0,
+                            'total': 1,
+                            'message': '上場企業データを取得中...'
+                        }
+                    )
+                    result = loop.run_until_complete(_sync())
+                finally:
+                    loop.close()
+                
+                # 実行ログを作成（同期セッションで）
+                if endpoint_id:
+                    completed_at = datetime.utcnow()
+                    duration = (completed_at - start_time).total_seconds()
+                    
+                    logger.info(f"Creating execution log for endpoint_id={endpoint_id}, start_time={start_time}")
+                    execution_log = APIEndpointExecutionLog(
+                        endpoint_id=endpoint_id,
+                        execution_type=execution_type,
+                        started_at=start_time,
+                        completed_at=completed_at,
+                        success=result["status"] == "success",
+                        response_time_ms=int(duration * 1000),
+                        data_count=result.get("sync_count", 0),
+                        error_message=result.get("error") if result["status"] != "success" else None,
+                        parameters_used={"task_id": task_id}
+                    )
+                    db.add(execution_log)
+                    db.commit()
+                    logger.info(f"Created execution log: id={execution_log.id}, success={execution_log.success}, data_count={execution_log.data_count}")
+                    
+                    # APIEndpointの統計情報を更新
+                    # endpointを再取得（同じトランザクション内で最新の状態を取得）
+                    endpoint = db.query(APIEndpoint).filter(
+                        APIEndpoint.data_type == "listed_companies"
+                    ).first()
+                    
+                    if endpoint:
+                        endpoint.last_execution_at = execution_log.started_at
+                        endpoint.total_executions += 1
+                        
+                        if execution_log.success:
+                            endpoint.last_success_at = execution_log.completed_at
+                            endpoint.successful_executions += 1
+                            endpoint.last_data_count = execution_log.data_count
+                        else:
+                            endpoint.last_error_at = execution_log.completed_at
+                            endpoint.failed_executions += 1
+                            endpoint.last_error_message = execution_log.error_message
+                        
+                        # 平均応答時間を更新（簡易計算）
+                        if execution_log.response_time_ms and endpoint.average_response_time_ms:
+                            endpoint.average_response_time_ms = (
+                                (endpoint.average_response_time_ms * (endpoint.total_executions - 1) + execution_log.response_time_ms) 
+                                / endpoint.total_executions
+                            )
+                        elif execution_log.response_time_ms:
+                            endpoint.average_response_time_ms = float(execution_log.response_time_ms)
+                        
+                        db.commit()
+                        logger.info(f"Updated endpoint statistics for endpoint ID {endpoint.id}")
+                
+                # スケジュール履歴更新
+                schedule = db.query(APIEndpointSchedule).join(
+                    APIEndpoint
+                ).filter(
+                    APIEndpoint.data_type == "listed_companies"
+                ).first()
+                
+                if schedule:
+                    schedule.last_execution_at = result["executed_at"]
+                    schedule.last_execution_status = result["status"]
+                    schedule.last_sync_count = result.get("sync_count", 0)
+                    db.commit()
+                
+                print(f"Simple company sync completed: {result}")
+                return result
+                
+            except Exception as e:
+                db.rollback()
+                raise
+        
+    except Exception as e:
+        error_msg = f"Simple company sync failed: {str(e)}"
+        print(error_msg)
+        return {
+            "status": "failed",
+            "error": str(e),
+            "executed_at": datetime.utcnow()
         }

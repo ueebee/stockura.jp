@@ -10,7 +10,7 @@ import datetime as dt
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, and_, or_
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models.company import (
     Company, 
@@ -346,3 +346,93 @@ class CompanySyncService:
             logger.info(f"Deactivated {deactivated_count} companies not found in J-Quants API")
         
         return deactivated_count
+    
+    async def sync_all_companies_simple(self) -> Dict[str, Any]:
+        """
+        全上場企業を同期（シンプル版・フル同期）
+        
+        Returns:
+            Dict[str, Any]: 同期結果
+        """
+        start_time = datetime.utcnow()
+        
+        try:
+            # J-Quantsクライアントを取得（最初の有効なデータソースを使用）
+            data_source = await self.data_source_service.get_jquants_source()
+            if not data_source:
+                raise Exception("No active J-Quants data source found")
+            
+            client = await self.jquants_client_manager.get_client(data_source.id)
+            
+            # 1. J-Quantsから全銘柄取得
+            companies_data = await client.get_all_listed_companies()
+            
+            if not companies_data:
+                raise Exception("No company data received from J-Quants API")
+            
+            logger.info(f"Retrieved {len(companies_data)} companies from J-Quants API")
+            
+            # 2. 既存の全企業を非アクティブ化
+            await self.db.execute(
+                update(Company).values(is_active=False)
+            )
+            
+            # 3. 取得データを一括更新（upsert）
+            sync_count = 0
+            for company_data in companies_data:
+                await self._upsert_company_simple(company_data)
+                sync_count += 1
+            
+            await self.db.commit()
+            
+            # 4. 実行結果を返す
+            duration = (datetime.utcnow() - start_time).total_seconds()
+            
+            return {
+                "status": "success",
+                "sync_count": sync_count,
+                "duration": duration,
+                "executed_at": start_time
+            }
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Company sync failed: {str(e)}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "executed_at": start_time
+            }
+    
+    async def _upsert_company_simple(self, company_data: Dict):
+        """
+        企業情報をupsert（シンプル版）
+        
+        Args:
+            company_data: J-Quants APIから取得した企業データ
+        """
+        stmt = pg_insert(Company).values(
+            code=company_data["Code"],
+            company_name=company_data["CompanyName"],
+            company_name_english=company_data.get("CompanyNameEnglish"),
+            sector17_code=company_data.get("Sector17Code"),
+            sector33_code=company_data.get("Sector33Code"),
+            scale_category=company_data.get("ScaleCategory"),
+            market_code=company_data.get("MarketCode"),
+            margin_code=company_data.get("MarginCode"),
+            is_active=True
+        ).on_conflict_do_update(
+            index_elements=["code"],
+            set_={
+                "company_name": company_data["CompanyName"],
+                "company_name_english": company_data.get("CompanyNameEnglish"),
+                "sector17_code": company_data.get("Sector17Code"),
+                "sector33_code": company_data.get("Sector33Code"),
+                "scale_category": company_data.get("ScaleCategory"),
+                "market_code": company_data.get("MarketCode"),
+                "margin_code": company_data.get("MarginCode"),
+                "is_active": True,
+                "updated_at": datetime.utcnow()
+            }
+        )
+        await self.db.execute(stmt)

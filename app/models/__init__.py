@@ -6,7 +6,7 @@
 from .data_source import DataSource
 
 # APIエンドポイント関連モデル
-from .api_endpoint import APIEndpoint, APIEndpointExecutionLog, APIEndpointParameterPreset, EndpointDataType, ExecutionMode
+from .api_endpoint import APIEndpoint, APIEndpointExecutionLog, APIEndpointParameterPreset, APIEndpointSchedule, EndpointDataType, ExecutionMode
 
 # 上場企業関連モデル
 from .company import Company, Sector17Master, Sector33Master, MarketMaster, CompanySyncHistory
@@ -19,6 +19,7 @@ __all__ = [
     "APIEndpoint",
     "APIEndpointExecutionLog",
     "APIEndpointParameterPreset",
+    "APIEndpointSchedule",
     "EndpointDataType",
     "ExecutionMode",
     "Company",
