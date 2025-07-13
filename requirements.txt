@@ -13,6 +13,7 @@ asyncpg==0.29.0
 # Task Queue
 celery==5.3.6
 redis==5.0.1
+celery-redbeat==2.2.0
 
 # Stock Data
 yfinance==0.2.36

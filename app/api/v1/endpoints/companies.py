@@ -27,6 +27,7 @@ from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
 from app.services.schedule_service import ScheduleService
+from app.services.redbeat_schedule_service import RedbeatScheduleService
 from app.tasks.company_tasks import sync_listed_companies
 
 
@@ -56,9 +57,9 @@ def get_company_sync_service(
 
 def get_schedule_service(
     db: AsyncSession = Depends(get_session)
-) -> ScheduleService:
+) -> RedbeatScheduleService:
     """スケジュール管理サービスを取得"""
-    return ScheduleService(db)
+    return RedbeatScheduleService(db)
 
 
 @router.get("/", response_model=CompanyList)
@@ -350,7 +351,7 @@ async def get_sync_task_status(
 
 @router.get("/sync/schedule")
 async def get_company_sync_schedule(
-    schedule_service: ScheduleService = Depends(get_schedule_service),
+    schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
     db: AsyncSession = Depends(get_session)
 ):
     """同期スケジュールの状態を取得"""
@@ -372,7 +373,7 @@ async def get_company_sync_schedule(
 async def create_company_sync_schedule(
     hour: int = Form(..., ge=0, le=23),
     minute: int = Form(..., ge=0, le=59),
-    schedule_service: ScheduleService = Depends(get_schedule_service),
+    schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
     db: AsyncSession = Depends(get_session)
 ):
     """同期スケジュールを作成"""
@@ -388,7 +389,7 @@ async def create_company_sync_schedule(
     
     try:
         execution_time = time(hour=hour, minute=minute)
-        created_schedule = await schedule_service.create_schedule(
+        created_schedule = await schedule_service.create_or_update_schedule(
             endpoint_id=endpoint.id,
             execution_time=execution_time
         )
@@ -407,7 +408,7 @@ async def create_company_sync_schedule(
 async def update_company_sync_schedule(
     hour: int = Form(..., ge=0, le=23),
     minute: int = Form(..., ge=0, le=59),
-    schedule_service: ScheduleService = Depends(get_schedule_service),
+    schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
     db: AsyncSession = Depends(get_session)
 ):
     """同期スケジュールを更新"""
@@ -423,7 +424,7 @@ async def update_company_sync_schedule(
     
     try:
         execution_time = time(hour=hour, minute=minute)
-        updated_schedule = await schedule_service.update_schedule_time(
+        updated_schedule = await schedule_service.create_or_update_schedule(
             endpoint_id=endpoint.id,
             execution_time=execution_time
         )

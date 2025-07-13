@@ -51,7 +51,7 @@ services:
     build:
       context: .
       target: production
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat -S redbeat.RedBeatScheduler --loglevel=info
     volumes:
       - .:/usr/src/app
     environment:

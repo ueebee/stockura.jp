@@ -24,6 +24,11 @@ celery_app = Celery(
 
 # Celery設定
 celery_app.conf.update(
+    # Beat Scheduler設定
+    beat_scheduler='redbeat.RedBeatScheduler',
+    redbeat_redis_url=settings.REDIS_URL,
+    redbeat_key_prefix='stockura:schedule:',
+    
     # タスクの結果を保存するかどうか
     task_ignore_result=False,
     

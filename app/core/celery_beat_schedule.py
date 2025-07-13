@@ -4,6 +4,9 @@ Celery Beatスケジュール設定
 
 from celery.schedules import crontab
 
+# Redbeatを使用するため、静的スケジュールは最小限に
+# 動的スケジュールはRedbeatが管理
+
 # Beatスケジュール設定
 CELERY_BEAT_SCHEDULE = {
     # 日次タスク - J-Quants API接続テスト（毎日午前5時）
@@ -37,16 +40,5 @@ CELERY_BEAT_SCHEDULE = {
     #     }
     # },
     
-    # 上場企業一覧の日次同期
-    # APIEndpointScheduleテーブルから動的に読み込む
-    'sync_listed_companies_scheduled': {
-        'task': 'sync_listed_companies',
-        'schedule': crontab(hour=10, minute=0),  # デフォルト: 10時（データベースの設定に合わせる）
-        'args': ['scheduled'],  # execution_type を scheduled に設定
-        'options': {
-            'queue': 'default',
-            'timezone': 'Asia/Tokyo',
-            'expires': 3600,  # 1時間でタスクを期限切れに
-        }
-    },
+    # 上場企業一覧の同期はRedbeatで動的に管理
 }
