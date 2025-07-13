@@ -46,10 +46,19 @@ async def get_endpoints(
     if not endpoints:
         endpoints = _create_initial_endpoints(db, data_source)
     
+    # 各エンドポイントのスケジュール情報を取得
+    endpoint_schedules = {}
+    for endpoint in endpoints:
+        schedule = db.query(APIEndpointSchedule).filter(
+            APIEndpointSchedule.endpoint_id == endpoint.id
+        ).first()
+        endpoint_schedules[endpoint.id] = schedule
+    
     context = {
         "request": request,
         "data_source": data_source,
         "endpoints": endpoints,
+        "endpoint_schedules": endpoint_schedules,
         "data_types": EndpointDataType,
         "execution_modes": ExecutionMode
     }
@@ -159,9 +168,15 @@ async def toggle_endpoint(
     db.commit()
     db.refresh(endpoint)
     
+    # スケジュール情報を取得
+    schedule = db.query(APIEndpointSchedule).filter(
+        APIEndpointSchedule.endpoint_id == endpoint.id
+    ).first()
+    
     context = {
         "request": request,
-        "endpoint": endpoint
+        "endpoint": endpoint,
+        "endpoint_schedules": {endpoint.id: schedule}
     }
     
     return templates.TemplateResponse("partials/api_endpoints/endpoint_row.html", context)

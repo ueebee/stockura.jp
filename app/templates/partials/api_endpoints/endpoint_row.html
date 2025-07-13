@@ -29,15 +29,16 @@
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-center">
         <span class="text-sm text-gray-900">
-            {% if endpoint.execution_mode == 'manual_only' %}
-                手動のみ
-            {% elif endpoint.execution_mode == 'scheduled' %}
+            {% set schedule = endpoint_schedules.get(endpoint.id) if endpoint_schedules is defined else None %}
+            {% if schedule and schedule.is_enabled %}
                 <span class="inline-flex items-center">
                     <svg class="h-4 w-4 mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     定期実行
                 </span>
+            {% else %}
+                手動のみ
             {% endif %}
         </span>
     </td>
