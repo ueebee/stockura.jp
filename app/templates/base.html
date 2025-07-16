@@ -180,5 +180,223 @@
     </script>
     
     {% block scripts %}{% endblock %}
+    
+    <script>
+        // Alpine.jsコンポーネントの定義をここに移動
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('dailyQuotesSyncManager', () => ({
+                syncMode: 'incremental',
+                dataSourceId: 1,
+                targetDate: '',
+                fromDate: '',
+                toDate: '',
+                codes: '',
+                isProcessing: false,
+                syncTaskId: null,
+                progressInterval: null,
+                maxDate: new Date().toISOString().split('T')[0],
+                
+                init() {
+                    // デフォルト値を設定
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    this.targetDate = yesterday.toISOString().split('T')[0];
+                    
+                    const oneYearAgo = new Date();
+                    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                    this.fromDate = oneYearAgo.toISOString().split('T')[0];
+                    this.toDate = yesterday.toISOString().split('T')[0];
+                },
+                
+                selectSyncMode(mode) {
+                    this.syncMode = mode;
+                },
+                
+                resetForm() {
+                    this.init();
+                    this.codes = '';
+                },
+                
+                async submitSync() {
+                    if (this.isProcessing) return;
+                    
+                    this.isProcessing = true;
+                    const syncResult = document.getElementById('sync-result');
+                    
+                    try {
+                        // パラメータを構築
+                        const params = new URLSearchParams({
+                            sync_type: this.syncMode,
+                            data_source_id: this.dataSourceId
+                        });
+                        
+                        if (this.syncMode === 'incremental' && this.targetDate) {
+                            params.append('target_date', this.targetDate);
+                        } else if (this.syncMode === 'single_stock') {
+                            if (this.codes) params.append('codes', this.codes);
+                            if (this.targetDate) params.append('target_date', this.targetDate);
+                        } else if (this.syncMode === 'full') {
+                            if (this.fromDate) params.append('from_date', this.fromDate);
+                            if (this.toDate) params.append('to_date', this.toDate);
+                        }
+                        
+                        // APIを呼び出し
+                        const response = await fetch('/api/v1/daily-quotes/sync/manual?' + params, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok && data.task_id) {
+                            this.syncTaskId = data.task_id;
+                            this.startProgressMonitoring();
+                            
+                            // 初期進捗表示
+                            syncResult.innerHTML = '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">' +
+                                '<div class="flex items-center">' +
+                                '<svg class="animate-spin h-5 w-5 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24">' +
+                                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+                                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>' +
+                                '</svg>' +
+                                '<div class="flex-1">' +
+                                '<p class="text-sm font-medium text-blue-900" id="sync-status">同期処理を開始しています...</p>' +
+                                '<div class="mt-2 w-full bg-blue-200 rounded-full h-2">' +
+                                '<div id="sync-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>' +
+                                '</div>' +
+                                '<p class="mt-1 text-xs text-blue-700" id="sync-details"></p>' +
+                                '</div>' +
+                                '</div>' +
+                                '</div>';
+                        } else {
+                            throw new Error(data.detail || '同期の開始に失敗しました');
+                        }
+                    } catch (error) {
+                        syncResult.innerHTML = '<div class="bg-red-50 border border-red-200 rounded-lg p-4">' +
+                            '<div class="flex items-center">' +
+                            '<svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' +
+                            '</svg>' +
+                            '<p class="text-sm font-medium text-red-900">エラー: ' + error.message + '</p>' +
+                            '</div>' +
+                            '</div>';
+                        this.isProcessing = false;
+                    }
+                },
+                
+                startProgressMonitoring() {
+                    if (this.progressInterval) {
+                        clearInterval(this.progressInterval);
+                    }
+                    
+                    this.progressInterval = setInterval(async () => {
+                        try {
+                            const response = await fetch('/api/v1/daily-quotes/sync/task/' + this.syncTaskId);
+                            const data = await response.json();
+                            
+                            const statusEl = document.getElementById('sync-status');
+                            const progressEl = document.getElementById('sync-progress');
+                            const detailsEl = document.getElementById('sync-details');
+                            
+                            if (data.state === 'PROGRESS') {
+                                statusEl.textContent = data.status || '処理中...';
+                                const percent = (data.current / data.total) * 100;
+                                progressEl.style.width = percent + '%';
+                                
+                                // 詳細情報を表示
+                                let details = [];
+                                if (data.processed_dates !== undefined) {
+                                    details.push('処理済み日数: ' + data.processed_dates);
+                                }
+                                if (data.new_records !== undefined) {
+                                    details.push('新規: ' + data.new_records.toLocaleString() + '件');
+                                }
+                                if (data.updated_records !== undefined) {
+                                    details.push('更新: ' + data.updated_records.toLocaleString() + '件');
+                                }
+                                detailsEl.textContent = details.join(' | ');
+                                
+                            } else if (data.state === 'SUCCESS') {
+                                this.handleSyncSuccess(data);
+                            } else if (data.state === 'FAILURE') {
+                                this.handleSyncFailure(data);
+                            }
+                        } catch (error) {
+                            console.error('Progress monitoring error:', error);
+                        }
+                    }, 1000);
+                },
+                
+                handleSyncSuccess(data) {
+                    clearInterval(this.progressInterval);
+                    const syncResult = document.getElementById('sync-result');
+                    
+                    const result = data.result || {};
+                    
+                    // 処理時間を計算
+                    let duration = 0;
+                    if (result.started_at && result.completed_at) {
+                        const start = new Date(result.started_at);
+                        const end = new Date(result.completed_at);
+                        duration = (end - start) / 1000; // 秒単位
+                    }
+                    
+                    syncResult.innerHTML = '<div class="bg-green-50 border border-green-200 rounded-lg p-4">' +
+                        '<div class="flex items-start">' +
+                        '<svg class="h-5 w-5 mr-3 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' +
+                        '</svg>' +
+                        '<div class="flex-1">' +
+                        '<p class="text-sm font-medium text-green-900">同期が正常に完了しました</p>' +
+                        '<div class="mt-2 text-sm text-green-700">' +
+                        '<p>同期ID: ' + (result.sync_history_id || '-') + '</p>' +
+                        '<p>新規レコード: ' + (result.new_records || 0).toLocaleString() + '件</p>' +
+                        '<p>更新レコード: ' + (result.updated_records || 0).toLocaleString() + '件</p>' +
+                        '<p>スキップ: ' + (result.skipped_records || 0).toLocaleString() + '件</p>' +
+                        '<p>合計レコード: ' + (result.total_records || 0).toLocaleString() + '件</p>' +
+                        '<p>処理時間: ' + duration.toFixed(1) + '秒</p>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>';
+                    
+                    this.isProcessing = false;
+                    this.updateSyncHistory();
+                },
+                
+                handleSyncFailure(data) {
+                    clearInterval(this.progressInterval);
+                    const syncResult = document.getElementById('sync-result');
+                    
+                    syncResult.innerHTML = '<div class="bg-red-50 border border-red-200 rounded-lg p-4">' +
+                        '<div class="flex items-center">' +
+                        '<svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' +
+                        '</svg>' +
+                        '<div>' +
+                        '<p class="text-sm font-medium text-red-900">同期中にエラーが発生しました</p>' +
+                        (data.error ? '<p class="mt-1 text-sm text-red-700">' + data.error + '</p>' : '') +
+                        '</div>' +
+                        '</div>' +
+                        '</div>';
+                    
+                    this.isProcessing = false;
+                },
+                
+                updateSyncHistory() {
+                    // HTMXを使用して履歴を更新
+                    if (typeof htmx !== 'undefined') {
+                        // 履歴更新ボタンをクリックして最新データを取得
+                        const updateButton = document.querySelector('button[hx-get*="sync/history/html"]');
+                        if (updateButton) {
+                            updateButton.click();
+                        }
+                    }
+                }
+            }));
+        });
+    </script>
 </body>
 </html>

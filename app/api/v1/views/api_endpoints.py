@@ -94,6 +94,14 @@ async def get_endpoint_details(
             APIEndpointSchedule.endpoint_id == endpoint_id
         ).first()
     
+    # 日時株価データの場合、データソース一覧を取得
+    data_sources = []
+    if endpoint.data_type == EndpointDataType.DAILY_QUOTES:
+        data_sources = db.query(DataSource).filter(
+            DataSource.provider_type == 'jquants',
+            DataSource.is_enabled == True
+        ).all()
+    
     context = {
         "request": request,
         "endpoint": endpoint,
@@ -101,12 +109,15 @@ async def get_endpoint_details(
         "execution_logs": recent_logs,  # テンプレート互換性のため
         "schedule": schedule,
         "data_types": EndpointDataType,
-        "execution_modes": ExecutionMode
+        "execution_modes": ExecutionMode,
+        "data_sources": data_sources  # 日時株価データ用
     }
     
     # データ種別に応じた詳細テンプレートを選択
     if endpoint.data_type == EndpointDataType.LISTED_COMPANIES:
         template_name = "partials/api_endpoints/endpoint_details_companies.html"
+    elif endpoint.data_type == EndpointDataType.DAILY_QUOTES:
+        template_name = "partials/api_endpoints/endpoint_details_daily_quotes.html"
     else:
         template_name = "partials/api_endpoints/endpoint_details.html"
     
@@ -229,6 +240,15 @@ async def execute_endpoint(
             "task_id": task.id,
             "message": "同期タスクをバックグラウンドで実行中"
         }
+    elif endpoint.data_type == EndpointDataType.DAILY_QUOTES:
+        # 日時株価データの同期タスクを実行（手動同期画面を表示）
+        execution_log.completed_at = datetime.utcnow()
+        execution_log.success = True
+        execution_log.data_count = 0
+        execution_log.response_time_ms = 0
+        execution_log.parameters_used = {
+            "message": "日時株価データの手動同期画面を使用してください"
+        }
     else:
         # その他のエンドポイントは仮の成功レスポンス
         execution_log.completed_at = datetime.utcnow()
@@ -284,16 +304,6 @@ def _create_initial_endpoints(db: Session, data_source: DataSource) -> list[APIE
                 "default_parameters": {"code": "*"},
                 "batch_size": 1000,
                 "rate_limit_per_minute": 300
-            },
-            {
-                "name": "財務諸表",
-                "description": "企業の財務諸表データを取得",
-                "endpoint_path": "/fins/statements",
-                "http_method": "GET",
-                "data_type": EndpointDataType.FINANCIAL_STATEMENTS,
-                "required_parameters": ["idtoken"],
-                "optional_parameters": ["code", "date"],
-                "rate_limit_per_minute": 60
             }
         ]
         

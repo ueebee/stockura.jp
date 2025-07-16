@@ -6,7 +6,7 @@ import math
 import json
 from datetime import datetime, date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.orm import selectinload
@@ -30,9 +30,18 @@ from app.schemas.daily_quote import (
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.daily_quotes_sync_service import DailyQuotesSyncService
+from app.tasks.daily_quotes_tasks import sync_daily_quotes_task
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from app.core.template_filters import to_jst, to_jst_with_seconds
 
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
+
+# カスタムフィルタを登録
+templates.env.filters['to_jst'] = to_jst
+templates.env.filters['to_jst_with_seconds'] = to_jst_with_seconds
 
 
 def get_data_source_service(db: AsyncSession = Depends(get_session)) -> DataSourceService:
@@ -377,5 +386,126 @@ async def get_sync_status(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"同期ステータスの取得に失敗しました: {str(e)}")
+
+
+@router.post("/daily-quotes/sync/manual")
+async def sync_daily_quotes_manual(
+    sync_type: str = Query(..., description="同期タイプ (full/incremental/single_stock)"),
+    data_source_id: int = Query(..., description="データソースID"),
+    target_date: Optional[date] = Query(None, description="対象日 (incremental時)"),
+    from_date: Optional[date] = Query(None, description="開始日 (full時)"),
+    to_date: Optional[date] = Query(None, description="終了日 (full時)"),
+    codes: Optional[str] = Query(None, description="銘柄コード (single_stock時、カンマ区切り)"),
+    db: AsyncSession = Depends(get_session)
+):
+    """日時株価データを手動で同期"""
+    
+    # パラメータ検証
+    if sync_type == "single_stock" and not codes:
+        raise HTTPException(status_code=400, detail="single_stock同期には銘柄コードが必要です")
+    
+    # 銘柄コードリストに変換
+    code_list = None
+    if codes:
+        code_list = [code.strip() for code in codes.split(",") if code.strip()]
+    
+    # Celeryタスクを即座に実行
+    task = sync_daily_quotes_task.delay(
+        data_source_id=data_source_id,
+        sync_type=sync_type,
+        target_date=target_date.isoformat() if target_date else None,
+        from_date=from_date.isoformat() if from_date else None,
+        to_date=to_date.isoformat() if to_date else None,
+        codes=code_list
+    )
+    
+    return {
+        "task_id": task.id,
+        "status": "started",
+        "message": f"日時株価データの{sync_type}同期を開始しました",
+        "parameters": {
+            "sync_type": sync_type,
+            "data_source_id": data_source_id,
+            "target_date": target_date.isoformat() if target_date else None,
+            "from_date": from_date.isoformat() if from_date else None,
+            "to_date": to_date.isoformat() if to_date else None,
+            "codes": code_list
+        }
+    }
+
+
+@router.get("/daily-quotes/sync/task/{task_id}")
+async def get_sync_task_status(
+    task_id: str
+):
+    """同期タスクの状態を取得"""
+    from celery.result import AsyncResult
+    
+    result = AsyncResult(task_id)
+    
+    if result.state == 'PENDING':
+        response = {
+            'state': result.state,
+            'current': 0,
+            'total': 1,
+            'status': '処理待機中...',
+            'message': '同期処理の準備中です'
+        }
+    elif result.state == 'PROGRESS':
+        response = {
+            'state': result.state,
+            'current': result.info.get('current', 0),
+            'total': result.info.get('total', 1),
+            'status': result.info.get('status', '処理中...'),
+            'message': result.info.get('message', ''),
+            'sync_type': result.info.get('sync_type', ''),
+            'processed_dates': result.info.get('processed_dates', 0),
+            'new_records': result.info.get('new_records', 0),
+            'updated_records': result.info.get('updated_records', 0)
+        }
+    elif result.state == 'SUCCESS':
+        response = {
+            'state': result.state,
+            'current': 1,
+            'total': 1,
+            'status': '同期完了',
+            'message': '日時株価データの同期が正常に完了しました',
+            'result': result.info
+        }
+    else:  # FAILURE
+        response = {
+            'state': result.state,
+            'current': 1,
+            'total': 1,
+            'status': f'エラー: {str(result.info)}',
+            'error': str(result.info),
+            'message': '同期処理中にエラーが発生しました'
+        }
+    
+    return response
+
+
+@router.get("/daily-quotes/sync/history/html", response_class=HTMLResponse)
+async def get_sync_history_html(
+    request: Request,
+    limit: int = Query(10, ge=1, le=50, description="取得件数"),
+    sync_service: DailyQuotesSyncService = Depends(get_daily_quotes_sync_service)
+):
+    """株価データ同期履歴をHTMLで取得（HTMX用）"""
+    
+    histories = await sync_service.get_sync_history(
+        limit=limit,
+        offset=0
+    )
+    
+    context = {
+        "request": request,
+        "histories": histories
+    }
+    
+    return templates.TemplateResponse(
+        "partials/api_endpoints/daily_quotes_sync_history_rows.html",
+        context
+    )
 
 

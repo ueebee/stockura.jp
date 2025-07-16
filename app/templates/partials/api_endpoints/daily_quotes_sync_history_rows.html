@@ -1,0 +1,62 @@
+{% for history in histories %}
+<tr>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+        {{ history.started_at | to_jst_with_seconds }}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-center">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if history.sync_type == 'full' %}bg-purple-100 text-purple-800
+            {% elif history.sync_type == 'incremental' %}bg-blue-100 text-blue-800
+            {% elif history.sync_type == 'single_stock' %}bg-green-100 text-green-800
+            {% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ history.sync_type }}
+        </span>
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-center">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            {% if history.status == 'completed' %}bg-green-100 text-green-800
+            {% elif history.status == 'running' %}bg-yellow-100 text-yellow-800
+            {% elif history.status == 'failed' %}bg-red-100 text-red-800
+            {% else %}bg-gray-100 text-gray-800{% endif %}">
+            {% if history.status == 'completed' %}完了
+            {% elif history.status == 'running' %}実行中
+            {% elif history.status == 'failed' %}失敗
+            {% else %}{{ history.status }}{% endif %}
+        </span>
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if history.new_records %}
+            {{ '{:,}'.format(history.new_records) }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if history.updated_records %}
+            {{ '{:,}'.format(history.updated_records) }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if history.skipped_records %}
+            {{ '{:,}'.format(history.skipped_records) }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+        {% if history.completed_at and history.started_at %}
+            {{ '{:.1f}'.format((history.completed_at - history.started_at).total_seconds()) }}秒
+        {% else %}
+            -
+        {% endif %}
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+        実行履歴がありません
+    </td>
+</tr>
+{% endfor %}

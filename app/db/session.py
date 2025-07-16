@@ -25,14 +25,16 @@ SessionLocal = sessionmaker(
 )
 
 # 非同期エンジン（新規追加）
+# Celeryタスクでの使用を考慮してNullPoolを使用
+# NullPoolは接続プーリングを無効化し、各リクエストで新しい接続を作成します。
+# これにより、異なるイベントループ間での「Future attached to a different loop」エラーを防ぎます。
+from sqlalchemy.pool import NullPool
+
 async_engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
     echo=settings.DATABASE_ECHO,
     future=True,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_timeout=settings.DATABASE_POOL_TIMEOUT,
-    pool_recycle=settings.DATABASE_POOL_RECYCLE,
+    poolclass=NullPool,  # Celeryタスクでのイベントループ競合を防ぐ
     pool_pre_ping=True,  # コネクションプールの健全性チェック
 )
 
@@ -84,6 +86,30 @@ async def check_database_connection() -> bool:
     except Exception as e:
         logger.error(f"Unexpected error during database connection check: {e}")
         return False
+
+
+def get_celery_async_session_maker():
+    """
+    Celeryタスク専用の非同期セッションメーカーを取得します。
+    
+    Celeryタスクは各タスクで新しいイベントループを作成するため、
+    専用のエンジンとセッションメーカーを使用します。
+    """
+    celery_async_engine = create_async_engine(
+        settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+        echo=settings.DATABASE_ECHO,
+        future=True,
+        poolclass=NullPool,  # 接続プーリングを無効化
+        pool_pre_ping=True,
+    )
+    
+    return async_sessionmaker(
+        celery_async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
 
 
 def check_sync_database_connection() -> bool:

@@ -54,47 +54,81 @@ def sync_daily_quotes_task(
         
         # 非同期関数を同期的に実行
         async def _sync():
-            async with async_session_maker() as db:
-                # サービスの初期化
-                data_source_service = DataSourceService(db)
-                jquants_client_manager = JQuantsClientManager(data_source_service)
-                sync_service = DailyQuotesSyncService(data_source_service, jquants_client_manager)
-                
-                # 進捗更新
-                current_task.update_state(
-                    state='PROGRESS',
-                    meta={'message': f'Starting {sync_type} sync...'}
-                )
-                
-                # 同期実行
-                sync_history = await sync_service.sync_daily_quotes(
-                    data_source_id=data_source_id,
-                    sync_type=sync_type,
-                    target_date=target_date_obj,
-                    from_date=from_date_obj,
-                    to_date=to_date_obj,
-                    codes=codes
-                )
-                
-                await db.commit()
-                
-                # 結果を辞書形式で返す
-                return {
-                    'sync_history_id': sync_history.id,
-                    'status': sync_history.status,
-                    'sync_type': sync_history.sync_type,
-                    'start_date': sync_history.start_date.isoformat() if sync_history.start_date else None,
-                    'end_date': sync_history.end_date.isoformat() if sync_history.end_date else None,
-                    'total_records': sync_history.total_records,
-                    'new_records': sync_history.new_records,
-                    'updated_records': sync_history.updated_records,
-                    'error_message': sync_history.error_message,
-                    'started_at': sync_history.started_at.isoformat(),
-                    'completed_at': sync_history.completed_at.isoformat() if sync_history.completed_at else None
-                }
+            # 各タスク実行で新しいセッションメーカーを作成
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+            from sqlalchemy.pool import NullPool
+            from app.config import settings
+            
+            # 新しい非同期エンジンを作成
+            task_async_engine = create_async_engine(
+                settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+                echo=False,
+                future=True,
+                poolclass=NullPool,  # 接続プーリングを無効化
+                pool_pre_ping=True,
+            )
+            
+            # 新しいセッションメーカーを作成
+            task_session_maker = async_sessionmaker(
+                task_async_engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                autocommit=False,
+                autoflush=False,
+            )
+            
+            try:
+                async with task_session_maker() as db:
+                    # サービスの初期化
+                    data_source_service = DataSourceService(db)
+                    jquants_client_manager = JQuantsClientManager(data_source_service)
+                    sync_service = DailyQuotesSyncService(data_source_service, jquants_client_manager)
+                    
+                    # 進捗更新
+                    current_task.update_state(
+                        state='PROGRESS',
+                        meta={'message': f'Starting {sync_type} sync...'}
+                    )
+                    
+                    # 同期実行
+                    sync_history = await sync_service.sync_daily_quotes(
+                        data_source_id=data_source_id,
+                        sync_type=sync_type,
+                        target_date=target_date_obj,
+                        from_date=from_date_obj,
+                        to_date=to_date_obj,
+                        specific_codes=codes
+                    )
+                    
+                    # 結果を辞書形式で返す
+                    if sync_history:
+                        return {
+                            'sync_history_id': sync_history.id,
+                            'status': sync_history.status,
+                            'sync_type': sync_history.sync_type,
+                            'from_date': sync_history.from_date.isoformat() if sync_history.from_date else None,
+                            'to_date': sync_history.to_date.isoformat() if sync_history.to_date else None,
+                            'total_records': sync_history.total_records,
+                            'new_records': sync_history.new_records,
+                            'updated_records': sync_history.updated_records,
+                            'skipped_records': sync_history.skipped_records,
+                            'error_message': sync_history.error_message,
+                            'started_at': sync_history.started_at.isoformat(),
+                            'completed_at': sync_history.completed_at.isoformat() if sync_history.completed_at else None
+                        }
+                    else:
+                        raise Exception("Sync history creation failed")
+            finally:
+                # エンジンをクリーンアップ
+                await task_async_engine.dispose()
         
-        # 非同期処理を実行
-        result = asyncio.run(_sync())
+        # 非同期処理を実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_sync())
+        finally:
+            loop.close()
         
         print(f"Daily quotes sync completed: {result}")
         return result
@@ -135,37 +169,69 @@ def daily_quotes_cleanup_task(self, days_to_keep: int = 365) -> Dict:
         
         # 非同期関数を同期的に実行
         async def _cleanup():
-            async with async_session_maker() as db:
-                from sqlalchemy import delete
-                from app.models.daily_quote import DailyQuote
-                
-                # 削除対象の日付を計算
-                cutoff_date = date.today() - timedelta(days=days_to_keep)
-                
-                # 削除前のレコード数を取得
-                from sqlalchemy import select, func
-                result = await db.execute(
-                    select(func.count(DailyQuote.id))
-                    .where(DailyQuote.trade_date < cutoff_date)
-                )
-                records_to_delete = result.scalar()
-                
-                # 削除実行
-                if records_to_delete > 0:
-                    await db.execute(
-                        delete(DailyQuote)
+            # 各タスク実行で新しいセッションメーカーを作成
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+            from sqlalchemy.pool import NullPool
+            from app.config import settings
+            
+            # 新しい非同期エンジンを作成
+            task_async_engine = create_async_engine(
+                settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+                echo=False,
+                future=True,
+                poolclass=NullPool,  # 接続プーリングを無効化
+                pool_pre_ping=True,
+            )
+            
+            # 新しいセッションメーカーを作成
+            task_session_maker = async_sessionmaker(
+                task_async_engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                autocommit=False,
+                autoflush=False,
+            )
+            
+            try:
+                async with task_session_maker() as db:
+                    from sqlalchemy import delete
+                    from app.models.daily_quote import DailyQuote
+                    
+                    # 削除対象の日付を計算
+                    cutoff_date = date.today() - timedelta(days=days_to_keep)
+                    
+                    # 削除前のレコード数を取得
+                    from sqlalchemy import select, func
+                    result = await db.execute(
+                        select(func.count(DailyQuote.id))
                         .where(DailyQuote.trade_date < cutoff_date)
                     )
-                    await db.commit()
-                
-                return {
-                    'records_deleted': records_to_delete,
-                    'cutoff_date': cutoff_date.isoformat(),
-                    'status': 'success'
-                }
+                    records_to_delete = result.scalar()
+                    
+                    # 削除実行
+                    if records_to_delete > 0:
+                        await db.execute(
+                            delete(DailyQuote)
+                            .where(DailyQuote.trade_date < cutoff_date)
+                        )
+                        await db.commit()
+                    
+                    return {
+                        'records_deleted': records_to_delete,
+                        'cutoff_date': cutoff_date.isoformat(),
+                        'status': 'success'
+                    }
+            finally:
+                # エンジンをクリーンアップ
+                await task_async_engine.dispose()
         
-        # 非同期処理を実行
-        result = asyncio.run(_cleanup())
+        # 非同期処理を実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_cleanup())
+        finally:
+            loop.close()
         
         print(f"Daily quotes cleanup completed: {result}")
         return result
@@ -194,49 +260,81 @@ def daily_quotes_health_check() -> Dict:
     try:
         # 非同期関数を同期的に実行
         async def _check():
-            async with async_session_maker() as db:
-                from sqlalchemy import select, func
-                from app.models.daily_quote import DailyQuote
-                from app.models.company import Company
-                
-                # 1. 総レコード数
-                result = await db.execute(select(func.count(DailyQuote.id)))
-                total_records = result.scalar()
-                
-                # 2. 最新の取引日
-                result = await db.execute(select(func.max(DailyQuote.trade_date)))
-                latest_date = result.scalar()
-                
-                # 3. 最古の取引日
-                result = await db.execute(select(func.min(DailyQuote.trade_date)))
-                oldest_date = result.scalar()
-                
-                # 4. ユニークな銘柄数
-                result = await db.execute(
-                    select(func.count(func.distinct(DailyQuote.code)))
-                )
-                unique_codes = result.scalar()
-                
-                # 5. アクティブな企業数
-                result = await db.execute(
-                    select(func.count(Company.id))
-                    .where(Company.is_active == True)
-                )
-                active_companies = result.scalar()
-                
-                return {
-                    'status': 'healthy',
-                    'total_records': total_records,
-                    'latest_date': latest_date.isoformat() if latest_date else None,
-                    'oldest_date': oldest_date.isoformat() if oldest_date else None,
-                    'unique_codes': unique_codes,
-                    'active_companies': active_companies,
-                    'coverage_rate': f"{(unique_codes / active_companies * 100):.1f}%" if active_companies > 0 else "0%",
-                    'checked_at': datetime.now().isoformat()
-                }
+            # 各タスク実行で新しいセッションメーカーを作成
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+            from sqlalchemy.pool import NullPool
+            from app.config import settings
+            
+            # 新しい非同期エンジンを作成
+            task_async_engine = create_async_engine(
+                settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+                echo=False,
+                future=True,
+                poolclass=NullPool,  # 接続プーリングを無効化
+                pool_pre_ping=True,
+            )
+            
+            # 新しいセッションメーカーを作成
+            task_session_maker = async_sessionmaker(
+                task_async_engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+                autocommit=False,
+                autoflush=False,
+            )
+            
+            try:
+                async with task_session_maker() as db:
+                    from sqlalchemy import select, func
+                    from app.models.daily_quote import DailyQuote
+                    from app.models.company import Company
+                    
+                    # 1. 総レコード数
+                    result = await db.execute(select(func.count(DailyQuote.id)))
+                    total_records = result.scalar()
+                    
+                    # 2. 最新の取引日
+                    result = await db.execute(select(func.max(DailyQuote.trade_date)))
+                    latest_date = result.scalar()
+                    
+                    # 3. 最古の取引日
+                    result = await db.execute(select(func.min(DailyQuote.trade_date)))
+                    oldest_date = result.scalar()
+                    
+                    # 4. ユニークな銘柄数
+                    result = await db.execute(
+                        select(func.count(func.distinct(DailyQuote.code)))
+                    )
+                    unique_codes = result.scalar()
+                    
+                    # 5. アクティブな企業数
+                    result = await db.execute(
+                        select(func.count(Company.id))
+                        .where(Company.is_active == True)
+                    )
+                    active_companies = result.scalar()
+                    
+                    return {
+                        'status': 'healthy',
+                        'total_records': total_records,
+                        'latest_date': latest_date.isoformat() if latest_date else None,
+                        'oldest_date': oldest_date.isoformat() if oldest_date else None,
+                        'unique_codes': unique_codes,
+                        'active_companies': active_companies,
+                        'coverage_rate': f"{(unique_codes / active_companies * 100):.1f}%" if active_companies > 0 else "0%",
+                        'checked_at': datetime.now().isoformat()
+                    }
+            finally:
+                # エンジンをクリーンアップ
+                await task_async_engine.dispose()
         
-        # 非同期処理を実行
-        result = asyncio.run(_check())
+        # 非同期処理を実行（新しいイベントループを作成）
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_check())
+        finally:
+            loop.close()
         
         print(f"Daily quotes health check completed: {result}")
         return result

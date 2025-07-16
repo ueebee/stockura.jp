@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, and_, or_, func
 
-from app.db.session import get_session
+from app.db.session import get_session, async_session_maker
 from app.models.daily_quote import DailyQuote, DailyQuotesSyncHistory
 from app.services.jquants_client import JQuantsClientManager, JQuantsDailyQuotesClient
 from app.services.data_source_service import DataSourceService
@@ -77,7 +77,7 @@ class DailyQuotesSyncService:
             specific_codes=json.dumps(specific_codes) if specific_codes else None
         )
         
-        async for session in get_session():
+        async with async_session_maker() as session:
             try:
                 session.add(sync_history)
                 await session.commit()
@@ -109,8 +109,6 @@ class DailyQuotesSyncService:
                 sync_history.completed_at = datetime.utcnow()
                 await session.commit()
                 raise
-            finally:
-                break
     
     async def _sync_full_data(
         self,
@@ -579,7 +577,7 @@ class DailyQuotesSyncService:
         Returns:
             List[DailyQuotesSyncHistory]: 同期履歴リスト
         """
-        async for session in get_session():
+        async with async_session_maker() as session:
             stmt = select(DailyQuotesSyncHistory).order_by(DailyQuotesSyncHistory.started_at.desc())
             
             if status:
@@ -588,7 +586,6 @@ class DailyQuotesSyncService:
             stmt = stmt.offset(offset).limit(limit)
             result = await session.execute(stmt)
             histories = result.scalars().all()
-            break
         return histories
     
     async def get_sync_status(self, sync_id: int) -> Optional[DailyQuotesSyncHistory]:
@@ -601,10 +598,9 @@ class DailyQuotesSyncService:
         Returns:
             Optional[DailyQuotesSyncHistory]: 同期履歴（見つからない場合はNone）
         """
-        async for session in get_session():
+        async with async_session_maker() as session:
             result = await session.execute(
                 select(DailyQuotesSyncHistory).where(DailyQuotesSyncHistory.id == sync_id)
             )
             sync_history = result.scalar_one_or_none()
-            break
         return sync_history
