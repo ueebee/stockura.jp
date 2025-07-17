@@ -11,7 +11,9 @@ class JQuantsStrategy(AuthStrategy):
     def __init__(self, base_url: str = "https://api.jquants.com"):
         self.base_url = base_url
 
-    def get_refresh_token(self, credentials: Dict[str, Any]) -> Tuple[Optional[str], Optional[datetime]]:
+    def get_refresh_token(
+        self, credentials: Dict[str, Any]
+    ) -> Tuple[Optional[str], Optional[datetime]]:
         """
         J-Quantsのリフレッシュトークンを取得します。
 
@@ -28,8 +30,8 @@ class JQuantsStrategy(AuthStrategy):
                     f"{self.base_url}/v1/token/auth_user",
                     json={
                         "mailaddress": credentials["mailaddress"],
-                        "password": credentials["password"]
-                    }
+                        "password": credentials["password"],
+                    },
                 )
                 response.raise_for_status()
                 refresh_token = response.json()["refreshToken"]
@@ -42,7 +44,9 @@ class JQuantsStrategy(AuthStrategy):
             print(f"Error getting refresh token: {e}")
             return None, None
 
-    def get_id_token(self, refresh_token: str) -> Tuple[Optional[str], Optional[datetime]]:
+    def get_id_token(
+        self, refresh_token: str
+    ) -> Tuple[Optional[str], Optional[datetime]]:
         """
         J-QuantsのIDトークンを取得します。
 
@@ -80,4 +84,5 @@ class JQuantsStrategy(AuthStrategy):
             bool: 認証情報が有効な場合はTrue
         """
         required_fields = ["mailaddress", "password"]
-        return all(field in credentials for field in required_fields) 
+        return all(field in credentials for field in required_fields)
+
