@@ -190,7 +190,6 @@
                 targetDate: '',
                 fromDate: '',
                 toDate: '',
-                codes: '',
                 isProcessing: false,
                 syncTaskId: null,
                 progressInterval: null,
@@ -214,7 +213,6 @@
                 
                 resetForm() {
                     this.init();
-                    this.codes = '';
                 },
                 
                 async submitSync() {
@@ -232,9 +230,6 @@
                         
                         if (this.syncMode === 'incremental' && this.targetDate) {
                             params.append('target_date', this.targetDate);
-                        } else if (this.syncMode === 'single_stock') {
-                            if (this.codes) params.append('codes', this.codes);
-                            if (this.targetDate) params.append('target_date', this.targetDate);
                         } else if (this.syncMode === 'full') {
                             if (this.fromDate) params.append('from_date', this.fromDate);
                             if (this.toDate) params.append('to_date', this.toDate);

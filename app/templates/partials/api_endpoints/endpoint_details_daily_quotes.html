@@ -15,7 +15,7 @@
     <!-- 同期モード選択 -->
     <div class="border-b border-gray-200 pb-6 mb-6">
         <h4 class="text-sm font-medium text-gray-700 mb-4">同期モード選択</h4>
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 gap-4">
             <button @click="selectSyncMode('incremental')"
                     :class="{'bg-blue-50 border-blue-500 text-blue-700': syncMode === 'incremental', 'bg-white border-gray-300 text-gray-700': syncMode !== 'incremental'}"
                     class="border-2 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50">
@@ -24,16 +24,6 @@
                 </svg>
                 特定日モード
                 <p class="text-xs mt-1 font-normal">特定の日付の全銘柄データ</p>
-            </button>
-            
-            <button @click="selectSyncMode('single_stock')"
-                    :class="{'bg-blue-50 border-blue-500 text-blue-700': syncMode === 'single_stock', 'bg-white border-gray-300 text-gray-700': syncMode !== 'single_stock'}"
-                    class="border-2 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50">
-                <svg class="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-                特定銘柄モード
-                <p class="text-xs mt-1 font-normal">特定銘柄の時系列データ</p>
             </button>
             
             <button @click="selectSyncMode('full')"
@@ -72,26 +62,6 @@
                        :required="syncMode === 'incremental'"
                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 <p class="mt-1 text-sm text-gray-500">指定した日付の全銘柄データを取得します</p>
-            </div>
-        </div>
-
-        <!-- 特定銘柄モードのパラメータ -->
-        <div x-show="syncMode === 'single_stock'" x-transition class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">銘柄コード</label>
-                <input type="text" x-model="codes" 
-                       placeholder="7203, 9984, 6758"
-                       :required="syncMode === 'single_stock'"
-                       pattern="[0-9, ]+"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <p class="mt-1 text-sm text-gray-500">カンマ区切りで複数指定可能（例: 7203, 9984）</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">対象日（オプション）</label>
-                <input type="date" x-model="targetDate" 
-                       :max="maxDate"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <p class="mt-1 text-sm text-gray-500">未指定の場合は前営業日のデータを取得</p>
             </div>
         </div>
 
