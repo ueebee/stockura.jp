@@ -188,6 +188,26 @@
     <!-- 同期結果表示エリア -->
     <div id="sync-result" class="mt-6"></div>
 
+    <!-- 定期実行スケジュール -->
+    <div class="border-t border-gray-200 pt-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-medium text-gray-700">定期実行スケジュール</h4>
+            <button onclick="openScheduleModal()"
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                新規スケジュール
+            </button>
+        </div>
+        <div id="schedule-list-container"
+             hx-get="/api/v1/daily-quotes/schedules/html/list"
+             hx-trigger="load, refresh-schedules from:body"
+             hx-swap="innerHTML">
+            <!-- スケジュール一覧がここに読み込まれる -->
+        </div>
+    </div>
+    
     <!-- 実行履歴 -->
     <div class="border-t border-gray-200 pt-6 mt-6">
         <h4 class="text-sm font-medium text-gray-700 mb-3">実行履歴</h4>
@@ -220,3 +240,15 @@
         </div>
     </div>
 </div>
+
+<!-- スケジュール設定モーダル -->
+{% include "partials/api_endpoints/daily_quotes_schedule_modal.html" %}
+
+<script>
+function openScheduleModal() {
+    const modal = document.querySelector('[x-data="dailyQuotesScheduleManager()"]');
+    if (modal && modal.__x) {
+        modal.__x.$data.openModal();
+    }
+}
+</script>

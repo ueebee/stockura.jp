@@ -349,3 +349,71 @@ def daily_quotes_health_check() -> Dict:
             'error': str(e),
             'checked_at': datetime.now().isoformat()
         }
+
+
+@celery_app.task(bind=True)
+def sync_daily_quotes_scheduled(
+    self,
+    schedule_id: int,
+    sync_type: str,
+    data_source_id: int,
+    relative_preset: Optional[str] = None
+) -> Dict:
+    """
+    定期実行用の株価データ同期タスク
+    
+    Args:
+        schedule_id: スケジュールID
+        sync_type: 同期タイプ（full/incremental）
+        data_source_id: データソースID
+        relative_preset: 相対日付プリセット（last7days等）
+        
+    Returns:
+        Dict: 同期結果
+    """
+    print(f"Starting scheduled daily quotes sync for schedule_id: {schedule_id}")
+    
+    try:
+        # 日付を計算
+        from app.services.daily_quotes_schedule_service import DailyQuotesScheduleService
+        import pytz
+        
+        jst = pytz.timezone('Asia/Tokyo')
+        now = datetime.now(jst)
+        
+        # 相対日付から実際の日付を計算
+        if relative_preset:
+            service = DailyQuotesScheduleService(None)  # 日付計算のみなのでDBは不要
+            from_date, to_date = service.calculate_dates_from_preset(relative_preset, now)
+            
+            # 通常のタスクを呼び出し
+            return sync_daily_quotes_task.apply_async(
+                args=[data_source_id, sync_type],
+                kwargs={
+                    'from_date': from_date.isoformat() if sync_type == 'full' else None,
+                    'to_date': to_date.isoformat() if sync_type == 'full' else None,
+                    'target_date': to_date.isoformat() if sync_type == 'incremental' else None
+                }
+            ).get()
+        else:
+            # プリセットなしの場合は昨日のデータを取得
+            yesterday = (now - timedelta(days=1)).date()
+            return sync_daily_quotes_task.apply_async(
+                args=[data_source_id, sync_type],
+                kwargs={
+                    'target_date': yesterday.isoformat() if sync_type == 'incremental' else None,
+                    'from_date': yesterday.isoformat() if sync_type == 'full' else None,
+                    'to_date': yesterday.isoformat() if sync_type == 'full' else None
+                }
+            ).get()
+            
+    except Exception as e:
+        print(f"Error in sync_daily_quotes_scheduled: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return {
+            'error': str(e),
+            'status': 'failed',
+            'schedule_id': schedule_id
+        }

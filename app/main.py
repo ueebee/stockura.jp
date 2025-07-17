@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 import logging
 import asyncio
 
-from app.api.v1.endpoints import data_sources, companies, daily_quotes
+from app.api.v1.endpoints import data_sources, companies, daily_quotes, daily_quotes_schedules
 from app.services.encryption import get_encryption_service
 from app.db.session import check_database_connection
 from app.services.token_manager import cleanup_expired_tokens
@@ -46,6 +46,12 @@ app.include_router(
     daily_quotes.router,
     prefix="/api/v1",
     tags=["daily-quotes"]
+)
+
+app.include_router(
+    daily_quotes_schedules.router,
+    prefix="/api/v1",
+    tags=["daily-quotes-schedules"]
 )
 
 # HTMXビュールーターの登録
