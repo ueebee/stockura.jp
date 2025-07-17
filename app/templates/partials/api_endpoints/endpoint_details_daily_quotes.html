@@ -110,6 +110,29 @@
                 </div>
             </div>
             
+            <!-- 動的期間の説明表示 -->
+            <div x-show="datePreset !== 'custom'" class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-medium">
+                            <span x-text="datePreset === 'last7days' ? '過去7日間' : 
+                                          datePreset === 'last30days' ? '過去30日間' : 
+                                          datePreset === 'last90days' ? '過去90日間' : 
+                                          datePreset === 'thisMonth' ? '今月' : 
+                                          datePreset === 'lastMonth' ? '先月' : ''"></span>
+                            の期間設定
+                        </p>
+                        <p class="mt-1 text-xs">今実行する場合の取得期間: 
+                            <span class="font-medium" x-text="fromDate"></span> 〜 
+                            <span class="font-medium" x-text="toDate"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 日付入力フィールド -->
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -118,6 +141,8 @@
                            @change="datePreset = 'custom'"
                            :max="maxDate"
                            :required="syncMode === 'full'"
+                           :readonly="datePreset !== 'custom'"
+                           :class="{'bg-gray-50': datePreset !== 'custom'}"
                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
@@ -127,10 +152,15 @@
                            :max="maxDate"
                            :min="fromDate"
                            :required="syncMode === 'full'"
+                           :readonly="datePreset !== 'custom'"
+                           :class="{'bg-gray-50': datePreset !== 'custom'}"
                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
-            <p class="text-sm text-gray-500">指定期間の全銘柄データを取得します（最大1年間を推奨）</p>
+            <p class="text-sm text-gray-500">
+                <span x-show="datePreset === 'custom'">指定期間の全銘柄データを取得します（最大1年間を推奨）</span>
+                <span x-show="datePreset !== 'custom'">日付は手動で変更できます。変更するとカスタムモードに切り替わります。</span>
+            </p>
         </div>
 
 
