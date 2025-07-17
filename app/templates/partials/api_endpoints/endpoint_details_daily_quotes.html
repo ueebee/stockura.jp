@@ -67,10 +67,55 @@
 
         <!-- 期間指定モードのパラメータ -->
         <div x-show="syncMode === 'full'" x-transition class="space-y-4">
+            <!-- 相対日付プリセット -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">期間選択</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button"
+                            @click="selectDatePreset('last7days')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'last7days', 'bg-white border-gray-300 text-gray-700': datePreset !== 'last7days'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        過去7日間
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('last30days')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'last30days', 'bg-white border-gray-300 text-gray-700': datePreset !== 'last30days'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        過去30日間
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('last90days')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'last90days', 'bg-white border-gray-300 text-gray-700': datePreset !== 'last90days'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        過去90日間
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('thisMonth')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'thisMonth', 'bg-white border-gray-300 text-gray-700': datePreset !== 'thisMonth'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        今月
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('lastMonth')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'lastMonth', 'bg-white border-gray-300 text-gray-700': datePreset !== 'lastMonth'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        先月
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('custom')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'custom', 'bg-white border-gray-300 text-gray-700': datePreset !== 'custom'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        カスタム
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 日付入力フィールド -->
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">開始日</label>
                     <input type="date" x-model="fromDate" 
+                           @change="datePreset = 'custom'"
                            :max="maxDate"
                            :required="syncMode === 'full'"
                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -78,6 +123,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">終了日</label>
                     <input type="date" x-model="toDate" 
+                           @change="datePreset = 'custom'"
                            :max="maxDate"
                            :min="fromDate"
                            :required="syncMode === 'full'"

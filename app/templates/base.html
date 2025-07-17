@@ -190,6 +190,7 @@
                 targetDate: '',
                 fromDate: '',
                 toDate: '',
+                datePreset: 'custom',
                 isProcessing: false,
                 syncTaskId: null,
                 progressInterval: null,
@@ -211,8 +212,56 @@
                     this.syncMode = mode;
                 },
                 
+                selectDatePreset(preset) {
+                    this.datePreset = preset;
+                    
+                    // 現在のJST日時を取得
+                    const now = new Date();
+                    const jstNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+                    
+                    // 昨日のJST日付を基準とする（当日のデータは通常まだ存在しないため）
+                    const yesterday = new Date(jstNow);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    switch(preset) {
+                        case 'last7days':
+                            this.fromDate = this.addDays(yesterday, -6).toISOString().split('T')[0];
+                            this.toDate = yesterday.toISOString().split('T')[0];
+                            break;
+                        case 'last30days':
+                            this.fromDate = this.addDays(yesterday, -29).toISOString().split('T')[0];
+                            this.toDate = yesterday.toISOString().split('T')[0];
+                            break;
+                        case 'last90days':
+                            this.fromDate = this.addDays(yesterday, -89).toISOString().split('T')[0];
+                            this.toDate = yesterday.toISOString().split('T')[0];
+                            break;
+                        case 'thisMonth':
+                            const firstDayOfMonth = new Date(jstNow.getFullYear(), jstNow.getMonth(), 1);
+                            this.fromDate = firstDayOfMonth.toISOString().split('T')[0];
+                            this.toDate = yesterday.toISOString().split('T')[0];
+                            break;
+                        case 'lastMonth':
+                            const firstDayOfLastMonth = new Date(jstNow.getFullYear(), jstNow.getMonth() - 1, 1);
+                            const lastDayOfLastMonth = new Date(jstNow.getFullYear(), jstNow.getMonth(), 0);
+                            this.fromDate = firstDayOfLastMonth.toISOString().split('T')[0];
+                            this.toDate = lastDayOfLastMonth.toISOString().split('T')[0];
+                            break;
+                        case 'custom':
+                            // 手動入力モード - 日付は変更しない
+                            break;
+                    }
+                },
+                
+                addDays(date, days) {
+                    const result = new Date(date);
+                    result.setDate(result.getDate() + days);
+                    return result;
+                },
+                
                 resetForm() {
                     this.init();
+                    this.datePreset = 'custom';
                 },
                 
                 async submitSync() {
