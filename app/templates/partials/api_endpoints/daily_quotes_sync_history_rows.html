@@ -11,6 +11,19 @@
             {% else %}bg-gray-100 text-gray-800{% endif %}">
             {{ history.sync_type }}
         </span>
+        {% if history.sync_type == 'full' and history.from_date and history.to_date %}
+            <div class="text-xs text-gray-600 mt-1">
+                {{ history.from_date.strftime('%Y-%m-%d') }} 〜 {{ history.to_date.strftime('%Y-%m-%d') }}
+            </div>
+        {% elif history.sync_type == 'incremental' and history.sync_date %}
+            <div class="text-xs text-gray-600 mt-1">
+                {{ history.sync_date.strftime('%Y-%m-%d') }}
+            </div>
+        {% elif history.sync_type == 'single_stock' and history.specific_codes_str %}
+            <div class="text-xs text-gray-600 mt-1">
+                {{ history.specific_codes_str }}
+            </div>
+        {% endif %}
     </td>
     <td class="px-4 py-2 whitespace-nowrap text-center">
         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium

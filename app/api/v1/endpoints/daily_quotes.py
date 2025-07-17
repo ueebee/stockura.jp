@@ -498,6 +498,17 @@ async def get_sync_history_html(
         offset=0
     )
     
+    # specific_codesのJSONをパース
+    for history in histories:
+        if history.specific_codes:
+            try:
+                codes = json.loads(history.specific_codes)
+                history.specific_codes_str = ', '.join(codes)
+            except:
+                history.specific_codes_str = history.specific_codes
+        else:
+            history.specific_codes_str = None
+    
     context = {
         "request": request,
         "histories": histories
