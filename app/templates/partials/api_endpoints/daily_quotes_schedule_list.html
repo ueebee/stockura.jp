@@ -18,56 +18,56 @@
             <tr>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                     <div>
-                        <div class="font-medium">{{ schedule.name }}</div>
-                        {% if schedule.description %}
-                        <div class="text-xs text-gray-500">{{ schedule.description }}</div>
+                        <div class="font-medium">{{ schedule['name'] }}</div>
+                        {% if schedule.get('description') %}
+                        <div class="text-xs text-gray-500">{{ schedule['description'] }}</div>
                         {% endif %}
                     </div>
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                        {% if schedule.sync_type == 'full' %}bg-purple-100 text-purple-800
+                        {% if schedule['sync_type'] == 'full' %}bg-purple-100 text-purple-800
                         {% else %}bg-blue-100 text-blue-800{% endif %}">
-                        {{ schedule.sync_type }}
+                        {{ schedule['sync_type'] }}
                     </span>
-                    {% if schedule.relative_preset %}
+                    {% if schedule.get('relative_preset') %}
                     <div class="text-xs text-gray-600 mt-1">
-                        {% if schedule.relative_preset == 'yesterday' %}前日のみ
-                        {% elif schedule.relative_preset == 'last7days' %}過去7日間
-                        {% elif schedule.relative_preset == 'last30days' %}過去30日間
-                        {% elif schedule.relative_preset == 'last90days' %}過去90日間
-                        {% elif schedule.relative_preset == 'thisMonth' %}今月
-                        {% elif schedule.relative_preset == 'lastMonth' %}先月
+                        {% if schedule['relative_preset'] == 'yesterday' %}前日のみ
+                        {% elif schedule['relative_preset'] == 'last7days' %}過去7日間
+                        {% elif schedule['relative_preset'] == 'last30days' %}過去30日間
+                        {% elif schedule['relative_preset'] == 'last90days' %}過去90日間
+                        {% elif schedule['relative_preset'] == 'thisMonth' %}今月
+                        {% elif schedule['relative_preset'] == 'lastMonth' %}先月
                         {% endif %}
                     </div>
                     {% endif %}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center text-sm text-gray-900">
-                    {% if schedule.schedule_type == 'daily' %}
+                    {% if schedule['schedule_type'] == 'daily' %}
                         毎日
-                    {% elif schedule.schedule_type == 'weekly' %}
+                    {% elif schedule['schedule_type'] == 'weekly' %}
                         毎週
-                        {% if schedule.day_of_week == 0 %}月曜日
-                        {% elif schedule.day_of_week == 1 %}火曜日
-                        {% elif schedule.day_of_week == 2 %}水曜日
-                        {% elif schedule.day_of_week == 3 %}木曜日
-                        {% elif schedule.day_of_week == 4 %}金曜日
-                        {% elif schedule.day_of_week == 5 %}土曜日
-                        {% elif schedule.day_of_week == 6 %}日曜日
+                        {% if schedule['day_of_week'] == 0 %}月曜日
+                        {% elif schedule['day_of_week'] == 1 %}火曜日
+                        {% elif schedule['day_of_week'] == 2 %}水曜日
+                        {% elif schedule['day_of_week'] == 3 %}木曜日
+                        {% elif schedule['day_of_week'] == 4 %}金曜日
+                        {% elif schedule['day_of_week'] == 5 %}土曜日
+                        {% elif schedule['day_of_week'] == 6 %}日曜日
                         {% endif %}
-                    {% elif schedule.schedule_type == 'monthly' %}
-                        毎月{{ schedule.day_of_month }}日
+                    {% elif schedule['schedule_type'] == 'monthly' %}
+                        毎月{{ schedule['day_of_month'] }}日
                     {% endif %}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center text-sm text-gray-900">
-                    {{ schedule.execution_time }}
+                    {{ schedule['execution_time'] }}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center text-sm text-gray-900">
-                    {% if schedule.is_enabled and schedule.next_run %}
-                        <div>{{ schedule.next_run | to_jst }}</div>
-                        {% if schedule.next_run_date_range %}
+                    {% if schedule['is_enabled'] and schedule.get('next_run') %}
+                        <div>{{ schedule['next_run'] | to_jst }}</div>
+                        {% if schedule.get('next_run_date_range') %}
                         <div class="text-xs text-gray-500">
-                            {{ schedule.next_run_date_range.from_date }} 〜 {{ schedule.next_run_date_range.to_date }}
+                            {{ schedule['next_run_date_range']['from_date'] }} 〜 {{ schedule['next_run_date_range']['to_date'] }}
                         </div>
                         {% endif %}
                     {% else %}
@@ -75,19 +75,19 @@
                     {% endif %}
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center">
-                    <button onclick="toggleSchedule({{ schedule.id }})"
+                    <button onclick="toggleSchedule({{ schedule['id'] }})"
                             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer
-                            {% if schedule.is_enabled %}bg-green-100 text-green-800 hover:bg-green-200
+                            {% if schedule['is_enabled'] %}bg-green-100 text-green-800 hover:bg-green-200
                             {% else %}bg-gray-100 text-gray-800 hover:bg-gray-200{% endif %}">
-                        {% if schedule.is_enabled %}有効{% else %}無効{% endif %}
+                        {% if schedule['is_enabled'] %}有効{% else %}無効{% endif %}
                     </button>
                 </td>
                 <td class="px-4 py-2 whitespace-nowrap text-center text-sm">
-                    <button onclick="editSchedule({{ schedule | tojson | safe }})"
+                    <button onclick="editScheduleById({{ schedule['id'] }})"
                             class="text-blue-600 hover:text-blue-900 mr-2">
                         編集
                     </button>
-                    <button onclick="deleteSchedule({{ schedule.id }}, '{{ schedule.name }}')"
+                    <button onclick="deleteSchedule({{ schedule['id'] }}, '{{ schedule['name'] }}')"
                             class="text-red-600 hover:text-red-900">
                         削除
                     </button>
@@ -124,10 +124,21 @@ function toggleSchedule(scheduleId) {
     });
 }
 
-function editSchedule(scheduleData) {
-    const modal = document.querySelector('[x-data="dailyQuotesScheduleManager()"]');
-    if (modal && modal.__x) {
-        modal.__x.$data.openModal(scheduleData);
+// editSchedule関数は endpoint_details_daily_quotes.html で定義されているため、ここでは定義しない
+// ただし、IDベースの編集関数を定義
+async function editScheduleById(scheduleId) {
+    try {
+        const response = await fetch(`/api/v1/daily-quotes/schedules/${scheduleId}`);
+        if (response.ok) {
+            const schedule = await response.json();
+            if (typeof editSchedule === 'function') {
+                editSchedule(schedule);
+            } else if (typeof openScheduleForm === 'function') {
+                openScheduleForm(schedule);
+            }
+        }
+    } catch (error) {
+        alert('スケジュールの取得に失敗しました: ' + error.message);
     }
 }
 

@@ -206,7 +206,13 @@ class DailyQuotesScheduleService:
             "last_execution_at": schedule.last_execution_at.isoformat() if schedule.last_execution_at else None,
             "last_execution_status": schedule.last_execution_status,
             "last_sync_count": schedule.last_sync_count,
+            "created_at": schedule.created_at.isoformat() if schedule.created_at else None,
+            "updated_at": schedule.updated_at.isoformat() if schedule.updated_at else None
         }
+        
+        # デフォルト値を設定
+        info["next_run"] = None
+        info["next_run_date_range"] = None
         
         # 次回実行情報
         if schedule.is_enabled:

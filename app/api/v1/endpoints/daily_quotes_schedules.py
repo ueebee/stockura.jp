@@ -160,7 +160,9 @@ async def get_schedules_html(
     schedule_details = []
     for schedule in schedules:
         detail = await service.get_schedule_with_next_run(schedule.id)
-        schedule_details.append(detail)
+        if detail:
+            # detailは既に辞書形式なので、そのまま使用
+            schedule_details.append(detail)
     
     context = {
         "request": request,

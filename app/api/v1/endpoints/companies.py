@@ -439,3 +439,64 @@ async def update_company_sync_schedule(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync/schedule/{schedule_id}/toggle")
+async def toggle_company_sync_schedule(
+    schedule_id: int,
+    schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
+    db: AsyncSession = Depends(get_session)
+):
+    """同期スケジュールの有効/無効を切り替え"""
+    # 上場企業一覧エンドポイントのIDを取得
+    from app.models.api_endpoint import APIEndpoint
+    result = await db.execute(
+        select(APIEndpoint).where(APIEndpoint.data_type == "listed_companies")
+    )
+    endpoint = result.scalar_one_or_none()
+    
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
+    
+    try:
+        toggled_schedule = await schedule_service.toggle_schedule(endpoint.id)
+        
+        return {
+            "status": "success",
+            "is_enabled": toggled_schedule.is_enabled,
+            "message": f"スケジュールを{'有効' if toggled_schedule.is_enabled else '無効'}にしました"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/sync/schedule/{schedule_id}")
+async def delete_company_sync_schedule(
+    schedule_id: int,
+    schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
+    db: AsyncSession = Depends(get_session)
+):
+    """同期スケジュールを削除"""
+    # 上場企業一覧エンドポイントのIDを取得
+    from app.models.api_endpoint import APIEndpoint
+    result = await db.execute(
+        select(APIEndpoint).where(APIEndpoint.data_type == "listed_companies")
+    )
+    endpoint = result.scalar_one_or_none()
+    
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
+    
+    try:
+        await schedule_service.delete_schedule(endpoint.id)
+        
+        return {
+            "status": "success",
+            "message": "スケジュールを削除しました"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

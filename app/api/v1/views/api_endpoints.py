@@ -12,6 +12,8 @@ from fastapi.templating import Jinja2Templates
 
 from app.db.session import get_db
 from app.models import DataSource, APIEndpoint, APIEndpointExecutionLog, APIEndpointSchedule, EndpointDataType, ExecutionMode
+from app.models.daily_quote_schedule import DailyQuoteSchedule
+from app.models.daily_quote import DailyQuotesSyncHistory
 from app.core.template_filters import to_jst, to_jst_with_seconds
 
 router = APIRouter()
@@ -20,6 +22,118 @@ templates = Jinja2Templates(directory="app/templates")
 # カスタムフィルタを登録
 templates.env.filters['to_jst'] = to_jst
 templates.env.filters['to_jst_with_seconds'] = to_jst_with_seconds
+
+
+def _get_endpoint_schedule_info(db: Session, endpoint: APIEndpoint) -> Optional[Dict[str, Any]]:
+    """
+    エンドポイントのスケジュール情報を取得する共通関数
+    
+    Returns:
+        Dict with keys:
+            - is_enabled: bool - スケジュールが有効かどうか
+            - execution_time: time or None - 実行時刻
+            - schedule_type: str or None - スケジュールタイプ（daily, weekly, monthly）
+    """
+    if endpoint.data_type == EndpointDataType.LISTED_COMPANIES:
+        # 上場企業一覧用のスケジュール
+        schedule = db.query(APIEndpointSchedule).filter(
+            APIEndpointSchedule.endpoint_id == endpoint.id
+        ).first()
+        if schedule:
+            return {
+                "is_enabled": schedule.is_enabled,
+                "execution_time": schedule.execution_time,
+                "schedule_type": "daily"  # 上場企業一覧は日次のみ
+            }
+    elif endpoint.data_type == EndpointDataType.DAILY_QUOTES:
+        # 日次株価データ用のスケジュール
+        # 有効なスケジュールが1つでもあるかチェック
+        active_schedule = db.query(DailyQuoteSchedule).filter(
+            DailyQuoteSchedule.data_source_id == endpoint.data_source_id,
+            DailyQuoteSchedule.is_enabled == True
+        ).first()
+        if active_schedule:
+            return {
+                "is_enabled": True,
+                "execution_time": active_schedule.execution_time,
+                "schedule_type": active_schedule.schedule_type
+            }
+    
+    return None
+
+
+def _get_endpoint_execution_stats(db: Session, endpoint: APIEndpoint) -> Dict[str, Any]:
+    """
+    エンドポイントの実行統計情報を取得する共通関数
+    
+    Returns:
+        Dict with keys:
+            - last_execution_at: datetime or None - 最終実行日時
+            - last_success_at: datetime or None - 最終成功日時
+            - last_error_at: datetime or None - 最終エラー日時
+            - total_executions: int - 総実行回数
+            - successful_executions: int - 成功した実行回数
+            - last_data_count: int or None - 最後のデータ件数
+    """
+    if endpoint.data_type == EndpointDataType.LISTED_COMPANIES:
+        # APIEndpointExecutionLogから統計を取得（既存のエンドポイントの値を使用）
+        return {
+            "last_execution_at": endpoint.last_execution_at,
+            "last_success_at": endpoint.last_success_at,
+            "last_error_at": endpoint.last_error_at,
+            "total_executions": endpoint.total_executions,
+            "successful_executions": endpoint.successful_executions,
+            "last_data_count": endpoint.last_data_count
+        }
+    elif endpoint.data_type == EndpointDataType.DAILY_QUOTES:
+        # DailyQuotesSyncHistoryから統計を計算
+        # 最新の実行履歴を取得
+        latest_history = db.query(DailyQuotesSyncHistory).order_by(
+            DailyQuotesSyncHistory.started_at.desc()
+        ).first()
+        
+        # 最後の成功した実行
+        latest_success = db.query(DailyQuotesSyncHistory).filter(
+            DailyQuotesSyncHistory.status == "completed"
+        ).order_by(
+            DailyQuotesSyncHistory.started_at.desc()
+        ).first()
+        
+        # 最後のエラー実行
+        latest_error = db.query(DailyQuotesSyncHistory).filter(
+            DailyQuotesSyncHistory.status == "failed"
+        ).order_by(
+            DailyQuotesSyncHistory.started_at.desc()
+        ).first()
+        
+        # 統計情報を計算
+        total_executions = db.query(DailyQuotesSyncHistory).count()
+        successful_executions = db.query(DailyQuotesSyncHistory).filter(
+            DailyQuotesSyncHistory.status == "completed"
+        ).count()
+        
+        last_data_count = None
+        if latest_history and latest_history.total_records:
+            last_data_count = latest_history.total_records
+        
+        return {
+            "last_execution_at": latest_history.started_at if latest_history else None,
+            "last_success_at": latest_success.started_at if latest_success else None,
+            "last_error_at": latest_error.started_at if latest_error else None,
+            "total_executions": total_executions,
+            "successful_executions": successful_executions,
+            "last_data_count": last_data_count
+        }
+    else:
+        # その他のエンドポイントタイプ（デフォルト値）
+        return {
+            "last_execution_at": endpoint.last_execution_at,
+            "last_success_at": endpoint.last_success_at,
+            "last_error_at": endpoint.last_error_at,
+            "total_executions": endpoint.total_executions,
+            "successful_executions": endpoint.successful_executions,
+            "last_data_count": endpoint.last_data_count
+        }
 
 
 @router.get("/data-sources/{data_source_id}/endpoints", response_class=HTMLResponse)
@@ -46,19 +160,23 @@ async def get_endpoints(
     if not endpoints:
         endpoints = _create_initial_endpoints(db, data_source)
     
-    # 各エンドポイントのスケジュール情報を取得
+    # 各エンドポイントのスケジュール情報と実行統計を取得
     endpoint_schedules = {}
+    endpoint_stats = {}
     for endpoint in endpoints:
-        schedule = db.query(APIEndpointSchedule).filter(
-            APIEndpointSchedule.endpoint_id == endpoint.id
-        ).first()
-        endpoint_schedules[endpoint.id] = schedule
+        schedule_info = _get_endpoint_schedule_info(db, endpoint)
+        endpoint_schedules[endpoint.id] = schedule_info
+        
+        # 実行統計情報を取得
+        stats = _get_endpoint_execution_stats(db, endpoint)
+        endpoint_stats[endpoint.id] = stats
     
     context = {
         "request": request,
         "data_source": data_source,
         "endpoints": endpoints,
         "endpoint_schedules": endpoint_schedules,
+        "endpoint_stats": endpoint_stats,
         "data_types": EndpointDataType,
         "execution_modes": ExecutionMode
     }
@@ -179,15 +297,15 @@ async def toggle_endpoint(
     db.commit()
     db.refresh(endpoint)
     
-    # スケジュール情報を取得
-    schedule = db.query(APIEndpointSchedule).filter(
-        APIEndpointSchedule.endpoint_id == endpoint.id
-    ).first()
+    # スケジュール情報と実行統計を取得
+    schedule_info = _get_endpoint_schedule_info(db, endpoint)
+    stats = _get_endpoint_execution_stats(db, endpoint)
     
     context = {
         "request": request,
         "endpoint": endpoint,
-        "endpoint_schedules": {endpoint.id: schedule}
+        "endpoint_schedules": {endpoint.id: schedule_info},
+        "endpoint_stats": {endpoint.id: stats}
     }
     
     return templates.TemplateResponse("partials/api_endpoints/endpoint_row.html", context)

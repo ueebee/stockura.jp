@@ -1,6 +1,6 @@
 # Stockura.jp - 上場銘柄一覧管理システム
 
-## 概要
+## 概要MCP
 
 J-Quants APIを使用して日本の上場銘柄情報を取得・管理するWebアプリケーションです。効率的な検索、フィルタリング、リアルタイム同期機能を提供します。
 
@@ -59,7 +59,7 @@ J-Quants APIを使用して日本の上場銘柄情報を取得・管理するWe
 #### 企業情報 (companies)
 ```sql
 - code: 銘柄コード (例: "7203")
-- company_name: 企業名 (例: "トヨタ自動車株式会社")  
+- company_name: 企業名 (例: "トヨタ自動車株式会社")
 - company_name_english: 企業名英語 (例: "Toyota Motor Corporation")
 - market_code: 市場区分 (例: "0111" = プライム)
 - sector17_code: 17業種コード (例: "6" = 自動車・輸送機)
@@ -150,7 +150,7 @@ X-API-Key: your-api-key
 # 企業一覧取得
 GET /api/v1/companies?market_code=0111&sector17_code=6&limit=100
 
-# 特定企業取得  
+# 特定企業取得
 GET /api/v1/companies/7203
 
 # 企業検索
@@ -204,7 +204,7 @@ docker compose exec db psql -U postgres -d stockura
 # 単体テスト
 docker compose exec web pytest tests/unit/
 
-# 統合テスト  
+# 統合テスト
 docker compose exec web pytest tests/integration/
 
 # 全テスト

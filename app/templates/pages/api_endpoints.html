@@ -53,9 +53,6 @@
                             データ種別
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            ステータス
-                        </th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             実行モード
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -67,8 +64,8 @@
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             成功率
                         </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            アクション
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            詳細
                         </th>
                     </tr>
                 </thead>
@@ -85,6 +82,9 @@
     <div id="endpoint-details" class="mt-6">
         <!-- HTMXで動的に読み込まれる -->
     </div>
+    
+    <!-- 設定モーダル用コンテナ（将来の拡張用） -->
+    <div id="endpoint-settings-modal"></div>
 </div>
 
 <script>

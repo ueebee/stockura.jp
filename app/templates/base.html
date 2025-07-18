@@ -185,31 +185,19 @@
         // Alpine.jsコンポーネントの定義をここに移動
         document.addEventListener('alpine:init', () => {
             Alpine.data('dailyQuotesSyncManager', () => ({
-                syncMode: 'incremental',
+                syncMode: 'full',
                 dataSourceId: 1,
-                targetDate: '',
                 fromDate: '',
                 toDate: '',
-                datePreset: 'custom',
+                datePreset: 'yesterday',
                 isProcessing: false,
                 syncTaskId: null,
                 progressInterval: null,
                 maxDate: new Date().toISOString().split('T')[0],
                 
                 init() {
-                    // デフォルト値を設定
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    this.targetDate = yesterday.toISOString().split('T')[0];
-                    
-                    const oneYearAgo = new Date();
-                    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                    this.fromDate = oneYearAgo.toISOString().split('T')[0];
-                    this.toDate = yesterday.toISOString().split('T')[0];
-                },
-                
-                selectSyncMode(mode) {
-                    this.syncMode = mode;
+                    // デフォルト値を設定（昨日のみ）
+                    this.selectDatePreset('yesterday');
                 },
                 
                 selectDatePreset(preset) {
@@ -224,6 +212,14 @@
                     yesterday.setDate(yesterday.getDate() - 1);
                     
                     switch(preset) {
+                        case 'today':
+                            this.fromDate = jstNow.toISOString().split('T')[0];
+                            this.toDate = jstNow.toISOString().split('T')[0];
+                            break;
+                        case 'yesterday':
+                            this.fromDate = yesterday.toISOString().split('T')[0];
+                            this.toDate = yesterday.toISOString().split('T')[0];
+                            break;
                         case 'last7days':
                             this.fromDate = this.addDays(yesterday, -6).toISOString().split('T')[0];
                             this.toDate = yesterday.toISOString().split('T')[0];
@@ -271,18 +267,14 @@
                     const syncResult = document.getElementById('sync-result');
                     
                     try {
-                        // パラメータを構築
+                        // パラメータを構築（常にfullモードで送信）
                         const params = new URLSearchParams({
-                            sync_type: this.syncMode,
+                            sync_type: 'full',
                             data_source_id: this.dataSourceId
                         });
                         
-                        if (this.syncMode === 'incremental' && this.targetDate) {
-                            params.append('target_date', this.targetDate);
-                        } else if (this.syncMode === 'full') {
-                            if (this.fromDate) params.append('from_date', this.fromDate);
-                            if (this.toDate) params.append('to_date', this.toDate);
-                        }
+                        if (this.fromDate) params.append('from_date', this.fromDate);
+                        if (this.toDate) params.append('to_date', this.toDate);
                         
                         // APIを呼び出し
                         const response = await fetch('/api/v1/daily-quotes/sync/manual?' + params, {
@@ -440,6 +432,139 @@
                     }
                 }
             }));
+        });
+
+        // 日次株価データスケジュール管理用のAlpine.jsコンポーネント
+        Alpine.data('dailyQuotesScheduleManager', () => ({
+            isOpen: false,
+            isProcessing: false,
+            scheduleId: null,
+            scheduleName: '',
+            description: '',
+            dataSourceId: 1,
+            syncType: 'incremental',
+            relativePreset: 'yesterday',
+            scheduleType: 'daily',
+            executionTime: '06:00',
+            dayOfWeek: 0,
+            dayOfMonth: 1,
+            isEnabled: true,
+            
+            openModal(scheduleData = null) {
+                if (scheduleData) {
+                    // 編集モード
+                    this.scheduleId = scheduleData.id;
+                    this.scheduleName = scheduleData.name;
+                    this.description = scheduleData.description || '';
+                    this.dataSourceId = scheduleData.data_source_id;
+                    this.syncType = scheduleData.sync_type;
+                    this.relativePreset = scheduleData.relative_preset || 'yesterday';
+                    this.scheduleType = scheduleData.schedule_type;
+                    this.executionTime = scheduleData.execution_time;
+                    this.dayOfWeek = scheduleData.day_of_week || 0;
+                    this.dayOfMonth = scheduleData.day_of_month || 1;
+                    this.isEnabled = scheduleData.is_enabled;
+                } else {
+                    // 新規作成モード
+                    this.resetForm();
+                }
+                this.isOpen = true;
+                // モーダルを表示
+                const modal = document.getElementById('daily-quotes-schedule-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
+            },
+            
+            closeModal() {
+                this.isOpen = false;
+                this.resetForm();
+                // モーダルを非表示
+                const modal = document.getElementById('daily-quotes-schedule-modal');
+                if (modal) {
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                    }, 200); // トランジションの時間を考慮
+                }
+            },
+            
+            resetForm() {
+                this.scheduleId = null;
+                this.scheduleName = '';
+                this.description = '';
+                this.dataSourceId = 1;
+                this.syncType = 'incremental';
+                this.relativePreset = 'yesterday';
+                this.scheduleType = 'daily';
+                this.executionTime = '06:00';
+                this.dayOfWeek = 0;
+                this.dayOfMonth = 1;
+                this.isEnabled = true;
+                this.isProcessing = false;
+            },
+            
+            async saveSchedule() {
+                if (this.isProcessing) return;
+                
+                this.isProcessing = true;
+                
+                try {
+                    const data = {
+                        name: this.scheduleName,
+                        description: this.description || null,
+                        sync_type: this.syncType,
+                        relative_preset: this.syncType === 'full' ? this.relativePreset : null,
+                        data_source_id: this.dataSourceId,
+                        schedule_type: this.scheduleType,
+                        execution_time: this.executionTime,
+                        day_of_week: this.scheduleType === 'weekly' ? parseInt(this.dayOfWeek) : null,
+                        day_of_month: this.scheduleType === 'monthly' ? parseInt(this.dayOfMonth) : null,
+                        is_enabled: this.isEnabled
+                    };
+                    
+                    const url = this.scheduleId 
+                        ? `/api/v1/daily-quotes/schedules/${this.scheduleId}`
+                        : '/api/v1/daily-quotes/schedules';
+                    
+                    const method = this.scheduleId ? 'PUT' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        // スケジュール一覧を更新
+                        htmx.trigger('#schedule-list-container', 'refresh-schedules');
+                        this.closeModal();
+                    } else {
+                        const error = await response.json();
+                        alert('エラー: ' + (error.detail || 'スケジュールの保存に失敗しました'));
+                    }
+                } catch (error) {
+                    alert('エラー: ' + error.message);
+                } finally {
+                    this.isProcessing = false;
+                }
+            }
+        }));
+
+        // HTMXイベントリスナーを追加して、動的にロードされたコンテンツのAlpine.jsを初期化
+        document.addEventListener('htmx:afterSettle', function(event) {
+            // モーダルが含まれている場合は、少し待ってから初期化を試みる
+            if (event.detail.elt && event.detail.elt.querySelector('#daily-quotes-schedule-modal')) {
+                setTimeout(() => {
+                    // Alpine.jsの再初期化が必要な場合
+                    const modal = document.getElementById('daily-quotes-schedule-modal');
+                    if (modal && !modal.__x) {
+                        // Alpine.jsコンポーネントとして手動で初期化
+                        Alpine.initTree(modal);
+                    }
+                }, 100);
+            }
         });
     </script>
 </body>

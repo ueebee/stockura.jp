@@ -1,0 +1,271 @@
+<!-- 日次株価データ定期実行スケジュール設定フォーム（インライン版） -->
+<div id="schedule-form-container" 
+     x-data="scheduleFormManager()"
+     x-show="isFormVisible"
+     x-transition
+     class="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-4">
+    
+    <div class="flex items-center justify-between mb-4">
+        <h4 class="text-lg font-semibold text-gray-900">
+            <span x-text="editingSchedule ? '定期実行スケジュールを編集' : '新規定期実行スケジュール'"></span>
+        </h4>
+        <button @click="closeForm()" class="text-gray-400 hover:text-gray-500">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+    
+    <form @submit.prevent="saveSchedule" class="space-y-4">
+        <!-- スケジュール名 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">スケジュール名 <span class="text-red-500">*</span></label>
+                <input type="text" x-model="formData.name" required
+                       placeholder="例: 日次更新（過去7日間）"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">説明（任意）</label>
+                <input type="text" x-model="formData.description"
+                       placeholder="例: 毎朝6時に過去7日間のデータを取得"
+                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+        </div>
+        
+        <!-- 同期設定 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">同期タイプ</label>
+                <div class="flex gap-2">
+                    <button type="button"
+                            @click="formData.syncType = 'incremental'"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': formData.syncType === 'incremental', 'bg-white border-gray-300 text-gray-700': formData.syncType !== 'incremental'}"
+                            class="flex-1 px-3 py-2 border rounded-md text-sm font-medium transition-colors">
+                        特定日（前日）
+                    </button>
+                    <button type="button"
+                            @click="formData.syncType = 'full'"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': formData.syncType === 'full', 'bg-white border-gray-300 text-gray-700': formData.syncType !== 'full'}"
+                            class="flex-1 px-3 py-2 border rounded-md text-sm font-medium transition-colors">
+                        期間指定
+                    </button>
+                </div>
+            </div>
+            
+            <div x-show="formData.syncType === 'full'">
+                <label class="block text-sm font-medium text-gray-700 mb-2">取得期間</label>
+                <select x-model="formData.relativePreset"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="yesterday">前日のみ</option>
+                    <option value="last7days">実行日から過去7日間</option>
+                    <option value="last30days">実行日から過去30日間</option>
+                    <option value="last90days">実行日から過去90日間</option>
+                    <option value="thisMonth">実行月の1日から前日まで</option>
+                    <option value="lastMonth">前月全体</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- スケジュール設定 -->
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">実行頻度</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button"
+                            @click="formData.scheduleType = 'daily'"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': formData.scheduleType === 'daily', 'bg-white border-gray-300 text-gray-700': formData.scheduleType !== 'daily'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors">
+                        毎日
+                    </button>
+                    <button type="button"
+                            @click="formData.scheduleType = 'weekly'"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': formData.scheduleType === 'weekly', 'bg-white border-gray-300 text-gray-700': formData.scheduleType !== 'weekly'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors">
+                        毎週
+                    </button>
+                    <button type="button"
+                            @click="formData.scheduleType = 'monthly'"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': formData.scheduleType === 'monthly', 'bg-white border-gray-300 text-gray-700': formData.scheduleType !== 'monthly'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors">
+                        毎月
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">実行時刻（JST） <span class="text-red-500">*</span></label>
+                    <input type="time" x-model="formData.executionTime" required
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div x-show="formData.scheduleType === 'weekly'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">実行曜日</label>
+                    <select x-model="formData.dayOfWeek"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="0">月曜日</option>
+                        <option value="1">火曜日</option>
+                        <option value="2">水曜日</option>
+                        <option value="3">木曜日</option>
+                        <option value="4">金曜日</option>
+                        <option value="5">土曜日</option>
+                        <option value="6">日曜日</option>
+                    </select>
+                </div>
+                
+                <div x-show="formData.scheduleType === 'monthly'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">実行日</label>
+                    <input type="number" x-model="formData.dayOfMonth" min="1" max="31"
+                           placeholder="1-31"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 有効/無効 -->
+        <div class="flex items-center">
+            <input type="checkbox" x-model="formData.isEnabled" id="schedule-enabled"
+                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+            <label for="schedule-enabled" class="ml-2 block text-sm text-gray-900">
+                スケジュールを有効にする
+            </label>
+        </div>
+        
+        <!-- ボタン -->
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button type="button" @click="closeForm()"
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                キャンセル
+            </button>
+            <button type="submit"
+                    :disabled="isProcessing"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-show="!isProcessing">保存</span>
+                <span x-show="isProcessing" class="flex items-center">
+                    <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    処理中...
+                </span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('scheduleFormManager', () => ({
+        isFormVisible: false,
+        isProcessing: false,
+        editingSchedule: null,
+        formData: {
+            name: '',
+            description: '',
+            syncType: 'incremental',
+            relativePreset: 'last7days',
+            scheduleType: 'daily',
+            executionTime: '06:00',
+            dayOfWeek: 0,
+            dayOfMonth: 1,
+            isEnabled: true,
+            dataSourceId: document.querySelector('[x-data="dailyQuotesSyncManager()"]')?.__x?.$data?.dataSourceId || 1
+        },
+        
+        openForm(schedule = null) {
+            if (schedule) {
+                // 編集モード
+                this.editingSchedule = schedule;
+                this.formData = {
+                    name: schedule.name,
+                    description: schedule.description || '',
+                    syncType: schedule.sync_type,
+                    relativePreset: schedule.relative_preset || 'yesterday',
+                    scheduleType: schedule.schedule_type,
+                    executionTime: schedule.execution_time,
+                    dayOfWeek: schedule.day_of_week || 0,
+                    dayOfMonth: schedule.day_of_month || 1,
+                    isEnabled: schedule.is_enabled,
+                    dataSourceId: schedule.data_source_id
+                };
+            } else {
+                // 新規作成モード
+                this.resetForm();
+            }
+            this.isFormVisible = true;
+        },
+        
+        closeForm() {
+            this.isFormVisible = false;
+            this.resetForm();
+        },
+        
+        resetForm() {
+            this.editingSchedule = null;
+            this.formData = {
+                name: '',
+                description: '',
+                syncType: 'incremental',
+                relativePreset: 'last7days',
+                scheduleType: 'daily',
+                executionTime: '06:00',
+                dayOfWeek: 0,
+                dayOfMonth: 1,
+                isEnabled: true,
+                dataSourceId: document.querySelector('[x-data="dailyQuotesSyncManager()"]')?.__x?.$data?.dataSourceId || 1
+            };
+            this.isProcessing = false;
+        },
+        
+        async saveSchedule() {
+            if (this.isProcessing) return;
+            
+            this.isProcessing = true;
+            
+            try {
+                const data = {
+                    name: this.formData.name,
+                    description: this.formData.description || null,
+                    sync_type: this.formData.syncType,
+                    relative_preset: this.formData.syncType === 'full' ? this.formData.relativePreset : null,
+                    data_source_id: this.formData.dataSourceId,
+                    schedule_type: this.formData.scheduleType,
+                    execution_time: this.formData.executionTime,
+                    day_of_week: this.formData.scheduleType === 'weekly' ? parseInt(this.formData.dayOfWeek) : null,
+                    day_of_month: this.formData.scheduleType === 'monthly' ? parseInt(this.formData.dayOfMonth) : null,
+                    is_enabled: this.formData.isEnabled
+                };
+                
+                const url = this.editingSchedule 
+                    ? `/api/v1/daily-quotes/schedules/${this.editingSchedule.id}`
+                    : '/api/v1/daily-quotes/schedules';
+                
+                const method = this.editingSchedule ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    // スケジュール一覧を更新
+                    htmx.trigger('#schedule-list-container', 'refresh-schedules');
+                    this.closeForm();
+                } else {
+                    const error = await response.json();
+                    alert('エラー: ' + (error.detail || 'スケジュールの保存に失敗しました'));
+                }
+            } catch (error) {
+                alert('エラー: ' + error.message);
+            } finally {
+                this.isProcessing = false;
+            }
+        }
+    }));
+});
+</script>

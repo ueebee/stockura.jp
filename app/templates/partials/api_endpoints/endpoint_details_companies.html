@@ -10,106 +10,92 @@
         </button>
     </div>
 
-    <!-- 同期状態 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div class="bg-gray-50 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-700 mb-2">同期状態</h4>
-            <div class="space-y-2">
-                {% if schedule %}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">状態:</span>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                        {% if schedule.is_enabled %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
-                        {{ '有効' if schedule.is_enabled else '無効' }}
-                    </span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">定期実行:</span>
-                    <span class="text-sm font-medium text-gray-900">
-                        毎日 {{ schedule.execution_time.strftime('%H:%M') }} (JST)
-                    </span>
-                </div>
-                {% if schedule.last_execution_at %}
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">最終同期:</span>
-                    <span class="text-sm text-gray-900">
-                        {{ schedule.last_execution_at | to_jst_with_seconds }}
-                    </span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">同期件数:</span>
-                    <span class="text-sm font-medium text-gray-900">
-                        {{ '{:,}'.format(schedule.last_sync_count or 0) }} 社
-                    </span>
-                </div>
-                {% endif %}
-                {% else %}
-                <p class="text-sm text-gray-500">スケジュール未設定</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-700 mb-2">次回実行予定</h4>
-            {% if schedule and schedule.is_enabled %}
-            <div class="space-y-2">
-                <p class="text-sm text-gray-900" id="next-execution-time">
-                    計算中...
-                </p>
-                <div class="flex items-center space-x-2 mt-3">
-                    <button hx-post="/api/v1/companies/sync/manual"
-                            hx-target="#sync-task-response"
-                            hx-swap="innerHTML"
-                            onclick="startSyncProgress()"
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                        </svg>
-                        今すぐ同期
-                    </button>
-                    <button onclick="showScheduleModal()"
-                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        実行時間を変更
-                    </button>
-                </div>
-            </div>
-            {% else %}
-            <div class="space-y-2">
-                <p class="text-sm text-gray-500">スケジュール未設定</p>
-                <div class="flex items-center space-x-2 mt-3">
-                    <button hx-post="/api/v1/companies/sync/manual"
-                            hx-target="#sync-task-response"
-                            hx-swap="innerHTML"
-                            onclick="startSyncProgress()"
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                        </svg>
-                        今すぐ同期
-                    </button>
-                    <button onclick="showCreateScheduleModal()"
-                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        スケジュールを作成
-                    </button>
-                </div>
-            </div>
+    <!-- 同期状態と手動実行 -->
+    <div class="border-b border-gray-200 pb-4 mb-6">
+        <h4 class="text-sm font-medium text-gray-700 mb-2">企業情報同期</h4>
+        <p class="text-sm text-gray-600">J-Quantsから上場企業の基本情報を同期します。</p>
+        <div class="mt-3 flex items-center space-x-3">
+            <button hx-post="/api/v1/companies/sync/manual"
+                    hx-target="#sync-task-response"
+                    hx-swap="innerHTML"
+                    onclick="startSyncProgress()"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                今すぐ同期
+            </button>
+            {% if schedule and schedule.last_execution_at %}
+            <span class="text-sm text-gray-500">
+                最終同期: {{ schedule.last_execution_at | to_jst_with_seconds }}
+                ({{ '{:,}'.format(schedule.last_sync_count or 0) }}社)
+            </span>
             {% endif %}
         </div>
     </div>
-
+    
     <!-- 同期結果表示エリア -->
     <div id="sync-result"></div>
     <!-- 同期タスクレスポンス（非表示） -->
     <div id="sync-task-response" style="display: none;"></div>
 
+    <!-- 定期実行スケジュール -->
+    <div class="border-t border-gray-200 pt-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-medium text-gray-700">定期実行スケジュール</h4>
+            {% if not schedule %}
+            <button onclick="openScheduleModal()"
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                新規スケジュール
+            </button>
+            {% endif %}
+        </div>
+        
+        {% if schedule %}
+        <!-- スケジュール表示 -->
+        <div class="bg-gray-50 rounded-lg p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">実行時刻</p>
+                    <p class="text-sm font-medium text-gray-900">
+                        毎日 {{ schedule.execution_time.strftime('%H:%M') }} (JST)
+                    </p>
+                </div>
+                <!-- Status display removed per requirements -->
+                <div>
+                    <p class="text-sm text-gray-600">次回実行予定</p>
+                    <p class="text-sm font-medium text-gray-900" id="next-execution-time">
+                        計算中...
+                    </p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">操作</p>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="openScheduleModal({{ schedule.id }})"
+                                class="text-sm text-blue-600 hover:text-blue-800">
+                            編集
+                        </button>
+                        <span class="text-gray-300">|</span>
+                        <button onclick="deleteSchedule({{ schedule.id }})"
+                                class="text-sm text-red-600 hover:text-red-800">
+                            削除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <p class="text-sm text-gray-500">スケジュールが設定されていません</p>
+        </div>
+        {% endif %}
+    </div>
+    
     <!-- 実行履歴 -->
-    <div class="border-t border-gray-200 pt-6">
+    <div class="border-t border-gray-200 pt-6 mt-6">
         <h4 class="text-sm font-medium text-gray-700 mb-3">実行履歴</h4>
         <div class="overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200">
@@ -122,88 +108,37 @@
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">実行時間</th>
                     </tr>
                 </thead>
-                <tbody id="execution-history-tbody" class="bg-white divide-y divide-gray-200">
-                    {% for log in execution_logs[:5] %}
-                    <tr>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                            {{ log.started_at | to_jst_with_seconds }}
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                {% if log.execution_type == 'scheduled' %}bg-blue-100 text-blue-800
-                                {% elif log.execution_type == 'manual' %}bg-gray-100 text-gray-800
-                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                {{ log.execution_type }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                {% if log.success %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
-                                {{ '成功' if log.success else '失敗' }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
-                            {% if log.data_count %}
-                                {{ '{:,}'.format(log.data_count) }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
-                            {% if log.response_time_ms %}
-                                {{ '{:,.1f}'.format(log.response_time_ms / 1000) }}秒
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">
-                            実行履歴がありません
-                        </td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="execution-history-tbody" class="bg-white divide-y divide-gray-200"
+                       hx-get="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/execution-history"
+                       hx-trigger="load, refresh-history from:body"
+                       hx-swap="innerHTML">
+                    <!-- 履歴データはHTMXで動的に読み込み -->
                 </tbody>
             </table>
         </div>
-        {% if execution_logs|length > 5 %}
-        <div class="mt-3 text-center">
-            <a href="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/logs"
-               class="text-sm text-blue-600 hover:text-blue-800">
-                すべての履歴を表示
-            </a>
-        </div>
-        {% endif %}
     </div>
 </div>
 
-<!-- スケジュール変更モーダル -->
+<!-- スケジュール編集モーダル -->
 <div id="schedule-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">定期実行時間の設定</h3>
+            <h3 class="text-lg font-semibold text-gray-900" id="schedule-modal-title">定期実行時間の設定</h3>
         </div>
-        <form id="schedule-form" 
-              hx-post="/api/v1/companies/sync/schedule"
-              hx-target="#sync-result"
-              hx-on::after-request="hideScheduleModal(); setTimeout(() => window.location.reload(), 1000);">
+        <form id="schedule-form">
+            <input type="hidden" name="schedule_id" id="schedule_id" value="">
             <div class="px-6 py-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">実行時間 (JST)</label>
                 <div class="flex items-center space-x-2">
-                    <select name="hour" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <select name="hour" id="schedule_hour" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         {% for h in range(24) %}
-                        <option value="{{ h }}" {% if schedule and schedule.execution_time.hour == h %}selected{% endif %}>
-                            {{ '%02d'|format(h) }}
-                        </option>
+                        <option value="{{ h }}">{{ '%02d'|format(h) }}</option>
                         {% endfor %}
                     </select>
                     <span class="text-lg font-medium text-gray-700">:</span>
-                    <select name="minute" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <select name="minute" id="schedule_minute" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         {% for m in range(60) %}
-                        <option value="{{ m }}" {% if schedule and schedule.execution_time.minute == m %}selected{% endif %}>
-                            {{ '%02d'|format(m) }}
-                        </option>
+                        <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -213,7 +148,7 @@
                 </p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button type="button" onclick="hideScheduleModal()"
+                <button type="button" onclick="closeScheduleModal()"
                         class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     キャンセル
                 </button>
@@ -227,6 +162,96 @@
 </div>
 
 <script>
+// スケジュール管理関数
+function openScheduleModal(scheduleId = null) {
+    const modal = document.getElementById('schedule-modal');
+    const form = document.getElementById('schedule-form');
+    const titleEl = document.getElementById('schedule-modal-title');
+    
+    if (scheduleId) {
+        // 編集モード
+        titleEl.textContent = '定期実行時間の変更';
+        document.getElementById('schedule_id').value = scheduleId;
+        
+        // 既存の時刻を設定
+        {% if schedule %}
+        document.getElementById('schedule_hour').value = '{{ schedule.execution_time.hour }}';
+        document.getElementById('schedule_minute').value = '{{ schedule.execution_time.minute }}';
+        {% endif %}
+        
+        form.setAttribute('hx-put', '/api/v1/companies/sync/schedule');
+    } else {
+        // 新規作成モード
+        titleEl.textContent = '定期実行時間の設定';
+        document.getElementById('schedule_id').value = '';
+        
+        // デフォルト値を設定（朝5時）
+        document.getElementById('schedule_hour').value = '5';
+        document.getElementById('schedule_minute').value = '0';
+        
+        form.setAttribute('hx-post', '/api/v1/companies/sync/schedule');
+    }
+    
+    // HTMXの属性を設定
+    form.setAttribute('hx-target', '#sync-result');
+    form.setAttribute('hx-swap', 'innerHTML');
+    htmx.process(form);
+    
+    modal.classList.remove('hidden');
+}
+
+function closeScheduleModal() {
+    document.getElementById('schedule-modal').classList.add('hidden');
+}
+
+function toggleSchedule(scheduleId) {
+    if (confirm('スケジュールの有効/無効を切り替えますか？')) {
+        fetch(`/api/v1/companies/sync/schedule/${scheduleId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // ページをリロードして最新状態を反映
+                window.location.reload();
+            } else {
+                alert('エラーが発生しました: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+}
+
+function deleteSchedule(scheduleId) {
+    if (confirm('このスケジュールを削除しますか？')) {
+        fetch(`/api/v1/companies/sync/schedule/${scheduleId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // ページをリロードして最新状態を反映
+                window.location.reload();
+            } else {
+                alert('エラーが発生しました: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+}
+
 // 次回実行時刻の計算と表示
 function updateNextExecutionTime() {
     {% if schedule and schedule.is_enabled %}
@@ -256,37 +281,6 @@ function updateNextExecutionTime() {
     {% endif %}
 }
 
-// スケジュール変更モーダルの表示/非表示
-function showScheduleModal() {
-    const form = document.getElementById('schedule-form');
-    // 既存スケジュールがある場合はPUTメソッドに変更
-    form.removeAttribute('hx-post');
-    form.setAttribute('hx-put', '/api/v1/companies/sync/schedule');
-    // HTMXを再処理して新しい属性を認識させる
-    htmx.process(form);
-    document.getElementById('schedule-modal').classList.remove('hidden');
-}
-
-function hideScheduleModal() {
-    document.getElementById('schedule-modal').classList.add('hidden');
-}
-
-// スケジュール作成モーダルの表示（新規作成時はPOSTメソッドに変更）
-function showCreateScheduleModal() {
-    const form = document.getElementById('schedule-form');
-    // 新規作成時はPOSTメソッドを使用
-    form.removeAttribute('hx-put');
-    form.setAttribute('hx-post', '/api/v1/companies/sync/schedule');
-    // HTMXを再処理して新しい属性を認識させる
-    htmx.process(form);
-    
-    // デフォルト値を設定（朝5時）
-    form.querySelector('select[name="hour"]').value = '5';
-    form.querySelector('select[name="minute"]').value = '0';
-    
-    document.getElementById('schedule-modal').classList.remove('hidden');
-}
-
 // 同期処理の進捗を監視
 let syncProgressInterval = null;
 
@@ -296,7 +290,7 @@ function startSyncProgress() {
     buttons.forEach(btn => {
         btn.disabled = true;
         btn.innerHTML = `
-            <svg class="animate-spin h-4 w-4 mr-1 text-white" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-4 w-4 mr-2 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -307,33 +301,27 @@ function startSyncProgress() {
 
 // HTMXのレスポンスを監視
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-    console.log('htmx:afterRequest event fired', evt.detail);
-    
-    // requestConfigからパスを取得
     const path = evt.detail.requestConfig?.path || evt.detail.pathInfo?.requestPath;
-    console.log('Path:', path);
-    console.log('Response text:', evt.detail.xhr.responseText);
     
     if (path && path.includes('/api/v1/companies/sync/manual')) {
-        console.log('Manual sync path matched');
         try {
             const response = JSON.parse(evt.detail.xhr.responseText);
-            console.log('Parsed response:', response);
             if (response.task_id) {
-                console.log('Task ID found:', response.task_id);
-                // タスクIDを取得したら進捗を監視開始
                 monitorSyncProgress(response.task_id);
             }
         } catch (e) {
             console.error('Failed to parse sync response:', e);
-            console.error('Response text was:', evt.detail.xhr.responseText);
         }
+    } else if (path && path.includes('/api/v1/companies/sync/schedule')) {
+        // スケジュール作成/更新後の処理
+        closeScheduleModal();
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     }
 });
 
 function monitorSyncProgress(taskId) {
-    console.log('monitorSyncProgress called with taskId:', taskId);
-    
     // 既存のインターバルをクリア
     if (syncProgressInterval) {
         clearInterval(syncProgressInterval);
@@ -341,7 +329,6 @@ function monitorSyncProgress(taskId) {
     
     // 進捗表示エリアを準備
     const syncResult = document.getElementById('sync-result');
-    console.log('sync-result element:', syncResult);
     
     syncResult.innerHTML = `
         <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -362,11 +349,9 @@ function monitorSyncProgress(taskId) {
     
     // 1秒ごとに進捗を確認
     syncProgressInterval = setInterval(async () => {
-        console.log('Checking sync progress for task:', taskId);
         try {
             const response = await fetch(`/api/v1/companies/sync/task/${taskId}`);
             const data = await response.json();
-            console.log('Sync progress data:', data);
             
             const statusEl = document.getElementById('sync-status');
             const progressEl = document.getElementById('sync-progress');
@@ -399,10 +384,7 @@ function monitorSyncProgress(taskId) {
                 resetSyncButtons();
                 
                 // 実行履歴を更新
-                updateExecutionHistory();
-                
-                // 同期状態の表示を更新
-                updateSyncStatus(data.result);
+                htmx.trigger(document.getElementById('execution-history-tbody'), 'refresh-history');
             } else if (data.state === 'FAILURE') {
                 // エラー時の処理
                 clearInterval(syncProgressInterval);
@@ -432,73 +414,12 @@ function resetSyncButtons() {
     buttons.forEach(btn => {
         btn.disabled = false;
         btn.innerHTML = `
-            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
             今すぐ同期
         `;
     });
-}
-
-// 実行履歴を更新
-function updateExecutionHistory() {
-    const endpointId = {{ endpoint.id }};
-    const dataSourceId = {{ endpoint.data_source_id }};
-    
-    fetch(`/data-sources/${dataSourceId}/endpoints/${endpointId}/execution-history`)
-        .then(response => response.text())
-        .then(html => {
-            const tbody = document.getElementById('execution-history-tbody');
-            if (tbody) {
-                tbody.innerHTML = html;
-            }
-        })
-        .catch(error => {
-            console.error('Failed to update execution history:', error);
-        });
-}
-
-// 同期状態の表示を更新
-function updateSyncStatus(result) {
-    if (!result) return;
-    
-    // 最終同期日時を更新
-    const lastSyncElements = Array.from(document.querySelectorAll('span')).filter(
-        el => el.textContent.includes('最終同期:')
-    );
-    lastSyncElements.forEach(el => {
-        const parentDiv = el.closest('div');
-        if (parentDiv) {
-            const valueSpan = parentDiv.querySelector('span:last-child');
-            if (valueSpan) {
-                const now = new Date();
-                valueSpan.textContent = now.toLocaleString('ja-JP', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-            }
-        }
-    });
-    
-    // 同期件数を更新
-    if (result.sync_count !== undefined) {
-        const syncCountElements = Array.from(document.querySelectorAll('span')).filter(
-            el => el.textContent.includes('同期件数:')
-        );
-        syncCountElements.forEach(el => {
-            const parentDiv = el.closest('div');
-            if (parentDiv) {
-                const valueSpan = parentDiv.querySelector('span:last-child');
-                if (valueSpan) {
-                    valueSpan.textContent = `${result.sync_count.toLocaleString()} 社`;
-                }
-            }
-        });
-    }
 }
 
 // ページ読み込み時に次回実行時刻を更新

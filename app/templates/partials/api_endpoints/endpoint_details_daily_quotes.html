@@ -12,30 +12,10 @@
         </button>
     </div>
 
-    <!-- 同期モード選択 -->
-    <div class="border-b border-gray-200 pb-6 mb-6">
-        <h4 class="text-sm font-medium text-gray-700 mb-4">同期モード選択</h4>
-        <div class="grid grid-cols-2 gap-4">
-            <button @click="selectSyncMode('incremental')"
-                    :class="{'bg-blue-50 border-blue-500 text-blue-700': syncMode === 'incremental', 'bg-white border-gray-300 text-gray-700': syncMode !== 'incremental'}"
-                    class="border-2 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50">
-                <svg class="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                特定日モード
-                <p class="text-xs mt-1 font-normal">特定の日付の全銘柄データ</p>
-            </button>
-            
-            <button @click="selectSyncMode('full')"
-                    :class="{'bg-blue-50 border-blue-500 text-blue-700': syncMode === 'full', 'bg-white border-gray-300 text-gray-700': syncMode !== 'full'}"
-                    class="border-2 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50">
-                <svg class="w-5 h-5 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
-                </svg>
-                期間指定モード
-                <p class="text-xs mt-1 font-normal">指定期間の全データ</p>
-            </button>
-        </div>
+    <!-- 期間指定の説明 -->
+    <div class="border-b border-gray-200 pb-4 mb-6">
+        <h4 class="text-sm font-medium text-gray-700 mb-2">株価データ同期</h4>
+        <p class="text-sm text-gray-600">取得する期間を指定して株価データを同期します。</p>
     </div>
 
     <!-- パラメータ入力フォーム -->
@@ -53,24 +33,24 @@
             </select>
         </div>
 
-        <!-- 特定日モードのパラメータ -->
-        <div x-show="syncMode === 'incremental'" x-transition class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">対象日</label>
-                <input type="date" x-model="targetDate" 
-                       :max="maxDate"
-                       :required="syncMode === 'incremental'"
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <p class="mt-1 text-sm text-gray-500">指定した日付の全銘柄データを取得します</p>
-            </div>
-        </div>
-
-        <!-- 期間指定モードのパラメータ -->
-        <div x-show="syncMode === 'full'" x-transition class="space-y-4">
+        <!-- 期間指定パラメータ -->
+        <div class="space-y-4">
             <!-- 相対日付プリセット -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">期間選択</label>
                 <div class="grid grid-cols-3 gap-2">
+                    <button type="button"
+                            @click="selectDatePreset('today')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'today', 'bg-white border-gray-300 text-gray-700': datePreset !== 'today'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        今日のみ
+                    </button>
+                    <button type="button"
+                            @click="selectDatePreset('yesterday')"
+                            :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'yesterday', 'bg-white border-gray-300 text-gray-700': datePreset !== 'yesterday'}"
+                            class="px-3 py-2 border rounded-md text-sm font-medium transition-colors hover:bg-gray-50">
+                        昨日のみ
+                    </button>
                     <button type="button"
                             @click="selectDatePreset('last7days')"
                             :class="{'bg-blue-50 border-blue-500 text-blue-700': datePreset === 'last7days', 'bg-white border-gray-300 text-gray-700': datePreset !== 'last7days'}"
@@ -192,7 +172,7 @@
     <div class="border-t border-gray-200 pt-6 mt-6">
         <div class="flex items-center justify-between mb-4">
             <h4 class="text-sm font-medium text-gray-700">定期実行スケジュール</h4>
-            <button onclick="openScheduleModal()"
+            <button onclick="openScheduleForm()"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -200,6 +180,9 @@
                 新規スケジュール
             </button>
         </div>
+        
+        <!-- インラインフォーム -->
+        {% include "partials/api_endpoints/daily_quotes_schedule_simple.html" %}
         <div id="schedule-list-container"
              hx-get="/api/v1/daily-quotes/schedules/html/list"
              hx-trigger="load, refresh-schedules from:body"
@@ -241,14 +224,3 @@
     </div>
 </div>
 
-<!-- スケジュール設定モーダル -->
-{% include "partials/api_endpoints/daily_quotes_schedule_modal.html" %}
-
-<script>
-function openScheduleModal() {
-    const modal = document.querySelector('[x-data="dailyQuotesScheduleManager()"]');
-    if (modal && modal.__x) {
-        modal.__x.$data.openModal();
-    }
-}
-</script>

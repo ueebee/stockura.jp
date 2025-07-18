@@ -172,14 +172,15 @@
                 </svg>
                 テスト実行
             </button>
-            <button hx-get="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/settings"
-                    hx-target="#endpoint-settings-modal"
-                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
-                </svg>
-                パラメータ設定
-            </button>
+            
+            {% if endpoint.data_type == 'listed_companies' %}
+            <!-- 上場企業一覧は詳細パネル内でスケジュール管理 -->
+            {% elif endpoint.data_type == 'daily_quotes' %}
+            <!-- 日次株価データは詳細パネル内でスケジュール管理 -->
+            {% else %}
+            <!-- その他のエンドポイントタイプ用の設定（将来の拡張用） -->
+            <span class="text-sm text-gray-500">※ このエンドポイントの設定機能は準備中です</span>
+            {% endif %}
         </div>
         
         <div id="test-result" class="mt-4"></div>
