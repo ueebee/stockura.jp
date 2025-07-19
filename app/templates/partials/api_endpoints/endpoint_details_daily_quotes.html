@@ -164,7 +164,7 @@
 {% endblock %}
 
 {% block schedule_header_action %}
-            <button onclick="openScheduleForm()"
+            <button onclick="openScheduleDailyquotesForm()"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -174,8 +174,20 @@
 {% endblock %}
 
 {% block schedule_content %}
-        <!-- インラインフォーム -->
-        {% include "partials/api_endpoints/daily_quotes_schedule_simple.html" %}
+        <!-- 共通スケジュール管理コンポーネント -->
+        {% set schedule_config = {
+            'type': 'advanced',
+            'endpoint_type': 'daily_quotes',
+            'api_base_url': '/api/v1/daily-quotes/schedules',
+            'allow_multiple': true,
+            'show_name': true,
+            'show_relative_preset': true,
+            'default_time': '06:00',
+            'container_id': 'daily-quotes-schedule-form',
+            'form_id': 'daily-quotes-form'
+        } %}
+        {% include "partials/common/schedule_manager.html" %}
+        
         <div id="schedule-list-container"
              hx-get="/api/v1/daily-quotes/schedules/html/list"
              hx-trigger="load, refresh-schedules from:body"

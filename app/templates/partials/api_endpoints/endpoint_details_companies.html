@@ -35,7 +35,7 @@
 
 {% block schedule_header_action %}
             {% if not schedule %}
-            <button onclick="openScheduleModal()"
+            <button onclick="openScheduleCompaniesModal()"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -66,7 +66,7 @@
                 <div>
                     <p class="text-sm text-gray-600">操作</p>
                     <div class="flex items-center space-x-2">
-                        <button onclick="openScheduleModal({{ schedule.id }})"
+                        <button onclick="openScheduleCompaniesModal({id: {{ schedule.id }}, execution_time: '{{ schedule.execution_time.strftime('%H:%M') }}'})"
                                 class="text-sm text-blue-600 hover:text-blue-800">
                             編集
                         </button>
@@ -100,89 +100,37 @@
 
 {% block endpoint_specific_scripts %}
 
-<!-- スケジュール編集モーダル -->
-<div id="schedule-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900" id="schedule-modal-title">定期実行時間の設定</h3>
-        </div>
-        <form id="schedule-form">
-            <input type="hidden" name="schedule_id" id="schedule_id" value="">
-            <div class="px-6 py-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">実行時間 (JST)</label>
-                <div class="flex items-center space-x-2">
-                    <select name="hour" id="schedule_hour" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for h in range(24) %}
-                        <option value="{{ h }}">{{ '%02d'|format(h) }}</option>
-                        {% endfor %}
-                    </select>
-                    <span class="text-lg font-medium text-gray-700">:</span>
-                    <select name="minute" id="schedule_minute" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for m in range(60) %}
-                        <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <p class="mt-2 text-sm text-gray-500">
-                    ※ 毎日指定時刻に自動実行されます<br>
-                    ※ 処理時間を考慮して、取引時間外を推奨
-                </p>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button type="button" onclick="closeScheduleModal()"
-                        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    キャンセル
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                    保存
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- 共通スケジュール管理コンポーネント -->
+{% set schedule_config = {
+    'type': 'simple',
+    'endpoint_type': 'companies',
+    'api_base_url': '/api/v1/companies/sync/schedule',
+    'allow_multiple': false,
+    'show_name': false,
+    'show_relative_preset': false,
+    'default_time': '05:00',
+    'container_id': 'companies-schedule-modal',
+    'form_id': 'companies-schedule-form'
+} %}
+{% include "partials/common/schedule_manager.html" %}
 
 <script>
-// スケジュール管理関数
+// スケジュール管理関数（互換性のためのラッパー）
 function openScheduleModal(scheduleId = null) {
-    const modal = document.getElementById('schedule-modal');
-    const form = document.getElementById('schedule-form');
-    const titleEl = document.getElementById('schedule-modal-title');
-    
-    if (scheduleId) {
-        // 編集モード
-        titleEl.textContent = '定期実行時間の変更';
-        document.getElementById('schedule_id').value = scheduleId;
-        
-        // 既存の時刻を設定
-        {% if schedule %}
-        document.getElementById('schedule_hour').value = '{{ schedule.execution_time.hour }}';
-        document.getElementById('schedule_minute').value = '{{ schedule.execution_time.minute }}';
+    const scheduleData = scheduleId ? {
+        id: scheduleId,
+        execution_time: {% if schedule %}
+            '{{ schedule.execution_time.hour }}:{{ schedule.execution_time.minute }}'
+        {% else %}
+            '05:00'
         {% endif %}
-        
-        form.setAttribute('hx-put', '/api/v1/companies/sync/schedule');
-    } else {
-        // 新規作成モード
-        titleEl.textContent = '定期実行時間の設定';
-        document.getElementById('schedule_id').value = '';
-        
-        // デフォルト値を設定（朝5時）
-        document.getElementById('schedule_hour').value = '5';
-        document.getElementById('schedule_minute').value = '0';
-        
-        form.setAttribute('hx-post', '/api/v1/companies/sync/schedule');
-    }
+    } : null;
     
-    // HTMXの属性を設定
-    form.setAttribute('hx-target', '#sync-result');
-    form.setAttribute('hx-swap', 'innerHTML');
-    htmx.process(form);
-    
-    modal.classList.remove('hidden');
+    openScheduleCompaniesModal(scheduleData);
 }
 
 function closeScheduleModal() {
-    document.getElementById('schedule-modal').classList.add('hidden');
+    closeScheduleCompaniesModal();
 }
 
 function toggleSchedule(scheduleId) {
