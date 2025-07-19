@@ -4,17 +4,6 @@
             <h3 class="text-lg font-semibold text-gray-900">{{ data_source.name }}</h3>
             <p class="text-sm text-gray-500">{{ data_source.provider_type|upper }}</p>
         </div>
-        <div class="flex items-center">
-            {% if data_source.is_enabled %}
-            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                有効
-            </span>
-            {% else %}
-            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                無効
-            </span>
-            {% endif %}
-        </div>
     </div>
     
     {% if data_source.description %}
@@ -40,23 +29,4 @@
         </div>
     </div>
     
-    <div class="mt-4 pt-4 border-t border-gray-200">
-        <button type="button"
-                hx-post="/views/data-sources/{{ data_source.id }}/toggle"
-                hx-target="#data-source-card-{{ data_source.id }}"
-                hx-swap="outerHTML"
-                class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-            {% if data_source.is_enabled %}
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                </svg>
-                無効化
-            {% else %}
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                有効化
-            {% endif %}
-        </button>
-    </div>
 </div>
