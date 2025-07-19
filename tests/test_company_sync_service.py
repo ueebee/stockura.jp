@@ -1,9 +1,11 @@
 """
 企業同期サービスのテスト
+
+BaseSyncServiceを継承したCompanySyncServiceのテストを実施
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime, date
 from typing import List, Dict, Any
 
@@ -415,3 +417,134 @@ class TestCompanySyncService:
         
         # 結果検証
         assert deactivated_count == 0
+
+    # 基底クラスのメソッドのテスト
+    @pytest.mark.asyncio
+    async def test_sync_method(self, sync_service, mock_jquants_client_manager, mock_jquants_client, mock_db):
+        """syncメソッド（基底クラスの抽象メソッド実装）のテスト"""
+        # J-Quantsクライアントの設定
+        mock_jquants_client.get_all_listed_companies = AsyncMock(return_value=[
+            {"Code": "1234", "CompanyName": "Test Company"}
+        ])
+        mock_jquants_client_manager.get_client = AsyncMock(return_value=mock_jquants_client)
+        
+        # executeの結果をモック
+        mock_result = Mock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.rowcount = 0
+        mock_db.execute.return_value = mock_result
+        
+        # data_source_idありの場合
+        result = await sync_service.sync(data_source_id=1, sync_type='full')
+        
+        assert result['status'] == 'completed'
+        assert 'history_id' in result
+        assert 'total_companies' in result
+        
+        # data_source_idなしの場合（sync_all_companies_simple）
+        mock_data_source = Mock()
+        mock_data_source.id = 1
+        sync_service.data_source_service.get_jquants_source = AsyncMock(return_value=mock_data_source)
+        
+        result = await sync_service.sync()
+        
+        assert result['status'] == 'success'
+        assert 'sync_count' in result
+        assert 'duration' in result
+
+    def test_get_history_model(self, sync_service):
+        """get_history_modelメソッドのテスト"""
+        assert sync_service.get_history_model() == CompanySyncHistory
+
+    def test_logger_initialization(self, sync_service):
+        """ロガー初期化のテスト（基底クラスから継承）"""
+        assert hasattr(sync_service, 'logger')
+        assert sync_service.logger.name == 'CompanySyncService'
+
+    @pytest.mark.asyncio
+    async def test_handle_error_integration(self, sync_service, caplog):
+        """エラーハンドリングのテスト（基底クラスのメソッド）"""
+        import logging
+        
+        error = Exception("Test error in company sync")
+        context = {
+            "sync_type": "full",
+            "data_source_id": 1,
+            "company_count": 100
+        }
+        
+        with caplog.at_level(logging.ERROR):
+            sync_service.handle_error(error, context)
+        
+        assert "CompanySyncService sync error: Test error in company sync" in caplog.text
+
+    @pytest.mark.asyncio 
+    async def test_get_sync_history_with_count(self, sync_service, mock_db):
+        """get_sync_history_with_countメソッドのテスト"""
+        # 履歴データのモック
+        mock_histories = [
+            Mock(spec=CompanySyncHistory, id=1, status="completed"),
+            Mock(spec=CompanySyncHistory, id=2, status="completed")
+        ]
+        
+        # get_sync_historyメソッドのモック（基底クラスから継承）
+        with patch.object(sync_service, 'get_sync_history', return_value=mock_histories):
+            # カウント用のクエリ結果モック
+            mock_result = Mock()
+            mock_result.scalars.return_value.all.return_value = [1, 2, 3, 4, 5]
+            mock_db.execute.return_value = mock_result
+            
+            histories, total = await sync_service.get_sync_history_with_count(
+                limit=2, offset=0, status="completed"
+            )
+        
+        assert len(histories) == 2
+        assert total == 5
+
+    @pytest.mark.asyncio
+    async def test_create_and_update_sync_history(self, sync_service, mock_db):
+        """同期履歴の作成と更新のテスト（基底クラスのメソッド）"""
+        # create_sync_historyのテスト
+        with patch.object(sync_service, 'create_sync_history') as mock_create:
+            mock_history = Mock(spec=CompanySyncHistory)
+            mock_history.id = 1
+            mock_history.status = "running"
+            mock_create.return_value = mock_history
+            
+            history = await sync_service.create_sync_history(
+                sync_type="full",
+                sync_date=date.today()
+            )
+            
+            assert history.id == 1
+            assert history.status == "running"
+        
+        # update_sync_history_successのテスト
+        with patch.object(sync_service, 'update_sync_history_success') as mock_update_success:
+            mock_history.status = "completed"
+            mock_update_success.return_value = mock_history
+            
+            updated_history = await sync_service.update_sync_history_success(
+                mock_history,
+                total_companies=100,
+                new_companies=50,
+                updated_companies=50
+            )
+            
+            assert updated_history.status == "completed"
+        
+        # update_sync_history_failureのテスト
+        with patch.object(sync_service, 'update_sync_history_failure') as mock_update_failure:
+            mock_history.status = "failed"
+            mock_history.error_message = "Test error"
+            mock_update_failure.return_value = mock_history
+            
+            error = Exception("Test error")
+            failed_history = await sync_service.update_sync_history_failure(
+                mock_history,
+                error
+            )
+            
+            assert failed_history.status == "failed"
+            assert failed_history.error_message == "Test error"

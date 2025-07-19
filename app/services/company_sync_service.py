@@ -21,11 +21,12 @@ from app.models.company import (
 )
 from app.services.jquants_client import JQuantsClientManager
 from app.services.data_source_service import DataSourceService
+from app.services.base_sync_service import BaseSyncService
 
 logger = logging.getLogger(__name__)
 
 
-class CompanySyncService:
+class CompanySyncService(BaseSyncService[CompanySyncHistory]):
     """企業データ同期サービス"""
     
     def __init__(
@@ -42,9 +43,40 @@ class CompanySyncService:
             data_source_service: データソースサービス
             jquants_client_manager: J-Quantsクライアント管理
         """
-        self.db = db
+        super().__init__(db)
         self.data_source_service = data_source_service
         self.jquants_client_manager = jquants_client_manager
+    
+    def get_history_model(self) -> type:
+        """履歴モデルクラスを返す"""
+        return CompanySyncHistory
+    
+    async def sync(self, **kwargs) -> Dict[str, Any]:
+        """
+        同期処理のエントリーポイント
+        
+        Args:
+            **kwargs: 同期パラメータ
+            
+        Returns:
+            Dict[str, Any]: 同期結果
+        """
+        data_source_id = kwargs.get('data_source_id')
+        sync_type = kwargs.get('sync_type', 'full')
+        
+        if data_source_id:
+            # 通常の同期処理
+            history = await self.sync_companies(data_source_id, sync_type)
+            return {
+                "status": history.status,
+                "history_id": history.id,
+                "total_companies": history.total_companies,
+                "new_companies": history.new_companies,
+                "updated_companies": history.updated_companies
+            }
+        else:
+            # シンプル同期（data_source_idなし）
+            return await self.sync_all_companies_simple()
     
     async def sync_companies(
         self, 
@@ -65,16 +97,11 @@ class CompanySyncService:
         
         logger.info(f"Starting company sync for type: {sync_type}")
         
-        # 同期履歴を作成
-        sync_history = CompanySyncHistory(
-            sync_date=sync_date,
+        # 同期履歴を作成（基底クラスのメソッドを使用）
+        sync_history = await self.create_sync_history(
             sync_type=sync_type,
-            status="running",
-            started_at=datetime.utcnow()
+            sync_date=sync_date
         )
-        self.db.add(sync_history)
-        await self.db.commit()
-        await self.db.refresh(sync_history)
         
         try:
             # J-Quants APIから企業データを取得
@@ -89,30 +116,27 @@ class CompanySyncService:
             # データベースに保存
             stats = await self._save_companies_data(companies_data)
             
-            # 同期履歴を更新
-            sync_history.status = "completed"
-            sync_history.completed_at = datetime.utcnow()
-            sync_history.total_companies = len(companies_data)
-            sync_history.new_companies = stats["new_count"]
-            sync_history.updated_companies = stats["updated_count"]
-            sync_history.deleted_companies = stats.get("deleted_count", 0)
-            
-            await self.db.commit()
-            await self.db.refresh(sync_history)
+            # 同期履歴を更新（基底クラスのメソッドを使用）
+            sync_history = await self.update_sync_history_success(
+                sync_history,
+                total_companies=len(companies_data),
+                new_companies=stats["new_count"],
+                updated_companies=stats["updated_count"],
+                deleted_companies=stats.get("deleted_count", 0)
+            )
             
             logger.info(f"Company sync completed successfully. New: {stats['new_count']}, Updated: {stats['updated_count']}")
             return sync_history
             
         except Exception as e:
-            logger.error(f"Company sync failed: {e}")
+            # エラーハンドリング（基底クラスのメソッドを使用）
+            self.handle_error(e, {
+                "sync_type": sync_type,
+                "data_source_id": data_source_id
+            })
             
-            # 同期履歴にエラーを記録
-            sync_history.status = "failed"
-            sync_history.completed_at = datetime.utcnow()
-            sync_history.error_message = str(e)
-            
-            await self.db.commit()
-            await self.db.refresh(sync_history)
+            # 同期履歴を更新
+            await self.update_sync_history_failure(sync_history, e)
             
             raise
     
@@ -259,14 +283,14 @@ class CompanySyncService:
             existing_company.updated_at = datetime.utcnow()
             logger.debug(f"Updated company {existing_company.code}: {updated_fields}")
     
-    async def get_sync_history(
+    async def get_sync_history_with_count(
         self, 
         limit: int = 100,
         offset: int = 0,
         status: Optional[str] = None
     ) -> Tuple[List[CompanySyncHistory], int]:
         """
-        同期履歴を取得
+        同期履歴を取得（カウント付き）
         
         Args:
             limit: 取得件数制限
@@ -276,40 +300,19 @@ class CompanySyncService:
         Returns:
             Tuple[List[CompanySyncHistory], int]: (同期履歴リスト, 総件数)
         """
-        # クエリを構築
-        query = select(CompanySyncHistory)
-        
-        if status:
-            query = query.where(CompanySyncHistory.status == status)
+        # 基底クラスのメソッドを使用して履歴を取得
+        histories = await self.get_sync_history(limit, offset, status)
         
         # 総件数を取得
+        query = select(CompanySyncHistory)
+        if status:
+            query = query.where(CompanySyncHistory.status == status)
         count_result = await self.db.execute(
             select(CompanySyncHistory.id).select_from(query.subquery())
         )
         total = len(count_result.scalars().all())
         
-        # データを取得（最新順）
-        query = query.order_by(CompanySyncHistory.started_at.desc())
-        query = query.offset(offset).limit(limit)
-        
-        result = await self.db.execute(query)
-        histories = result.scalars().all()
-        
         return histories, total
-    
-    async def get_latest_sync_status(self) -> Optional[CompanySyncHistory]:
-        """
-        最新の同期ステータスを取得
-        
-        Returns:
-            Optional[CompanySyncHistory]: 最新の同期履歴
-        """
-        result = await self.db.execute(
-            select(CompanySyncHistory)
-            .order_by(CompanySyncHistory.started_at.desc())
-            .limit(1)
-        )
-        return result.scalar_one_or_none()
     
     async def deactivate_missing_companies(self, active_codes: List[str]) -> int:
         """
@@ -397,7 +400,11 @@ class CompanySyncService:
             
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Company sync failed: {str(e)}")
+            # エラーハンドリング（基底クラスのメソッドを使用）
+            self.handle_error(e, {
+                "method": "sync_all_companies_simple",
+                "start_time": start_time
+            })
             return {
                 "status": "failed",
                 "error": str(e),

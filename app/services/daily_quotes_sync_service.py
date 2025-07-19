@@ -19,17 +19,19 @@ from app.db.session import get_session, async_session_maker
 from app.models.daily_quote import DailyQuote, DailyQuotesSyncHistory
 from app.services.jquants_client import JQuantsClientManager, JQuantsDailyQuotesClient
 from app.services.data_source_service import DataSourceService
+from app.services.base_sync_service import BaseSyncService
 
 logger = logging.getLogger(__name__)
 
 
-class DailyQuotesSyncService:
+class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
     """株価データ同期サービス"""
     
     def __init__(
         self,
         data_source_service: DataSourceService,
-        jquants_client_manager: JQuantsClientManager
+        jquants_client_manager: JQuantsClientManager,
+        db: Optional[AsyncSession] = None
     ):
         """
         初期化
@@ -37,9 +39,59 @@ class DailyQuotesSyncService:
         Args:
             data_source_service: データソースサービス
             jquants_client_manager: J-Quantsクライアント管理
+            db: データベースセッション（オプション）
         """
+        # dbが指定されていない場合は基底クラスの初期化をスキップ
+        self._has_db = db is not None
+        if self._has_db:
+            super().__init__(db)
+        else:
+            # 基底クラスを初期化せずにロガーのみ設定
+            self.logger = logging.getLogger(self.__class__.__name__)
+        
         self.data_source_service = data_source_service
         self.jquants_client_manager = jquants_client_manager
+    
+    def get_history_model(self) -> type:
+        """履歴モデルクラスを返す"""
+        return DailyQuotesSyncHistory
+    
+    async def sync(self, **kwargs) -> Dict[str, Any]:
+        """
+        同期処理のエントリーポイント
+        
+        Args:
+            **kwargs: 同期パラメータ
+            
+        Returns:
+            Dict[str, Any]: 同期結果
+        """
+        # パラメータの取得
+        data_source_id = kwargs['data_source_id']
+        sync_type = kwargs.get('sync_type', 'full')
+        target_date = kwargs.get('target_date')
+        from_date = kwargs.get('from_date')
+        to_date = kwargs.get('to_date')
+        specific_codes = kwargs.get('specific_codes')
+        
+        # 同期実行
+        history = await self.sync_daily_quotes(
+            data_source_id=data_source_id,
+            sync_type=sync_type,
+            target_date=target_date,
+            from_date=from_date,
+            to_date=to_date,
+            specific_codes=specific_codes
+        )
+        
+        return {
+            "status": history.status,
+            "history_id": history.id,
+            "total_records": history.total_records,
+            "new_records": history.new_records,
+            "updated_records": history.updated_records,
+            "skipped_records": history.skipped_records
+        }
     
     async def sync_daily_quotes(
         self,
@@ -103,7 +155,15 @@ class DailyQuotesSyncService:
                 
             except Exception as e:
                 # エラー時の処理
-                logger.error(f"Daily quotes sync failed: {e}")
+                if self._has_db and hasattr(self, 'handle_error'):
+                    self.handle_error(e, {
+                        "sync_type": sync_type,
+                        "data_source_id": data_source_id,
+                        "target_date": target_date
+                    })
+                else:
+                    logger.error(f"Daily quotes sync failed: {e}")
+                
                 sync_history.status = "failed"
                 sync_history.error_message = str(e)
                 sync_history.completed_at = datetime.utcnow()
@@ -577,6 +637,11 @@ class DailyQuotesSyncService:
         Returns:
             List[DailyQuotesSyncHistory]: 同期履歴リスト
         """
+        # 基底クラスのメソッドが使える場合は使用
+        if self._has_db and hasattr(super(), 'get_sync_history'):
+            return await super().get_sync_history(limit, offset, status)
+        
+        # そうでない場合は独自実装
         async with async_session_maker() as session:
             stmt = select(DailyQuotesSyncHistory).order_by(DailyQuotesSyncHistory.started_at.desc())
             
