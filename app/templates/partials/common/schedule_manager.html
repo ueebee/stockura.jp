@@ -181,16 +181,18 @@ include "partials/common/schedule_manager.html"
 </div>
 
 <script>
-// {{ config.endpoint_type }}用スケジュール管理関数
-(function() {
-    const endpointType = '{{ config.endpoint_type }}';
-    const isSimple = {{ 'true' if is_simple else 'false' }};
-    const containerId = '{{ container_id }}';
-    const formId = '{{ form_id }}';
-    const apiBaseUrl = '{{ config.api_base_url }}';
-    
-    let currentScheduleType = 'daily';
-    let editingScheduleId = null;
+// Alpine.jsの初期化を待つ
+document.addEventListener('DOMContentLoaded', function() {
+    // {{ config.endpoint_type }}用スケジュール管理関数
+    (function() {
+        const endpointType = '{{ config.endpoint_type }}';
+        const isSimple = {{ 'true' if is_simple else 'false' }};
+        const containerId = '{{ container_id }}';
+        const formId = '{{ form_id }}';
+        const apiBaseUrl = '{{ config.api_base_url }}';
+        
+        let currentScheduleType = 'daily';
+        let editingScheduleId = null;
     
     // フォーム/モーダルを開く
     const capitalizedType = endpointType.replace(/_/g, '').replace(/\b\w/g, l => l.toUpperCase());
@@ -368,5 +370,6 @@ include "partials/common/schedule_manager.html"
             window['openSchedule' + capitalizedType + 'Form'](scheduleData);
         };
     }
-})();
+    })();
+});
 </script>

@@ -5,7 +5,7 @@
 import math
 from datetime import datetime, date, time
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
@@ -19,6 +19,7 @@ from app.schemas.company import (
     CompanySyncHistory as CompanySyncHistorySchema,
     CompanySyncHistoryList,
     CompanySearchRequest,
+    CompanySyncScheduleRequest,
     Sector17Master as Sector17MasterSchema,
     Sector33Master as Sector33MasterSchema,
     MarketMaster as MarketMasterSchema
@@ -371,8 +372,7 @@ async def get_company_sync_schedule(
 
 @router.post("/sync/schedule")
 async def create_company_sync_schedule(
-    hour: int = Form(..., ge=0, le=23),
-    minute: int = Form(..., ge=0, le=59),
+    request: CompanySyncScheduleRequest,
     schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
     db: AsyncSession = Depends(get_session)
 ):
@@ -388,7 +388,7 @@ async def create_company_sync_schedule(
         raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
     
     try:
-        execution_time = time(hour=hour, minute=minute)
+        execution_time = time(hour=request.hour, minute=request.minute)
         created_schedule = await schedule_service.create_or_update_schedule(
             endpoint_id=endpoint.id,
             execution_time=execution_time
@@ -404,10 +404,10 @@ async def create_company_sync_schedule(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/sync/schedule")
+@router.put("/sync/schedule/{schedule_id}")
 async def update_company_sync_schedule(
-    hour: int = Form(..., ge=0, le=23),
-    minute: int = Form(..., ge=0, le=59),
+    schedule_id: int,
+    request: CompanySyncScheduleRequest,
     schedule_service: RedbeatScheduleService = Depends(get_schedule_service),
     db: AsyncSession = Depends(get_session)
 ):
@@ -423,7 +423,7 @@ async def update_company_sync_schedule(
         raise HTTPException(status_code=404, detail="Listed companies endpoint not found")
     
     try:
-        execution_time = time(hour=hour, minute=minute)
+        execution_time = time(hour=request.hour, minute=request.minute)
         updated_schedule = await schedule_service.create_or_update_schedule(
             endpoint_id=endpoint.id,
             execution_time=execution_time

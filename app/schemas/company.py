@@ -154,3 +154,9 @@ class CompanySearchRequest(BaseModel):
     is_active: Optional[bool] = Field(None, description="アクティブフラグ")
     page: int = Field(1, ge=1, description="ページ番号")
     per_page: int = Field(50, ge=1, le=1000, description="1ページあたりの件数")
+
+
+class CompanySyncScheduleRequest(BaseModel):
+    """企業同期スケジュールリクエスト"""
+    hour: int = Field(..., ge=0, le=23, description="実行時（時）")
+    minute: int = Field(..., ge=0, le=59, description="実行時（分）")
