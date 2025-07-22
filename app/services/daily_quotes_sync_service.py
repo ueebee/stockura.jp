@@ -20,6 +20,11 @@ from app.models.daily_quote import DailyQuote, DailyQuotesSyncHistory
 from app.services.jquants_client import JQuantsClientManager, JQuantsDailyQuotesClient
 from app.services.data_source_service import DataSourceService
 from app.services.base_sync_service import BaseSyncService
+from app.core.exceptions import (
+    APIError, DataValidationError, SyncError,
+    DataSourceNotFoundError, RateLimitError
+)
+from app.core.error_handler import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -154,15 +159,20 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
                 return sync_history
                 
             except Exception as e:
-                # エラー時の処理
-                if self._has_db and hasattr(self, 'handle_error'):
-                    self.handle_error(e, {
+                # 統一されたエラーハンドリング
+                error_info = await ErrorHandler.handle_sync_error(
+                    error=e,
+                    service_name="DailyQuotesSyncService",
+                    context={
                         "sync_type": sync_type,
                         "data_source_id": data_source_id,
-                        "target_date": target_date
-                    })
-                else:
-                    logger.error(f"Daily quotes sync failed: {e}")
+                        "target_date": target_date.isoformat() if target_date else None,
+                        "from_date": from_date.isoformat() if from_date else None,
+                        "to_date": to_date.isoformat() if to_date else None
+                    },
+                    db=session,
+                    sync_history_id=sync_history.id
+                )
                 
                 sync_history.status = "failed"
                 sync_history.error_message = str(e)
@@ -191,7 +201,10 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
         logger.info("Starting full data sync")
         
         # J-Quantsクライアントを取得
-        client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        try:
+            client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        except Exception as e:
+            raise DataSourceNotFoundError(data_source_id)
         
         # 日付範囲を設定（デフォルトは過去1年間）
         if not from_date:
@@ -213,7 +226,26 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
                 logger.info(f"Processing date: {date_str}")
                 
                 # J-QuantsAPIから当日のデータを取得
-                quotes_data = await client.get_stock_prices_by_date(date_str)
+                try:
+                    quotes_data = await client.get_stock_prices_by_date(date_str)
+                except Exception as e:
+                    if "401" in str(e) or "authentication" in str(e).lower():
+                        raise APIError(
+                            "J-Quants API authentication failed",
+                            status_code=401,
+                            details={"data_source_id": data_source_id, "date": date_str}
+                        )
+                    elif "429" in str(e) or "rate limit" in str(e).lower():
+                        raise RateLimitError(
+                            "J-Quants API rate limit exceeded",
+                            retry_after=60,
+                            details={"data_source_id": data_source_id, "date": date_str}
+                        )
+                    else:
+                        raise APIError(
+                            f"Failed to fetch quotes for date {date_str}: {str(e)}",
+                            details={"data_source_id": data_source_id, "date": date_str}
+                        )
                 
                 if quotes_data:
                     new, updated, skipped = await self._process_quotes_data(
@@ -230,8 +262,26 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
                 # レート制限対策（5000req/5min）
                 await asyncio.sleep(0.1)
                 
+            except DataValidationError as e:
+                # データ検証エラーは警告として記録し、処理を継続
+                logger.warning(f"Data validation error for date {current_date}: {e}")
+                continue
+            except RateLimitError as e:
+                # レート制限エラーの場合は待機後にリトライ
+                logger.warning(f"Rate limit reached, waiting {e.retry_after} seconds")
+                await asyncio.sleep(e.retry_after or 60)
+                continue
             except Exception as e:
-                logger.error(f"Error processing date {current_date}: {e}")
+                # その他のエラーはエラーハンドラーに送信して継続
+                await ErrorHandler.handle_sync_error(
+                    error=e,
+                    service_name="DailyQuotesSyncService",
+                    context={
+                        "operation": "sync_full_data",
+                        "date": current_date.isoformat(),
+                        "data_source_id": data_source_id
+                    }
+                )
                 # 個別日付のエラーは継続
             
             current_date += timedelta(days=1)
@@ -263,7 +313,10 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
         logger.info("Starting incremental data sync")
         
         # J-Quantsクライアントを取得
-        client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        try:
+            client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        except Exception as e:
+            raise DataSourceNotFoundError(data_source_id)
         
         # 対象日を設定（デフォルトは前営業日）
         if not target_date:
@@ -315,7 +368,10 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
         logger.info(f"Starting single stock sync for codes: {specific_codes}")
         
         # J-Quantsクライアントを取得
-        client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        try:
+            client = await self.jquants_client_manager.get_daily_quotes_client(data_source_id)
+        except Exception as e:
+            raise DataSourceNotFoundError(data_source_id)
         
         # 対象日を設定
         if not target_date:
@@ -418,8 +474,21 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
                 if (new_count + updated_count) % 100 == 0:
                     await session.commit()
                     
+            except DataValidationError as e:
+                # データ検証エラーは警告として記録し、処理を継続
+                logger.warning(f"Data validation error for quote: {e}")
+                skipped_count += 1
             except Exception as e:
-                logger.error(f"Error processing quote data: {e}, data: {quote_data}")
+                # その他のエラーはエラーハンドラーに送信
+                await ErrorHandler.handle_sync_error(
+                    error=e,
+                    service_name="DailyQuotesSyncService",
+                    context={
+                        "operation": "process_quote_data",
+                        "quote_code": quote_data.get("Code"),
+                        "quote_date": quote_data.get("Date")
+                    }
+                )
                 skipped_count += 1
         
         # 最終コミット
@@ -442,15 +511,23 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
         # 必須フィールドの存在確認
         for field in required_fields:
             if field not in quote_data or quote_data[field] is None:
-                logger.warning(f"Missing required field: {field}")
-                return False
+                raise DataValidationError(
+                    f"Missing required field: {field}",
+                    field=field,
+                    value=None,
+                    details={"quote_data": quote_data}
+                )
         
         # 日付の妥当性チェック
         try:
             datetime.strptime(quote_data["Date"], "%Y-%m-%d")
         except ValueError:
-            logger.warning(f"Invalid date format: {quote_data['Date']}")
-            return False
+            raise DataValidationError(
+                f"Invalid date format: {quote_data['Date']}",
+                field="Date",
+                value=quote_data["Date"],
+                details={"expected_format": "YYYY-MM-DD"}
+            )
         
         # 四本値の論理的整合性チェック（データが存在する場合）
         if all(key in quote_data and quote_data[key] is not None for key in ["Open", "High", "Low", "Close"]):
@@ -461,11 +538,22 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
                 close_price = float(quote_data["Close"])
                 
                 if not (low_price <= open_price <= high_price and low_price <= close_price <= high_price):
-                    logger.warning(f"Invalid OHLC data: {quote_data}")
-                    return False
-            except (ValueError, TypeError):
-                logger.warning(f"Invalid price data: {quote_data}")
-                return False
+                    raise DataValidationError(
+                        "Invalid OHLC data: high/low prices are inconsistent",
+                        field="OHLC",
+                        value={
+                            "open": open_price,
+                            "high": high_price,
+                            "low": low_price,
+                            "close": close_price
+                        }
+                    )
+            except (ValueError, TypeError) as e:
+                raise DataValidationError(
+                    f"Invalid price data: {str(e)}",
+                    field="price_data",
+                    value=quote_data
+                )
         
         return True
     

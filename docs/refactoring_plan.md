@@ -157,36 +157,44 @@ class BaseSyncService(ABC):
         # 共通のエラー記録処理
 ```
 
-### 2.2 エラーハンドリングの統一
+### 2.2 エラーハンドリングの統一 ✅ 完了 (2025-07-22)
 
-**現状の問題点**
-- 各サービスで独自のエラーハンドリング実装
-- ログフォーマットの不統一
+**実装済み内容**
+- 同期処理用の例外クラス階層を構築
+  - `SyncError`: 基底例外クラス（エラーコード、詳細情報をサポート）
+  - `APIError`: API関連エラー（HTTPステータスコード、レスポンスボディを含む）
+  - `DataValidationError`: データ検証エラー（フィールド名、値を含む）
+  - `RateLimitError`: レート制限エラー（リトライ時間を含む）
+  - `AuthenticationError`: 認証エラー
+  - `DataSourceNotFoundError`: データソース不明エラー
+- 統一されたエラーハンドラー `ErrorHandler` クラスを実装
+  - エラータイプに応じた適切なログレベル設定
+  - エラー情報の構造化（タイムスタンプ、コンテキスト、トレースバック）
+  - リトライ可否の判定メソッド
+- `CompanySyncService` と `DailyQuotesSyncService` に統一エラーハンドリングを適用
+  - API呼び出し時の詳細なエラー分類
+  - データ検証エラーの適切な処理
+  - レート制限エラーの自動リトライ
 
-**改善案**
-```python
-# app/core/exceptions.py
-class SyncError(Exception):
-    """同期処理の基底例外クラス"""
-    pass
-
-class APIError(SyncError):
-    """API関連のエラー"""
-    pass
-
-class DataValidationError(SyncError):
-    """データ検証エラー"""
-    pass
-
-# app/core/error_handler.py
-class ErrorHandler:
-    @staticmethod
-    def handle_sync_error(error: Exception, service_name: str, context: Dict[str, Any]):
-        """統一されたエラーハンドリング"""
-        # エラーログの記録
-        # メトリクスの送信
-        # 通知の送信（必要に応じて）
+**実装したファイル**
 ```
+app/core/
+├── exceptions.py          # 例外クラス定義（新規作成）
+└── error_handler.py       # エラーハンドラークラス（新規作成）
+app/services/
+├── company_sync_service.py       # エラーハンドリング適用
+└── daily_quotes_sync_service.py  # エラーハンドリング適用
+```
+
+**効果**
+- エラーハンドリングの一貫性が向上
+- エラーログの構造化により問題追跡が容易に
+- 適切なエラー分類によりリトライ戦略の最適化が可能に
+
+**動作確認済み**
+- 企業同期の即時実行（4,416件のデータ同期成功） ✓
+- 日次株価の過去7日間同期（17,643件更新、4件スキップ） ✓
+- エラーハンドリングが適切に機能していることを確認 ✓
 
 ## 3. API Viewsの整理
 

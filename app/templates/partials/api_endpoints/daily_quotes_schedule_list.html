@@ -131,10 +131,10 @@ async function editScheduleById(scheduleId) {
         const response = await fetch(`/api/v1/daily-quotes/schedules/${scheduleId}`);
         if (response.ok) {
             const schedule = await response.json();
-            if (typeof editSchedule === 'function') {
-                editSchedule(schedule);
-            } else if (typeof openScheduleForm === 'function') {
-                openScheduleForm(schedule);
+            if (typeof openScheduleDailyquotesForm === 'function') {
+                openScheduleDailyquotesForm(schedule);
+            } else if (typeof editScheduleDailyquotes === 'function') {
+                editScheduleDailyquotes(schedule);
             }
         }
     } catch (error) {

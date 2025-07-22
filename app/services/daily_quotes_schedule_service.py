@@ -292,7 +292,7 @@ class DailyQuotesScheduleService:
             schedule=schedule_obj,
             kwargs=task_args,
             options={
-                'queue': 'default',
+                'queue': 'jquants',
                 'expires': 7200,  # 2時間で期限切れ
             },
             app=celery_app

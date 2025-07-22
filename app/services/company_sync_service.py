@@ -22,6 +22,11 @@ from app.models.company import (
 from app.services.jquants_client import JQuantsClientManager
 from app.services.data_source_service import DataSourceService
 from app.services.base_sync_service import BaseSyncService
+from app.core.exceptions import (
+    APIError, DataValidationError, SyncError,
+    DataSourceNotFoundError
+)
+from app.core.error_handler import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -105,11 +110,38 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
         
         try:
             # J-Quants APIから企業データを取得
-            client = await self.jquants_client_manager.get_client(data_source_id)
-            companies_data = await client.get_all_listed_companies()
+            try:
+                client = await self.jquants_client_manager.get_client(data_source_id)
+            except Exception as e:
+                raise DataSourceNotFoundError(data_source_id)
+            
+            try:
+                companies_data = await client.get_all_listed_companies()
+            except Exception as e:
+                if "401" in str(e) or "authentication" in str(e).lower():
+                    raise APIError(
+                        "J-Quants API authentication failed",
+                        status_code=401,
+                        details={"data_source_id": data_source_id}
+                    )
+                elif "429" in str(e) or "rate limit" in str(e).lower():
+                    raise APIError(
+                        "J-Quants API rate limit exceeded",
+                        status_code=429,
+                        details={"data_source_id": data_source_id}
+                    )
+                else:
+                    raise APIError(
+                        f"Failed to fetch companies from J-Quants API: {str(e)}",
+                        details={"data_source_id": data_source_id}
+                    )
             
             if not companies_data:
-                raise Exception("No company data received from J-Quants API")
+                raise DataValidationError(
+                    "No company data received from J-Quants API",
+                    field="companies_data",
+                    value=None
+                )
             
             logger.info(f"Retrieved {len(companies_data)} companies from J-Quants API")
             
@@ -129,11 +161,18 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
             return sync_history
             
         except Exception as e:
-            # エラーハンドリング（基底クラスのメソッドを使用）
-            self.handle_error(e, {
-                "sync_type": sync_type,
-                "data_source_id": data_source_id
-            })
+            # 統一されたエラーハンドリング
+            error_info = await ErrorHandler.handle_sync_error(
+                error=e,
+                service_name="CompanySyncService",
+                context={
+                    "sync_type": sync_type,
+                    "data_source_id": data_source_id,
+                    "sync_date": sync_date.isoformat()
+                },
+                db=self.db,
+                sync_history_id=sync_history.id
+            )
             
             # 同期履歴を更新
             await self.update_sync_history_failure(sync_history, e)
@@ -177,8 +216,20 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
                     await self._create_company(mapped_data)
                     new_count += 1
                     
+            except DataValidationError as e:
+                # データ検証エラーは警告レベルでログ出力し、処理を続行
+                logger.warning(f"Data validation error for company {company_data.get('Code', 'unknown')}: {e}")
+                continue
             except Exception as e:
-                logger.error(f"Error processing company data {company_data.get('Code', 'unknown')}: {e}")
+                # その他のエラーはエラーレベルでログ出力
+                await ErrorHandler.handle_sync_error(
+                    error=e,
+                    service_name="CompanySyncService",
+                    context={
+                        "company_code": company_data.get('Code', 'unknown'),
+                        "operation": "save_company_data"
+                    }
+                )
                 continue
         
         # 変更をコミット
@@ -207,9 +258,21 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
             code = jquants_data.get("Code")
             company_name = jquants_data.get("CompanyName")
             
-            if not code or not company_name:
-                logger.warning(f"Missing required fields in company data: {jquants_data}")
-                return None
+            if not code:
+                raise DataValidationError(
+                    "Missing required field: Code",
+                    field="Code",
+                    value=None,
+                    details={"company_data": jquants_data}
+                )
+            
+            if not company_name:
+                raise DataValidationError(
+                    "Missing required field: CompanyName",
+                    field="CompanyName",
+                    value=None,
+                    details={"company_data": jquants_data}
+                )
             
             return {
                 "code": str(code),

@@ -40,7 +40,7 @@ include "partials/common/schedule_manager.html"
         </div>
         
         <!-- フォーム -->
-        <form id="{{ form_id }}" onsubmit="submitSchedule{{ config.endpoint_type|title }}Form(event)">
+        <form id="{{ form_id }}" onsubmit="submitSchedule{{ config.endpoint_type|replace('_', '')|capitalize }}Form(event)">
             <input type="hidden" id="{{ form_id }}-schedule-id" name="schedule_id" value="">
             
             <div class="{% if is_simple %}px-6 py-4{% else %}space-y-4{% endif %}">
@@ -181,10 +181,9 @@ include "partials/common/schedule_manager.html"
 </div>
 
 <script>
-// Alpine.jsの初期化を待つ
-document.addEventListener('DOMContentLoaded', function() {
+// スケジュール管理関数を即座に定義
+(function() {
     // {{ config.endpoint_type }}用スケジュール管理関数
-    (function() {
         const endpointType = '{{ config.endpoint_type }}';
         const isSimple = {{ 'true' if is_simple else 'false' }};
         const containerId = '{{ container_id }}';
@@ -227,7 +226,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 {% endif %}
                 
-                setScheduleType(scheduleData.schedule_type || 'daily');
+                const setTypeFuncName = 'setSchedule' + capitalizedType + 'Type';
+                window[setTypeFuncName](scheduleData.schedule_type || 'daily');
                 document.getElementById(formId + '-time').value = scheduleData.execution_time || '06:00';
                 
                 if (scheduleData.day_of_week !== null) {
@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(formId).reset();
             
             if (!isSimple) {
-                setScheduleType('daily');
+                const setTypeFuncName = 'setSchedule' + capitalizedType + 'Type';
+                window[setTypeFuncName]('daily');
             }
         }
         
@@ -370,6 +371,5 @@ document.addEventListener('DOMContentLoaded', function() {
             window['openSchedule' + capitalizedType + 'Form'](scheduleData);
         };
     }
-    })();
-});
+})();
 </script>
