@@ -285,6 +285,16 @@ class DailyQuotesScheduleService:
             'relative_preset': schedule.relative_preset
         }
         
+        # 既存のエントリを削除（存在する場合）
+        try:
+            key = f"{celery_app.conf.redbeat_key_prefix}{entry_name}"
+            old_entry = RedBeatSchedulerEntry.from_key(key, app=celery_app)
+            old_entry.delete()
+            print(f"Deleted existing Redbeat schedule: {entry_name}")
+        except Exception:
+            # エントリが存在しない場合は無視
+            pass
+        
         # RedBeatエントリー作成/更新
         entry = RedBeatSchedulerEntry(
             name=entry_name,
