@@ -351,7 +351,7 @@ def daily_quotes_health_check() -> Dict:
         }
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, name="sync_daily_quotes_scheduled")
 def sync_daily_quotes_scheduled(
     self,
     schedule_id: int,
@@ -386,26 +386,33 @@ def sync_daily_quotes_scheduled(
             service = DailyQuotesScheduleService(None)  # 日付計算のみなのでDBは不要
             from_date, to_date = service.calculate_dates_from_preset(relative_preset, now)
             
-            # 通常のタスクを呼び出し
-            return sync_daily_quotes_task.apply_async(
+            # 通常のタスクを同期的に実行
+            # apply()を使って同期実行（throwパラメータでエラーを伝播）
+            task_result = sync_daily_quotes_task.apply(
                 args=[data_source_id, sync_type],
                 kwargs={
+                    'target_date': to_date.isoformat() if sync_type == 'incremental' else None,
                     'from_date': from_date.isoformat() if sync_type == 'full' else None,
                     'to_date': to_date.isoformat() if sync_type == 'full' else None,
-                    'target_date': to_date.isoformat() if sync_type == 'incremental' else None
-                }
-            ).get()
+                    'codes': None
+                },
+                throw=True
+            )
+            return task_result.result
         else:
             # プリセットなしの場合は昨日のデータを取得
             yesterday = (now - timedelta(days=1)).date()
-            return sync_daily_quotes_task.apply_async(
+            task_result = sync_daily_quotes_task.apply(
                 args=[data_source_id, sync_type],
                 kwargs={
                     'target_date': yesterday.isoformat() if sync_type == 'incremental' else None,
                     'from_date': yesterday.isoformat() if sync_type == 'full' else None,
-                    'to_date': yesterday.isoformat() if sync_type == 'full' else None
-                }
-            ).get()
+                    'to_date': yesterday.isoformat() if sync_type == 'full' else None,
+                    'codes': None
+                },
+                throw=True
+            )
+            return task_result.result
             
     except Exception as e:
         print(f"Error in sync_daily_quotes_scheduled: {e}")
