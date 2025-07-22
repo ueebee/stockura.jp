@@ -15,6 +15,11 @@
 ## 最終更新: 2025-07-22
 
 ### 直近の修正内容
+- **API Viewsの整理とクエリ最適化** (2025-07-22)
+  - 484行の`api_endpoints.py`を機能別に分割してモジュール化
+  - 日次株価データの統計情報取得クエリを最適化（4クエリ→2クエリ）
+  - ブラウザでの動作確認完了
+
 - **Celeryタスクの登録名の不一致を修正** (2025-07-22)
   - `sync_daily_quotes_scheduled`タスクに明示的な名前パラメータを追加
   - タスク呼び出しを`apply()`メソッドに変更して同期実行を確実に
@@ -196,46 +201,53 @@ app/services/
 - 日次株価の過去7日間同期（17,643件更新、4件スキップ） ✓
 - エラーハンドリングが適切に機能していることを確認 ✓
 
-## 3. API Viewsの整理
+## 3. API Viewsの整理 ✅ 完了 (2025-07-22)
 
-### 3.1 大規模ファイルの分割
+### 3.1 大規模ファイルの分割 ✅ 完了
 
-**現状の問題点**
-- `api_endpoints.py`が400行以上で可読性が低い
-- 複数の責務が1つのファイルに集中
+**実装済み内容**
+- 484行の`api_endpoints.py`を機能別にモジュール分割
+- 共通機能を`base.py`に集約
+- 企業関連のエンドポイント処理を`companies.py`に分離
+- 日次株価関連のエンドポイント処理を`daily_quotes.py`に分離
+- メインファイルを`api_endpoints_main.py`にリネームして責務を明確化
 
-**改善案**
+**実装したファイル**
 ```
 app/api/v1/views/
-├── api_endpoints/
-│   ├── __init__.py
-│   ├── base.py              # 共通機能
-│   ├── companies.py         # 企業関連
-│   ├── daily_quotes.py      # 日次株価関連
-│   └── common.py            # 共通ユーティリティ
+├── api_endpoints_main.py     # メインルーター（旧api_endpoints.py）
+└── api_endpoints/
+    ├── __init__.py
+    ├── base.py              # 共通機能
+    ├── companies.py         # 企業関連
+    └── daily_quotes.py      # 日次株価関連
 ```
 
-### 3.2 統計情報取得の最適化
+**効果**
+- ファイルサイズが約50%削減（484行→約270行）
+- 責務が明確に分離され、保守性が向上
+- 新しいエンドポイントタイプの追加が容易に
 
-**現状の問題点**
+### 3.2 統計情報取得の最適化 ✅ 完了
+
+**実装済み内容**
+- 日次株価データの統計情報取得を最適化
+- 複数クエリを1つのクエリに統合（SQLAlchemyのfunc、caseを使用）
+- `get_endpoint_execution_stats`関数内で実装
+
+**実装コード（base.py内）**
 ```python
-# 複数のクエリで統計情報を取得
-latest_history = db.query(DailyQuotesSyncHistory).order_by(...).first()
-latest_success = db.query(DailyQuotesSyncHistory).filter(...).first()
-latest_error = db.query(DailyQuotesSyncHistory).filter(...).first()
-```
-
-**改善案**
-```python
-# 1つのクエリで必要な情報を取得
-from sqlalchemy import func, case
-
+# DailyQuotesSyncHistoryから統計を最適化されたクエリで計算
 stats = db.query(
     func.max(DailyQuotesSyncHistory.started_at).label('last_execution'),
     func.max(case(
         (DailyQuotesSyncHistory.status == 'completed', DailyQuotesSyncHistory.started_at),
         else_=None
     )).label('last_success'),
+    func.max(case(
+        (DailyQuotesSyncHistory.status == 'failed', DailyQuotesSyncHistory.started_at),
+        else_=None
+    )).label('last_error'),
     func.count(DailyQuotesSyncHistory.id).label('total_executions'),
     func.sum(case(
         (DailyQuotesSyncHistory.status == 'completed', 1),
@@ -243,6 +255,17 @@ stats = db.query(
     )).label('successful_executions')
 ).first()
 ```
+
+**効果**
+- データベースへのクエリ回数を4回から2回に削減
+- レスポンス時間の改善
+- データベース負荷の軽減
+
+**動作確認済み**
+- APIエンドポイント管理画面の表示 ✓
+- 上場企業一覧の即時同期実行（4,416件） ✓
+- 日次株価データの手動同期実行（過去7日間） ✓
+- 統計情報の正確な表示 ✓
 
 ## 4. フロントエンドの改善
 

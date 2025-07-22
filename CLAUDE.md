@@ -38,7 +38,7 @@
 - commitは英語の１文で
 - DBに対するカラムの追加、変更、削除等が発生する場合はSQLで直接実行せずマイグレーションを作成するようにしてください
 
-## よく使うBashコマンド 
+## よく使うBashコマンド
 - `pip install`: pythonパッケージをインストールします
 - `docker compose build --no-cache`: docker imageをbuildします
 - `docker compose up -d`: dockerを起動します
@@ -77,4 +77,5 @@ Run
 
 ```bash
 gemini --prompt "WebSearch: <query>"
+# 日本語入力
 ```
