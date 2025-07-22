@@ -37,7 +37,8 @@ def sync_companies_task(
     self, 
     data_source_id: int,
     sync_date: Optional[str] = None,
-    sync_type: str = "full"
+    sync_type: str = "full",
+    execution_type: str = "manual"
 ) -> Dict:
     """
     企業データ同期タスク
@@ -94,7 +95,8 @@ def sync_companies_task(
                 sync_history = await sync_service.sync_companies(
                     data_source_id=data_source_id,
                     sync_date=target_date,
-                    sync_type=sync_type
+                    sync_type=sync_type,
+                    execution_type=execution_type
                 )
                 
                 return {
@@ -202,7 +204,7 @@ def sync_multiple_data_sources(self, data_source_ids: List[int], sync_date: Opti
             )
             
             # 個別の同期を実行
-            result = sync_companies_task.delay(data_source_id, sync_date, "full")
+            result = sync_companies_task.delay(data_source_id, sync_date, "full", "scheduled")
             sync_result = result.get()
             
             results[data_source_id] = sync_result
@@ -384,9 +386,24 @@ def sync_listed_companies(self, execution_type: str = "manual"):
                             jquants_client_manager = JQuantsClientManager(data_source_service)
                             sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
                             
-                            # 同期実行
-                            result = await sync_service.sync_all_companies_simple()
-                            return result
+                            # データソースを取得
+                            data_source = await data_source_service.get_jquants_source()
+                            if not data_source:
+                                raise Exception("No active J-Quants data source found")
+                            
+                            # 履歴を記録する sync_companies メソッドを使用
+                            sync_history = await sync_service.sync_companies(
+                                data_source_id=data_source.id,
+                                sync_type="full",
+                                execution_type=execution_type
+                            )
+                            
+                            return {
+                                "status": "success",
+                                "sync_count": sync_history.total_companies,
+                                "duration": (sync_history.completed_at - sync_history.started_at).total_seconds() if sync_history.completed_at else 0,
+                                "executed_at": sync_history.started_at
+                            }
                     finally:
                         # エンジンをクリーンアップ
                         await task_async_engine.dispose()

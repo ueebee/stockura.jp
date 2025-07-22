@@ -150,6 +150,7 @@ class CompanySyncHistory(Base):
     sync_date: Mapped[date] = mapped_column(Date, nullable=False, comment="同期対象日")
     sync_type: Mapped[str] = mapped_column(String(20), nullable=False, comment="同期タイプ（full/incremental）")
     status: Mapped[str] = mapped_column(String(20), nullable=False, comment="同期状態（running/completed/failed）")
+    execution_type: Mapped[Optional[str]] = mapped_column(String(20), comment="実行タイプ（manual/scheduled）", default="manual")
     
     # 統計情報
     total_companies: Mapped[Optional[int]] = mapped_column(Integer, comment="総企業数")

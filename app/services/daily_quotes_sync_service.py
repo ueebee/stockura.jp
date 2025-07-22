@@ -105,7 +105,8 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
         target_date: Optional[date] = None,
         from_date: Optional[date] = None,
         to_date: Optional[date] = None,
-        specific_codes: Optional[List[str]] = None
+        specific_codes: Optional[List[str]] = None,
+        execution_type: str = "manual"
     ) -> DailyQuotesSyncHistory:
         """
         株価データの同期を実行
@@ -131,7 +132,8 @@ class DailyQuotesSyncService(BaseSyncService[DailyQuotesSyncHistory]):
             started_at=datetime.utcnow(),
             from_date=from_date,
             to_date=to_date,
-            specific_codes=json.dumps(specific_codes) if specific_codes else None
+            specific_codes=json.dumps(specific_codes) if specific_codes else None,
+            execution_type=execution_type
         )
         
         async with async_session_maker() as session:

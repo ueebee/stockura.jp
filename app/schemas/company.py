@@ -67,6 +67,7 @@ class CompanySyncHistoryBase(BaseModel):
     sync_date: date = Field(..., description="同期対象日")
     sync_type: str = Field(..., description="同期タイプ（full/incremental）")
     status: str = Field(..., description="同期状態（running/completed/failed）")
+    execution_type: Optional[str] = Field("manual", description="実行タイプ（manual/scheduled）")
     total_companies: Optional[int] = Field(None, description="総企業数")
     new_companies: Optional[int] = Field(None, description="新規企業数")
     updated_companies: Optional[int] = Field(None, description="更新企業数")

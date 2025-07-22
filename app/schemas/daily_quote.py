@@ -126,6 +126,7 @@ class DailyQuotesSyncHistoryBase(BaseModel):
     sync_date: dt.date = Field(..., description="同期対象日")
     sync_type: str = Field(..., description="同期タイプ（full/incremental/single_stock）")
     status: str = Field(..., description="同期状態（running/completed/failed）")
+    execution_type: Optional[str] = Field("manual", description="実行タイプ（manual/scheduled）")
     
     # 統計情報
     target_companies: Optional[int] = Field(None, description="対象企業数")

@@ -22,7 +22,8 @@ def sync_daily_quotes_task(
     target_date: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
-    codes: Optional[List[str]] = None
+    codes: Optional[List[str]] = None,
+    execution_type: str = "manual"
 ) -> Dict:
     """
     株価データ同期タスク
@@ -97,7 +98,8 @@ def sync_daily_quotes_task(
                         target_date=target_date_obj,
                         from_date=from_date_obj,
                         to_date=to_date_obj,
-                        specific_codes=codes
+                        specific_codes=codes,
+                        execution_type=execution_type
                     )
                     
                     # 結果を辞書形式で返す
@@ -394,7 +396,8 @@ def sync_daily_quotes_scheduled(
                     'target_date': to_date.isoformat() if sync_type == 'incremental' else None,
                     'from_date': from_date.isoformat() if sync_type == 'full' else None,
                     'to_date': to_date.isoformat() if sync_type == 'full' else None,
-                    'codes': None
+                    'codes': None,
+                    'execution_type': 'scheduled'
                 },
                 throw=True
             )
@@ -408,7 +411,8 @@ def sync_daily_quotes_scheduled(
                     'target_date': yesterday.isoformat() if sync_type == 'incremental' else None,
                     'from_date': yesterday.isoformat() if sync_type == 'full' else None,
                     'to_date': yesterday.isoformat() if sync_type == 'full' else None,
-                    'codes': None
+                    'codes': None,
+                    'execution_type': 'scheduled'
                 },
                 throw=True
             )

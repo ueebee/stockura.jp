@@ -25,7 +25,7 @@
             {% endif %}
         </div>
     </div>
-    
+
     <!-- 同期結果表示エリア -->
     <div id="sync-result"></div>
     <!-- 同期タスクレスポンス（非表示） -->
@@ -35,7 +35,7 @@
 
 {% block schedule_header_action %}
             {% if not schedule %}
-            <button onclick="openScheduleCompaniesModal()"
+            <button onclick="showScheduleCompaniesForm()"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -66,7 +66,7 @@
                 <div>
                     <p class="text-sm text-gray-600">操作</p>
                     <div class="flex items-center space-x-2">
-                        <button onclick="openScheduleCompaniesModal({id: {{ schedule.id }}, execution_time: '{{ schedule.execution_time.strftime('%H:%M') }}'})"
+                        <button onclick="showScheduleCompaniesForm({id: {{ schedule.id }}, execution_time: '{{ schedule.execution_time.strftime('%H:%M') }}'})"
                                 class="text-sm text-blue-600 hover:text-blue-800">
                             編集
                         </button>
@@ -84,11 +84,51 @@
             <p class="text-sm text-gray-500">スケジュールが設定されていません</p>
         </div>
         {% endif %}
+
+        <!-- インラインスケジュールフォーム -->
+        <div id="companies-schedule-form-container" class="mt-4" style="display: none;">
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900" id="companies-schedule-form-title">
+                        定期実行時間の設定
+                    </h3>
+                </div>
+
+                <form id="companies-schedule-form" onsubmit="submitScheduleCompaniesForm(event)">
+                    <input type="hidden" id="companies-schedule-form-schedule-id" name="schedule_id" value="">
+
+                    <div class="px-6 py-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">実行時刻（JST） <span class="text-red-500">*</span></label>
+                        <input type="time" id="companies-schedule-form-time" name="execution_time" value="05:00" required
+                               class="block w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <p class="mt-2 text-sm text-gray-500">
+                            ※ 毎日指定時刻に自動実行されます<br>
+                            ※ 処理時間を考慮して、取引時間外を推奨
+                        </p>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
+                        <button type="button" onclick="hideScheduleCompaniesForm()"
+                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                            キャンセル
+                        </button>
+                        <button type="submit" id="companies-schedule-form-submit"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 {% endblock %}
 
 {% block history_table_headers %}
-                        {{ super() }}
-                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">データ件数</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">実行日時</th>
+                        <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">同期タイプ/実行タイプ</th>
+                        <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">新規</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">更新</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">削除</th>
                         <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">実行時間</th>
 {% endblock %}
 
@@ -98,60 +138,85 @@
                        hx-swap="innerHTML"
 {% endblock %}
 
+{% block history_footer %}
+            <div class="mt-4 text-center">
+                <button hx-get="/data-sources/{{ endpoint.data_source_id }}/endpoints/{{ endpoint.id }}/execution-history"
+                        hx-target="#execution-history-tbody"
+                        hx-swap="innerHTML"
+                        hx-trigger="click"
+                        class="text-sm text-blue-600 hover:text-blue-800">
+                    履歴を更新
+                </button>
+            </div>
+{% endblock %}
+
 {% block endpoint_specific_scripts %}
 <script>
 // 企業エンドポイント用スケジュール管理関数を定義
-function openScheduleCompaniesModal(scheduleData = null) {
-    const container = document.getElementById('companies-schedule-modal');
-    const title = document.getElementById('companies-schedule-modal-title');
-    
+function showScheduleCompaniesForm(scheduleData = null) {
+    const container = document.getElementById('companies-schedule-form-container');
+    const title = document.getElementById('companies-schedule-form-title');
+
     if (scheduleData) {
         // 編集モード
         title.textContent = '定期実行時間の変更';
         document.getElementById('companies-schedule-form-schedule-id').value = scheduleData.id;
-        
+
         if (scheduleData.execution_time) {
-            const [hour, minute] = scheduleData.execution_time.split(':');
-            document.getElementById('companies-schedule-form-hour').value = parseInt(hour);
-            document.getElementById('companies-schedule-form-minute').value = parseInt(minute);
+            document.getElementById('companies-schedule-form-time').value = scheduleData.execution_time;
         }
     } else {
         // 新規作成モード
         title.textContent = '定期実行時間の設定';
         document.getElementById('companies-schedule-form').reset();
     }
-    
-    container.classList.remove('hidden');
+
+    // フォームを表示
+    container.style.display = 'block';
+
+    // 既存のスケジュール表示を非表示にする（必要に応じて）
+    const scheduleDisplay = document.querySelector('.bg-gray-50.rounded-lg.p-4');
+    if (scheduleDisplay && !scheduleData) {
+        scheduleDisplay.style.display = 'none';
+    }
 }
 
-function closeScheduleCompaniesModal() {
-    const container = document.getElementById('companies-schedule-modal');
-    container.classList.add('hidden');
+function hideScheduleCompaniesForm() {
+    const container = document.getElementById('companies-schedule-form-container');
+    container.style.display = 'none';
+
+    // 既存のスケジュール表示を再表示する
+    const scheduleDisplay = document.querySelector('.bg-gray-50.rounded-lg.p-4');
+    if (scheduleDisplay) {
+        scheduleDisplay.style.display = 'block';
+    }
 }
 
 async function submitScheduleCompaniesForm(event) {
     event.preventDefault();
-    
+
     const submitBtn = document.getElementById('companies-schedule-form-submit');
     submitBtn.disabled = true;
     submitBtn.textContent = '処理中...';
-    
+
     try {
-        const hour = document.getElementById('companies-schedule-form-hour').value;
-        const minute = document.getElementById('companies-schedule-form-minute').value;
+        const executionTime = document.getElementById('companies-schedule-form-time').value;
         const scheduleId = document.getElementById('companies-schedule-form-schedule-id').value;
-        
+
+        // 時刻を時と分に分割
+        const [hour, minute] = executionTime.split(':');
+
         const data = {
             hour: parseInt(hour),
             minute: parseInt(minute)
         };
-        
-        const url = scheduleId 
+
+        const url = scheduleId
             ? `/api/v1/companies/sync/schedule/${scheduleId}`
             : '/api/v1/companies/sync/schedule';
-        
+
         const method = scheduleId ? 'PUT' : 'POST';
-        
+
         const response = await fetch(url, {
             method: method,
             headers: {
@@ -159,8 +224,10 @@ async function submitScheduleCompaniesForm(event) {
             },
             body: JSON.stringify(data)
         });
-        
+
         if (response.ok) {
+            // フォームを非表示にして、ページをリロード
+            hideScheduleCompaniesForm();
             window.location.reload();
         } else {
             const error = await response.json();
@@ -184,12 +251,12 @@ function openScheduleModal(scheduleId = null) {
             '05:00'
         {% endif %}
     } : null;
-    
-    openScheduleCompaniesModal(scheduleData);
+
+    showScheduleCompaniesForm(scheduleData);
 }
 
 function closeScheduleModal() {
-    closeScheduleCompaniesModal();
+    hideScheduleCompaniesForm();
 }
 
 function toggleSchedule(scheduleId) {
@@ -246,15 +313,15 @@ function updateNextExecutionTime() {
     const now = new Date();
     const executionHour = {{ schedule.execution_time.hour }};
     const executionMinute = {{ schedule.execution_time.minute }};
-    
+
     let nextExecution = new Date();
     nextExecution.setHours(executionHour, executionMinute, 0, 0);
-    
+
     // 今日の実行時刻を過ぎている場合は明日に設定
     if (nextExecution <= now) {
         nextExecution.setDate(nextExecution.getDate() + 1);
     }
-    
+
     const options = {
         year: 'numeric',
         month: '2-digit',
@@ -263,8 +330,8 @@ function updateNextExecutionTime() {
         minute: '2-digit',
         hour12: false
     };
-    
-    document.getElementById('next-execution-time').textContent = 
+
+    document.getElementById('next-execution-time').textContent =
         nextExecution.toLocaleString('ja-JP', options) + ' (JST)';
     {% endif %}
 }
@@ -290,7 +357,7 @@ function startSyncProgress() {
 // HTMXのレスポンスを監視
 document.body.addEventListener('htmx:afterRequest', function(evt) {
     const path = evt.detail.requestConfig?.path || evt.detail.pathInfo?.requestPath;
-    
+
     if (path && path.includes('/api/v1/companies/sync/manual')) {
         try {
             const response = JSON.parse(evt.detail.xhr.responseText);
@@ -314,10 +381,10 @@ function monitorSyncProgress(taskId) {
     if (syncProgressInterval) {
         clearInterval(syncProgressInterval);
     }
-    
+
     // 進捗表示エリアを準備
     const syncResult = document.getElementById('sync-result');
-    
+
     syncResult.innerHTML = `
         <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div class="flex items-center">
@@ -334,16 +401,16 @@ function monitorSyncProgress(taskId) {
             </div>
         </div>
     `;
-    
+
     // 1秒ごとに進捗を確認
     syncProgressInterval = setInterval(async () => {
         try {
             const response = await fetch(`/api/v1/companies/sync/task/${taskId}`);
             const data = await response.json();
-            
+
             const statusEl = document.getElementById('sync-status');
             const progressEl = document.getElementById('sync-progress');
-            
+
             if (data.state === 'PROGRESS') {
                 statusEl.textContent = data.status || '処理中...';
                 const percent = (data.current / data.total) * 100;
@@ -367,10 +434,10 @@ function monitorSyncProgress(taskId) {
                         ` : ''}
                     </div>
                 `;
-                
+
                 // ボタンを元に戻す
                 resetSyncButtons();
-                
+
                 // 実行履歴を更新
                 htmx.trigger(document.getElementById('execution-history-tbody'), 'refresh-history');
             } else if (data.state === 'FAILURE') {
@@ -387,8 +454,8 @@ function monitorSyncProgress(taskId) {
                         ${data.error ? `<p class="mt-2 text-sm text-red-700">${data.error}</p>` : ''}
                     </div>
                 `;
-                
-                // ボタンを元に戻す
+
+                // ボタンを元に戻す 日本語入力ｊj
                 resetSyncButtons();
             }
         } catch (error) {
@@ -416,51 +483,4 @@ updateNextExecutionTime();
 // 1分ごとに次回実行時刻を更新
 setInterval(updateNextExecutionTime, 60000);
 </script>
-
-<!-- スケジュールモーダル -->
-<div id="companies-schedule-modal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900" id="companies-schedule-modal-title">
-                定期実行時間の設定
-            </h3>
-        </div>
-        
-        <form id="companies-schedule-form" onsubmit="submitScheduleCompaniesForm(event)">
-            <input type="hidden" id="companies-schedule-form-schedule-id" name="schedule_id" value="">
-            
-            <div class="px-6 py-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">実行時間 (JST)</label>
-                <div class="flex items-center space-x-2">
-                    <select name="hour" id="companies-schedule-form-hour" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for h in range(24) %}
-                        <option value="{{ h }}" {% if h == 5 %}selected{% endif %}>{{ '%02d'|format(h) }}</option>
-                        {% endfor %}
-                    </select>
-                    <span class="text-lg font-medium text-gray-700">:</span>
-                    <select name="minute" id="companies-schedule-form-minute" class="block w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        {% for m in range(60) %}
-                        <option value="{{ m }}">{{ '%02d'|format(m) }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <p class="mt-2 text-sm text-gray-500">
-                    ※ 毎日指定時刻に自動実行されます<br>
-                    ※ 処理時間を考慮して、取引時間外を推奨
-                </p>
-            </div>
-            
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button type="button" onclick="closeScheduleCompaniesModal()"
-                        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    キャンセル
-                </button>
-                <button type="submit" id="companies-schedule-form-submit"
-                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                    保存
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 {% endblock %}

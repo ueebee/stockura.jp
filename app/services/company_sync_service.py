@@ -5,7 +5,7 @@ J-Quants APIから上場企業データを取得してデータベースに同�
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, date
 import datetime as dt
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,7 +86,9 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
     async def sync_companies(
         self, 
         data_source_id: int,
-        sync_type: str = "full"
+        sync_type: str = "full",
+        sync_date: Optional[date] = None,
+        execution_type: str = "manual"
     ) -> CompanySyncHistory:
         """
         企業データの同期を実行
@@ -98,14 +100,16 @@ class CompanySyncService(BaseSyncService[CompanySyncHistory]):
         Returns:
             CompanySyncHistory: 同期履歴
         """
-        sync_date = dt.date.today()
+        if sync_date is None:
+            sync_date = dt.date.today()
         
         logger.info(f"Starting company sync for type: {sync_type}")
         
         # 同期履歴を作成（基底クラスのメソッドを使用）
         sync_history = await self.create_sync_history(
             sync_type=sync_type,
-            sync_date=sync_date
+            sync_date=sync_date,
+            execution_type=execution_type
         )
         
         try:

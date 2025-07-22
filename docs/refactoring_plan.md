@@ -12,9 +12,32 @@
 - 実装が完了したら本ドキュメントを更新すること
     - どこまで実装したか記載すること
 
-## 最終更新: 2025-07-22
+## 最終更新: 2025-07-23
 
 ### 直近の修正内容
+- **データベースクエリの最適化（N+1問題の解決）** (2025-07-23)
+  - APIエンドポイント一覧表示でのN+1問題を解決
+  - `get_batch_schedule_info`と`get_batch_execution_stats`関数を実装してバッチクエリ化
+  - エンドポイント数に関わらず固定のクエリ数で情報を取得可能に
+  - 新規ファイル: `app/api/v1/views/api_endpoints/query_optimizer.py`
+
+- **データベースインデックスの追加** (2025-07-23)
+  - パフォーマンス向上のため以下のインデックスを追加：
+    - `idx_daily_quotes_sync_history_started_at`
+    - `idx_daily_quotes_sync_history_status`
+    - `idx_api_endpoint_schedules_endpoint_id`
+    - `idx_daily_quote_schedules_data_source_enabled`
+    - `idx_api_endpoints_data_source_type`
+  - マイグレーションファイル: `0baba58d7cf3_add_indexes_for_query_optimization.py`
+
+- **上場企業一覧の実行履歴表示を日次株価データと統一** (2025-07-22)
+  - `CompanySyncHistory`モデルに`execution_type`フィールドを追加（manual/scheduled）
+  - 実行履歴テンプレート`companies_sync_history_rows.html`を新規作成
+  - 同期タイプ（full/incremental）と実行タイプ（manual/scheduled）を2段表示のバッジで表示
+  - APIエンドポイントビューで`CompanySyncHistory`データを返すように修正
+  - `sync_listed_companies`タスクで`sync_companies`メソッドを使用してCompanySyncHistory作成
+  - 実行履歴に「履歴を更新」ボタンを追加
+
 - **API Viewsの整理とクエリ最適化** (2025-07-22)
   - 484行の`api_endpoints.py`を機能別に分割してモジュール化
   - 日次株価データの統計情報取得クエリを最適化（4クエリ→2クエリ）
@@ -343,47 +366,45 @@ export class SyncHandler {
 </button>
 ```
 
-## 5. データベースクエリの最適化
+## 5. データベースクエリの最適化 ✅ 完了 (2025-07-23)
 
-### 5.1 N+1問題の解決
+### 5.1 N+1問題の解決 ✅ 完了
 
-**現状の問題点**
-```python
-# エンドポイント一覧で関連データを個別に取得
-endpoints = db.query(APIEndpoint).all()
-for endpoint in endpoints:
-    schedule = db.query(APIEndpointSchedule).filter_by(endpoint_id=endpoint.id).first()
-    # N+1クエリ
+**実装済み内容**
+- APIエンドポイント一覧表示でN+1問題が発生していた箇所を特定
+- バッチクエリ方式で最適化を実装
+  - `get_batch_schedule_info`: 複数エンドポイントのスケジュール情報を一括取得
+  - `get_batch_execution_stats`: 複数エンドポイントの実行統計を一括取得
+- 既存の個別クエリ関数は互換性のために保持
+
+**実装したファイル**
+```
+app/api/v1/views/api_endpoints/
+├── query_optimizer.py    # バッチクエリ関数（新規作成）
+└── api_endpoints_main.py # バッチクエリ使用に変更
 ```
 
-**改善案**
-```python
-# Eager loadingを使用
-from sqlalchemy.orm import joinedload
+**効果**
+- エンドポイント数×2のクエリが、固定2〜4クエリに削減
+- レスポンス時間の大幅な改善
+- スケーラビリティの向上
 
-endpoints = db.query(APIEndpoint)\
-    .options(joinedload(APIEndpoint.schedule))\
-    .all()
-```
+### 5.2 インデックスの追加 ✅ 完了
 
-### 5.2 インデックスの追加
+**実装済み内容**
+- パフォーマンス向上のため以下のインデックスを追加：
+  - `idx_daily_quotes_sync_history_started_at`: 履歴の日付順取得用
+  - `idx_daily_quotes_sync_history_status`: ステータス別フィルタ用
+  - `idx_api_endpoint_schedules_endpoint_id`: エンドポイント別スケジュール検索用
+  - `idx_daily_quote_schedules_data_source_enabled`: 有効なスケジュール検索用
+  - `idx_api_endpoints_data_source_type`: データソース別・タイプ別検索用
 
-**追加すべきインデックス**
-```sql
--- 頻繁に使用されるクエリ用
-CREATE INDEX idx_daily_quotes_sync_history_started_at
-ON daily_quotes_sync_history(started_at DESC);
+**マイグレーションファイル**
+- `alembic/versions/0baba58d7cf3_add_indexes_for_query_optimization.py`
 
-CREATE INDEX idx_daily_quotes_sync_history_status
-ON daily_quotes_sync_history(status);
-
-CREATE INDEX idx_api_endpoint_schedule_endpoint_id
-ON api_endpoint_schedules(endpoint_id);
-
--- 複合インデックス
-CREATE INDEX idx_daily_quotes_company_date
-ON daily_quotes(company_id, quote_date DESC);
-```
+**効果**
+- クエリのパフォーマンスが向上
+- 特に履歴表示やスケジュール検索が高速化
 
 ## 6. 設定管理の改善
 
@@ -489,18 +510,18 @@ DEFAULT_TIMEOUT = 30
 ## 実装優先度
 
 1. **高優先度**（1-2週間）
-   - エラーハンドリングの統一
-   - データベースクエリの最適化
+   - エラーハンドリングの統一 ✅ 完了
+   - データベースクエリの最適化 ✅ 完了
    - 命名規則の統一
 
 2. **中優先度**（2-4週間）
-   - サービスレイヤーの基底クラス導入
-   - API Viewsの分割
+   - サービスレイヤーの基底クラス導入 ✅ 完了
+   - API Viewsの分割 ✅ 完了
    - テストの追加
 
 3. **低優先度**（1ヶ月以降）
    - フロントエンドのモジュール化
-   - テンプレートの共通化
+   - テンプレートの共通化 ✅ 一部完了
    - 設定管理の一元化
 
 ## まとめ

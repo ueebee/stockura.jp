@@ -54,7 +54,7 @@ async def execute_companies_endpoint(
     
     # 上場企業一覧の同期タスクを実行
     from app.tasks.company_tasks import sync_listed_companies
-    task = sync_listed_companies.delay()
+    task = sync_listed_companies.delay(execution_type="manual")
     
     # タスク実行結果を仮で設定（実際には非同期で更新される）
     execution_log.completed_at = datetime.utcnow()

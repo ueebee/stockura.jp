@@ -21,6 +21,10 @@ from .api_endpoints.base import (
     get_endpoint_execution_stats,
     create_initial_endpoints
 )
+from .api_endpoints.query_optimizer import (
+    get_batch_schedule_info,
+    get_batch_execution_stats
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -54,16 +58,9 @@ async def get_endpoints(
     if not endpoints:
         endpoints = create_initial_endpoints(db, data_source)
     
-    # 各エンドポイントのスケジュール情報と実行統計を取得
-    endpoint_schedules = {}
-    endpoint_stats = {}
-    for endpoint in endpoints:
-        schedule_info = get_endpoint_schedule_info(db, endpoint)
-        endpoint_schedules[endpoint.id] = schedule_info
-        
-        # 実行統計情報を取得
-        stats = get_endpoint_execution_stats(db, endpoint)
-        endpoint_stats[endpoint.id] = stats
+    # バッチクエリで各エンドポイントのスケジュール情報と実行統計を取得（N+1問題を回避）
+    endpoint_schedules = get_batch_schedule_info(db, endpoints)
+    endpoint_stats = get_batch_execution_stats(db, endpoints)
     
     context = {
         "request": request,
@@ -152,21 +149,39 @@ async def get_endpoint_execution_history(
     if not endpoint:
         raise HTTPException(status_code=404, detail="Endpoint not found")
     
-    # 最新の実行ログを取得
-    execution_logs = db.query(APIEndpointExecutionLog).filter(
-        APIEndpointExecutionLog.endpoint_id == endpoint_id
-    ).order_by(APIEndpointExecutionLog.started_at.desc()).limit(5).all()
-    
-    context = {
-        "request": request,
-        "endpoint": endpoint,
-        "execution_logs": execution_logs
-    }
-    
-    return templates.TemplateResponse(
-        "partials/api_endpoints/execution_history_rows.html", 
-        context
-    )
+    # エンドポイントタイプによって異なる履歴を取得
+    if endpoint.data_type == EndpointDataType.LISTED_COMPANIES:
+        # 企業データ同期履歴を取得
+        from app.models.company import CompanySyncHistory
+        histories = db.query(CompanySyncHistory).order_by(
+            CompanySyncHistory.started_at.desc()
+        ).limit(10).all()
+        
+        context = {
+            "request": request,
+            "histories": histories
+        }
+        
+        return templates.TemplateResponse(
+            "partials/api_endpoints/companies_sync_history_rows.html", 
+            context
+        )
+    else:
+        # 通常の実行ログを取得
+        execution_logs = db.query(APIEndpointExecutionLog).filter(
+            APIEndpointExecutionLog.endpoint_id == endpoint_id
+        ).order_by(APIEndpointExecutionLog.started_at.desc()).limit(5).all()
+        
+        context = {
+            "request": request,
+            "endpoint": endpoint,
+            "execution_logs": execution_logs
+        }
+        
+        return templates.TemplateResponse(
+            "partials/api_endpoints/execution_history_rows.html", 
+            context
+        )
 
 
 @router.post("/data-sources/{data_source_id}/endpoints/{endpoint_id}/toggle", response_class=HTMLResponse)

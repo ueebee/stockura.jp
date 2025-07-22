@@ -8,11 +8,17 @@ from .base import (
     get_endpoint_execution_stats,
     create_initial_endpoints
 )
+from .query_optimizer import (
+    get_batch_schedule_info,
+    get_batch_execution_stats
+)
 
 __all__ = [
     "companies_router",
     "daily_quotes_router",
     "get_endpoint_schedule_info",
     "get_endpoint_execution_stats",
-    "create_initial_endpoints"
+    "create_initial_endpoints",
+    "get_batch_schedule_info",
+    "get_batch_execution_stats"
 ]
