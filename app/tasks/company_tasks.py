@@ -83,6 +83,7 @@ def sync_companies_task(
             async with async_session_maker() as db:
                 data_source_service = DataSourceService(db)
                 jquants_client_manager = JQuantsClientManager(data_source_service)
+                
                 sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
                 
                 # 進捗更新
@@ -384,6 +385,8 @@ def sync_listed_companies(self, execution_type: str = "manual"):
                             # サービス初期化
                             data_source_service = DataSourceService(async_db)
                             jquants_client_manager = JQuantsClientManager(data_source_service)
+                            
+                            # CompanySyncServiceを使用（リファクタリング済み）
                             sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
                             
                             # データソースを取得

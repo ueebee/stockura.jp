@@ -10,6 +10,8 @@ from typing import Dict, Optional, Tuple, Any
 import logging
 
 from app.services.auth import StrategyRegistry
+# ストラテジーの登録を実行するためにインポート
+import app.services.auth.strategies
 
 
 logger = logging.getLogger(__name__)
