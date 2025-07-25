@@ -62,11 +62,19 @@ def test_unsupported_provider_error():
     """未登録のプロバイダーでエラーが発生することを確認"""
     from app.services.auth import StrategyRegistry
     
-    # 未知のプロバイダーでエラーが発生
-    with pytest.raises(ValueError) as exc_info:
-        StrategyRegistry.get_strategy("unknown_provider")
+    # レジストリをクリアして未登録状態を作る
+    original_strategies = StrategyRegistry._strategies.copy()
+    StrategyRegistry._strategies.clear()
     
-    assert "Unsupported provider type: unknown_provider" in str(exc_info.value)
+    try:
+        # 未知のプロバイダーでエラーが発生
+        with pytest.raises(ValueError) as exc_info:
+            StrategyRegistry.get_strategy("unknown_provider")
+        
+        assert "Unsupported provider type: unknown_provider" in str(exc_info.value)
+    finally:
+        # レジストリを元に戻す
+        StrategyRegistry._strategies = original_strategies
 
 
 def test_strategy_registry_in_celery_context():
