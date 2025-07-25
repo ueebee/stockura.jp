@@ -1,19 +1,18 @@
 """
-CompanySyncServiceV2の統合テスト
+CompanySyncServiceの統合テスト
 """
 
 import pytest
 from datetime import date
 from unittest.mock import Mock, AsyncMock, patch
 
-from app.services.company_sync_service_v2 import CompanySyncServiceV2
 from app.services.company_sync_service import CompanySyncService
 from app.models.company import Company, CompanySyncHistory
 
 
 @pytest.mark.asyncio
-class TestCompanySyncServiceV2Integration:
-    """CompanySyncServiceV2の統合テスト"""
+class TestCompanySyncServiceIntegration:
+    """CompanySyncServiceの統合テスト"""
     
     @pytest.fixture
     async def mock_db(self):
@@ -68,24 +67,17 @@ class TestCompanySyncServiceV2Integration:
         return manager
     
     @pytest.fixture
-    async def service_v2(self, mock_db, mock_data_source_service, mock_jquants_client_manager):
-        """テスト用のCompanySyncServiceV2インスタンス"""
-        return CompanySyncServiceV2(
-            db=mock_db,
-            data_source_service=mock_data_source_service,
-            jquants_client_manager=mock_jquants_client_manager
-        )
-    
-    @pytest.fixture
-    async def service_v1(self, mock_db, mock_data_source_service, mock_jquants_client_manager):
-        """テスト用のCompanySyncService（旧版）インスタンス"""
+    async def service(self, mock_db, mock_data_source_service, mock_jquants_client_manager):
+        """テスト用のCompanySyncServiceインスタンス"""
         return CompanySyncService(
             db=mock_db,
             data_source_service=mock_data_source_service,
             jquants_client_manager=mock_jquants_client_manager
         )
     
-    async def test_sync_companies_compatibility(self, service_v2, mock_db):
+    @pytest.fixture
+    
+    async def test_sync_companies_compatibility(self, service, mock_db):
         """sync_companiesメソッドの互換性テスト"""
         # モックの設定
         mock_history = Mock(spec=CompanySyncHistory)
@@ -96,8 +88,8 @@ class TestCompanySyncServiceV2Integration:
         mock_history.updated_companies = 0
         
         # create_sync_historyのモック
-        service_v2.create_sync_history = AsyncMock(return_value=mock_history)
-        service_v2.update_sync_history_success = AsyncMock(return_value=mock_history)
+        service.create_sync_history = AsyncMock(return_value=mock_history)
+        service.update_sync_history_success = AsyncMock(return_value=mock_history)
         
         # 実行
         result = await service_v2.sync_companies(
@@ -122,7 +114,7 @@ class TestCompanySyncServiceV2Integration:
         mock_history.new_companies = 2
         mock_history.updated_companies = 0
         
-        service_v2.sync_companies = AsyncMock(return_value=mock_history)
+        service.sync_companies = AsyncMock(return_value=mock_history)
         
         # 実行
         result = await service_v2.sync(
@@ -154,17 +146,17 @@ class TestCompanySyncServiceV2Integration:
         mock_history = Mock(spec=CompanySyncHistory)
         mock_history.id = 1
         
-        service_v2.create_sync_history = AsyncMock(return_value=mock_history)
-        service_v2.update_sync_history_failure = AsyncMock(return_value=mock_history)
+        service.create_sync_history = AsyncMock(return_value=mock_history)
+        service.update_sync_history_failure = AsyncMock(return_value=mock_history)
         
         # フェッチャーがエラーを発生させるように設定
-        service_v2._initialize_fetcher = Mock()
+        service._initialize_fetcher = Mock()
         mock_fetcher = Mock()
         mock_fetcher.fetch_all_companies = AsyncMock(side_effect=Exception("API Error"))
-        service_v2._initialize_fetcher.return_value = mock_fetcher
+        service._initialize_fetcher.return_value = mock_fetcher
         
         # ErrorHandlerのモック
-        with patch('app.services.company_sync_service_v2.ErrorHandler.handle_sync_error') as mock_error_handler:
+        with patch('app.services.company_sync_service.ErrorHandler.handle_sync_error') as mock_error_handler:
             mock_error_handler.return_value = {"error": "API Error"}
             
             # 実行と検証
@@ -175,13 +167,13 @@ class TestCompanySyncServiceV2Integration:
                 )
             
             assert str(exc_info.value) == "API Error"
-            assert service_v2.update_sync_history_failure.called
+            assert service.update_sync_history_failure.called
     
-    async def test_get_sync_history_with_count_compatibility(self, service_v2, mock_db):
+    async def test_get_sync_history_with_count_compatibility(self, service, mock_db):
         """get_sync_history_with_countメソッドの互換性テスト"""
         # モックの設定
         mock_histories = [Mock(spec=CompanySyncHistory) for _ in range(3)]
-        service_v2.get_sync_history = AsyncMock(return_value=mock_histories)
+        service.get_sync_history = AsyncMock(return_value=mock_histories)
         
         # countクエリの結果
         mock_result = Mock()
@@ -189,7 +181,7 @@ class TestCompanySyncServiceV2Integration:
         mock_db.execute.return_value = mock_result
         
         # 実行
-        histories, total = await service_v2.get_sync_history_with_count(
+        histories, total = await service.get_sync_history_with_count(
             limit=3,
             offset=0,
             status="completed"
@@ -199,29 +191,3 @@ class TestCompanySyncServiceV2Integration:
         assert len(histories) == 3
         assert total == 10
     
-    async def test_performance_comparison(self, service_v1, service_v2, mock_db):
-        """パフォーマンスの比較テスト（同等であることを確認）"""
-        import time
-        
-        # V1の実行時間を測定
-        start_v1 = time.time()
-        # sync_companiesのモック（実際の処理はスキップ）
-        service_v1._save_companies_data = AsyncMock(return_value={"new_count": 2, "updated_count": 0})
-        service_v1.create_sync_history = AsyncMock()
-        service_v1.update_sync_history_success = AsyncMock()
-        
-        # V1は内部実装が異なるため、簡易的なテスト
-        end_v1 = time.time()
-        
-        # V2の実行時間を測定
-        start_v2 = time.time()
-        result_v2 = await service_v2.sync_all_companies_simple()
-        end_v2 = time.time()
-        
-        # パフォーマンスは大幅に劣化していないことを確認
-        # （モックなので実際の差は小さいはず）
-        time_v1 = end_v1 - start_v1
-        time_v2 = end_v2 - start_v2
-        
-        # V2がV1の10倍以上遅くないことを確認
-        assert time_v2 < time_v1 * 10

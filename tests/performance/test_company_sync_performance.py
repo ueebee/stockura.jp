@@ -9,7 +9,6 @@ from unittest.mock import Mock, AsyncMock, patch
 import pytest
 
 from app.services.company_sync_service import CompanySyncService
-from app.services.company_sync_service_v2 import CompanySyncServiceV2
 
 
 @pytest.mark.asyncio
@@ -92,7 +91,7 @@ class TestCompanySyncPerformance:
         end_time_v1 = time.time()
         
         # V2のテスト
-        service_v2 = CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
+        service = CompanySyncService(db, data_source_service, jquants_client_manager)
         
         # リポジトリのモック
         async def mock_bulk_upsert(data):
@@ -140,8 +139,8 @@ class TestCompanySyncPerformance:
         # 現在のプロセスを取得
         process = psutil.Process(os.getpid())
         
-        # V2のサービスを作成
-        service_v2 = CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
+        # サービスを作成
+        service = CompanySyncService(db, data_source_service, jquants_client_manager)
         
         # 初期メモリ使用量
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -150,14 +149,14 @@ class TestCompanySyncPerformance:
         mock_repository = Mock()
         mock_repository.bulk_upsert = AsyncMock(return_value={"created": 5000, "updated": 0})
         
-        with patch.object(service_v2, '_initialize_repository', return_value=mock_repository):
-            service_v2.create_sync_history = AsyncMock()
-            service_v2.update_sync_history_success = AsyncMock()
+        with patch.object(service, '_initialize_repository', return_value=mock_repository):
+            service.create_sync_history = AsyncMock()
+            service.update_sync_history_success = AsyncMock()
             
             # 10回実行してメモリリークがないか確認
             for i in range(10):
                 try:
-                    await service_v2.sync_companies(
+                    await service.sync_companies(
                         data_source_id=1,
                         sync_type="full"
                     )
@@ -186,7 +185,7 @@ class TestCompanySyncPerformance:
         """バッチ処理のパフォーマンステスト"""
         db, data_source_service, jquants_client_manager = mock_services
         
-        service_v2 = CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
+        service = CompanySyncService(db, data_source_service, jquants_client_manager)
         
         # 異なるバッチサイズでのテスト
         batch_sizes = [100, 500, 1000, 2000]
@@ -194,7 +193,7 @@ class TestCompanySyncPerformance:
         
         for batch_size in batch_sizes:
             # バッチサイズを設定
-            service_v2._batch_size = batch_size
+            service._batch_size = batch_size
             
             # リポジトリのモック
             mock_repository = Mock()
@@ -207,13 +206,13 @@ class TestCompanySyncPerformance:
             
             mock_repository.bulk_upsert = AsyncMock(side_effect=mock_bulk_upsert)
             
-            with patch.object(service_v2, '_initialize_repository', return_value=mock_repository):
-                service_v2.create_sync_history = AsyncMock()
-                service_v2.update_sync_history_success = AsyncMock()
+            with patch.object(service, '_initialize_repository', return_value=mock_repository):
+                service.create_sync_history = AsyncMock()
+                service.update_sync_history_success = AsyncMock()
                 
                 start_time = time.time()
                 try:
-                    await service_v2.sync_companies(
+                    await service.sync_companies(
                         data_source_id=1,
                         sync_type="full"
                     )

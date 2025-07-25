@@ -21,21 +21,20 @@ CompanySyncServiceのリファクタリングを完了しました。単一責�
    - カバレッジ: 84.33%
    - テスト数: 41個（全てPASS）
 
-### Phase 2: 統合と互換性確保
-1. **CompanySyncServiceV2の実装**
+### Phase 2: 統合と直接置き換え
+1. **新しいCompanySyncServiceの実装**
    - 依存性注入を使用した新しい実装
    - 既存のCompanySyncServiceとの完全な互換性を維持
    - バッチ処理による効率的なデータ保存
 
-2. **フィーチャーフラグシステム**
-   - 段階的なロールアウトのための仕組み
-   - 環境変数での制御: `FEATURE_FLAG_USE_COMPANY_SYNC_SERVICE_V2`
-   - デフォルトはfalse（既存実装を使用）
+2. **直接置き換え**
+   - 旧実装を新実装で完全に置き換え
+   - フィーチャーフラグなしでシンプルな移行
 
 3. **エントリーポイントの更新**
    - APIエンドポイント (`app/api/v1/endpoints/companies.py`)
    - Celeryタスク (`app/tasks/company_tasks.py`)
-   - フィーチャーフラグに基づく動的なサービス選択
+   - 新実装を直接使用
 
 ### Phase 3: テストと検証
 - 単体テスト: 41個全てPASS
@@ -89,27 +88,21 @@ async def sync_all_companies_simple(self) -> Dict[str, Any]
 
 ## デプロイ手順
 
-### 1. 初期デプロイ（フィーチャーフラグOFF）
+### 1. デプロイ
 ```bash
-# デフォルトで既存実装を使用
+# 新実装を直接デプロイ
 docker compose up -d
 ```
 
-### 2. 段階的な有効化
-```bash
-# 環境変数で新実装を有効化
-export FEATURE_FLAG_USE_COMPANY_SYNC_SERVICE_V2=true
-docker compose up -d
-```
-
-### 3. 検証
+### 2. 検証
 - ログで正常動作を確認
 - パフォーマンスメトリクスの比較
 - エラー率の監視
 
-### 4. 完全移行
-- 全環境でフィーチャーフラグを有効化
-- 安定稼働確認後、旧実装を削除
+### 3. 監視
+- エラー率の確認
+- パフォーマンスの確認
+- メモリ使用量の確認
 
 ## 今後の推奨事項
 
@@ -121,15 +114,15 @@ docker compose up -d
    - 新実装でのエラー率を監視
    - 特にタイムアウトエラーに注意
 
-3. **段階的な削除**
-   - 3ヶ月の安定稼働後、旧実装の削除を検討
-   - フィーチャーフラグシステムの簡素化
+3. **継続的な改善**
+   - パフォーマンスチューニング
+   - エラーハンドリングの改善
 
 ## 技術的詳細
 
 ### 依存関係
 ```
-CompanySyncServiceV2
+CompanySyncService
 ├── CompanyDataFetcher (データ取得)
 ├── CompanyDataMapper (データ変換)
 └── CompanyRepository (データ保存)
@@ -153,4 +146,4 @@ for i in range(0, len(mapped_companies), self._batch_size):
 - コードの可読性向上
 - テストカバレッジ: 0% → 84.33%
 - 責務の明確化による保守性向上
-- 段階的なデプロイが可能な安全な移行パス
+- シンプルで直接的な移行の実現

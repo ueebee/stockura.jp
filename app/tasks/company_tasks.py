@@ -12,8 +12,6 @@ from app.db.session import async_session_maker
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
-from app.services.company_sync_service_v2 import CompanySyncServiceV2
-from app.core.feature_flags import FeatureFlags
 from app.models.api_endpoint import APIEndpointSchedule
 
 
@@ -86,11 +84,7 @@ def sync_companies_task(
                 data_source_service = DataSourceService(db)
                 jquants_client_manager = JQuantsClientManager(data_source_service)
                 
-                # フィーチャーフラグに基づいてサービスを選択
-                if FeatureFlags.is_enabled("use_company_sync_service_v2"):
-                    sync_service = CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
-                else:
-                    sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
+                sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
                 
                 # 進捗更新
                 self.update_state(
