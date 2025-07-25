@@ -7,7 +7,12 @@ import asyncio
 import os
 import sys
 import argparse
+import subprocess
+import time
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, Any, Optional, List
 
 # 新しいモジュール構造をインポート
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -15,6 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from regression_test.config import TestConfig
 from regression_test.test_suite import TestSuite
 from regression_test.browser import PLAYWRIGHT_AVAILABLE
+
+# Playwrightのインポート（利用可能な場合）
+if PLAYWRIGHT_AVAILABLE:
+    from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 
 
 # 後方互換性のため、旧RegressionTesterクラスを残す
@@ -104,16 +113,18 @@ class RegressionTester:
     def get_jst_time_after_minutes(self, minutes: int) -> str:
         """現在時刻から指定分後のJST時刻を HH:MM 形式で返す"""
         # 現在のJST時刻を取得（UTC+9）
-        jst_offset = timedelta(hours=9)
-        jst_now = datetime.utcnow() + jst_offset
+        from datetime import timezone
+        jst_offset = timezone(timedelta(hours=9))
+        jst_now = datetime.now(jst_offset)
         future_time = jst_now + timedelta(minutes=minutes)
         return future_time.strftime("%H:%M")
 
     def get_jst_time_after_seconds(self, seconds: int) -> str:
         """現在時刻から指定秒後のJST時刻を HH:MM:SS 形式で返す"""
         # 現在のJST時刻を取得（UTC+9）
-        jst_offset = timedelta(hours=9)
-        jst_now = datetime.utcnow() + jst_offset
+        from datetime import timezone
+        jst_offset = timezone(timedelta(hours=9))
+        jst_now = datetime.now(jst_offset)
         future_time = jst_now + timedelta(seconds=seconds)
         return future_time.strftime("%H:%M:%S")
 
