@@ -12,6 +12,8 @@ from app.db.session import async_session_maker
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
+from app.services.company_sync_service_v2 import CompanySyncServiceV2
+from app.core.feature_flags import FeatureFlags
 from app.models.api_endpoint import APIEndpointSchedule
 
 
@@ -83,7 +85,12 @@ def sync_companies_task(
             async with async_session_maker() as db:
                 data_source_service = DataSourceService(db)
                 jquants_client_manager = JQuantsClientManager(data_source_service)
-                sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
+                
+                # フィーチャーフラグに基づいてサービスを選択
+                if FeatureFlags.is_enabled("use_company_sync_service_v2"):
+                    sync_service = CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
+                else:
+                    sync_service = CompanySyncService(db, data_source_service, jquants_client_manager)
                 
                 # 進捗更新
                 self.update_state(
@@ -384,7 +391,12 @@ def sync_listed_companies(self, execution_type: str = "manual"):
                             # サービス初期化
                             data_source_service = DataSourceService(async_db)
                             jquants_client_manager = JQuantsClientManager(data_source_service)
-                            sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
+                            
+                            # フィーチャーフラグに基づいてサービスを選択
+                            if FeatureFlags.is_enabled("use_company_sync_service_v2"):
+                                sync_service = CompanySyncServiceV2(async_db, data_source_service, jquants_client_manager)
+                            else:
+                                sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
                             
                             # データソースを取得
                             data_source = await data_source_service.get_jquants_source()

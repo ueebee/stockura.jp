@@ -27,6 +27,8 @@ from app.schemas.company import (
 from app.services.data_source_service import DataSourceService
 from app.services.jquants_client import JQuantsClientManager
 from app.services.company_sync_service import CompanySyncService
+from app.services.company_sync_service_v2 import CompanySyncServiceV2
+from app.core.feature_flags import FeatureFlags
 from app.services.schedule_service import ScheduleService
 from app.services.redbeat_schedule_service import RedbeatScheduleService
 from app.tasks.company_tasks import sync_listed_companies
@@ -53,7 +55,11 @@ def get_company_sync_service(
     jquants_client_manager: JQuantsClientManager = Depends(get_jquants_client_manager)
 ) -> CompanySyncService:
     """企業同期サービスを取得"""
-    return CompanySyncService(db, data_source_service, jquants_client_manager)
+    # フィーチャーフラグに基づいてサービスを選択
+    if FeatureFlags.is_enabled("use_company_sync_service_v2"):
+        return CompanySyncServiceV2(db, data_source_service, jquants_client_manager)
+    else:
+        return CompanySyncService(db, data_source_service, jquants_client_manager)
 
 
 def get_schedule_service(
