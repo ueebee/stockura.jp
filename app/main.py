@@ -10,8 +10,8 @@ from app.services.encryption import get_encryption_service
 from app.db.session import check_database_connection
 from app.services.token_manager import cleanup_expired_tokens
 from app.services.auth import StrategyRegistry
-from app.services.auth.strategies.jquants_strategy import JQuantsStrategy
-from app.services.auth.strategies.yfinance_strategy import YFinanceStrategy
+# ストラテジーの登録を実行するためにインポート
+import app.services.auth.strategies
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -77,14 +77,8 @@ async def startup_event():
     """アプリケーション起動時の処理"""
     logger.info("Starting Stockura application...")
     
-    # 認証ストラテジーを登録
-    try:
-        StrategyRegistry.register("jquants", JQuantsStrategy)
-        StrategyRegistry.register("yfinance", YFinanceStrategy)
-        logger.info(f"Registered authentication strategies: {StrategyRegistry.get_supported_providers()}")
-    except Exception as e:
-        logger.error(f"Failed to register authentication strategies: {e}")
-        raise
+    # 認証ストラテジーはapp.services.auth.strategiesのインポート時に自動登録される
+    logger.info(f"Registered authentication strategies: {StrategyRegistry.get_supported_providers()}")
     
     # データベース接続の健全性チェック
     try:

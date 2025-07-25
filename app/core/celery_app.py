@@ -3,8 +3,8 @@ from celery.signals import worker_ready
 from app.core.config import settings
 from app.utils.rate_limit import RateLimitManager
 from app.services.auth import StrategyRegistry
-from app.services.auth.strategies.jquants_strategy import JQuantsStrategy
-from app.services.auth.strategies.yfinance_strategy import YFinanceStrategy
+# ストラテジーの登録を実行するためにインポート
+import app.services.auth.strategies
 import logging
 
 logger = logging.getLogger(__name__)
@@ -106,11 +106,5 @@ def setup_worker(sender=None, **kwargs):
     """ワーカー起動時の初期化処理"""
     logger.info("Initializing worker...")
     
-    # 認証ストラテジーを登録
-    try:
-        StrategyRegistry.register("jquants", JQuantsStrategy)
-        StrategyRegistry.register("yfinance", YFinanceStrategy)
-        logger.info(f"Registered authentication strategies: jquants, yfinance")
-    except Exception as e:
-        logger.error(f"Failed to register authentication strategies: {e}")
-        raise
+    # 認証ストラテジーはapp.services.auth.strategiesのインポート時に自動登録される
+    logger.info(f"Registered authentication strategies: {StrategyRegistry.get_supported_providers()}")

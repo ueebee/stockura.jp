@@ -386,11 +386,8 @@ def sync_listed_companies(self, execution_type: str = "manual"):
                             data_source_service = DataSourceService(async_db)
                             jquants_client_manager = JQuantsClientManager(data_source_service)
                             
-                            # フィーチャーフラグに基づいてサービスを選択
-                            if FeatureFlags.is_enabled("use_company_sync_service_v2"):
-                                sync_service = CompanySyncServiceV2(async_db, data_source_service, jquants_client_manager)
-                            else:
-                                sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
+                            # CompanySyncServiceを使用（リファクタリング済み）
+                            sync_service = CompanySyncService(async_db, data_source_service, jquants_client_manager)
                             
                             # データソースを取得
                             data_source = await data_source_service.get_jquants_source()
