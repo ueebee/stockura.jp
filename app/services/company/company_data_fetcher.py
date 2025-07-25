@@ -66,7 +66,7 @@ class CompanyDataFetcher(ICompanyDataFetcher):
             logger.info(f"Successfully fetched {len(companies_data)} companies from J-Quants API")
             return companies_data
             
-        except DataSourceNotFoundError:
+        except DataSourceNotFoundError as e:
             error_msg = f"Data source not found: {self.data_source_id}"
             logger.error(error_msg)
             raise DataFetchError(error_msg)
@@ -110,7 +110,7 @@ class CompanyDataFetcher(ICompanyDataFetcher):
                 
             return company_data
             
-        except DataSourceNotFoundError:
+        except DataSourceNotFoundError as e:
             error_msg = f"Data source not found: {self.data_source_id}"
             logger.error(error_msg)
             raise DataFetchError(error_msg)

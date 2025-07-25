@@ -100,8 +100,8 @@ class CompanyDataMapper(ICompanyDataMapper):
         
         # 企業名の検証
         company_name = data.get("CompanyName")
-        if company_name:
-            company_name_str = str(company_name)
+        if company_name is not None:
+            company_name_str = str(company_name).strip()
             if len(company_name_str) == 0:
                 return False, "Company name cannot be empty"
             if len(company_name_str) > 255:
