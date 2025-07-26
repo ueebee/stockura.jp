@@ -25,8 +25,7 @@ class TestCompanyDataFetcher:
     def mock_jquants_client(self):
         """モックのJQuantsクライアント"""
         client = Mock()
-        client.get_all_listed_companies = AsyncMock()
-        client.get_company_info = AsyncMock()
+        client.get_listed_companies = AsyncMock()
         return client
     
     @pytest.fixture
@@ -63,7 +62,7 @@ class TestCompanyDataFetcher:
     ):
         """全企業データ取得の正常系テスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.return_value = sample_companies_data
+        mock_jquants_client.get_listed_companies.return_value = sample_companies_data
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行
@@ -73,7 +72,7 @@ class TestCompanyDataFetcher:
         assert result == sample_companies_data
         assert len(result) == 2
         mock_jquants_client_manager.get_client.assert_called_once_with(1)
-        mock_jquants_client.get_all_listed_companies.assert_called_once_with(date=None)
+        mock_jquants_client.get_listed_companies.assert_called_once_with(target_date=None)
     
     @pytest.mark.asyncio
     async def test_fetch_all_companies_with_date(
@@ -81,7 +80,7 @@ class TestCompanyDataFetcher:
     ):
         """日付指定での全企業データ取得テスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.return_value = sample_companies_data
+        mock_jquants_client.get_listed_companies.return_value = sample_companies_data
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         target_date = date(2024, 1, 15)
@@ -91,7 +90,7 @@ class TestCompanyDataFetcher:
         
         # 検証
         assert result == sample_companies_data
-        mock_jquants_client.get_all_listed_companies.assert_called_once_with(date=target_date)
+        mock_jquants_client.get_listed_companies.assert_called_once_with(target_date=target_date)
     
     @pytest.mark.asyncio
     async def test_fetch_all_companies_empty_result(
@@ -99,7 +98,7 @@ class TestCompanyDataFetcher:
     ):
         """空の結果が返ってきた場合のテスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.return_value = []
+        mock_jquants_client.get_listed_companies.return_value = []
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行
@@ -130,7 +129,7 @@ class TestCompanyDataFetcher:
     ):
         """APIエラーが発生した場合のテスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.side_effect = APIError("API rate limit exceeded")
+        mock_jquants_client.get_listed_companies.side_effect = APIError("API rate limit exceeded")
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行と検証
@@ -145,7 +144,7 @@ class TestCompanyDataFetcher:
     ):
         """予期しないエラーが発生した場合のテスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.side_effect = Exception("Unexpected error")
+        mock_jquants_client.get_listed_companies.side_effect = Exception("Unexpected error")
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行と検証
@@ -165,7 +164,7 @@ class TestCompanyDataFetcher:
             "CompanyName": "テスト株式会社",
             "CompanyNameEnglish": "Test Corp"
         }
-        mock_jquants_client.get_company_info.return_value = company_data
+        mock_jquants_client.get_listed_companies.return_value = [company_data]
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行
@@ -173,7 +172,7 @@ class TestCompanyDataFetcher:
         
         # 検証
         assert result == company_data
-        mock_jquants_client.get_company_info.assert_called_once_with(code="1234", date=None)
+        mock_jquants_client.get_listed_companies.assert_called_once_with(code="1234", target_date=None)
     
     @pytest.mark.asyncio
     async def test_fetch_company_by_code_not_found(
@@ -181,7 +180,7 @@ class TestCompanyDataFetcher:
     ):
         """企業が見つからない場合のテスト"""
         # モックの設定
-        mock_jquants_client.get_company_info.return_value = None
+        mock_jquants_client.get_listed_companies.return_value = []
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 実行
@@ -189,7 +188,7 @@ class TestCompanyDataFetcher:
         
         # 検証
         assert result is None
-        mock_jquants_client.get_company_info.assert_called_once_with(code="9999", date=None)
+        mock_jquants_client.get_listed_companies.assert_called_once_with(code="9999", target_date=None)
     
     @pytest.mark.asyncio
     async def test_fetch_company_by_code_with_date(
@@ -198,7 +197,7 @@ class TestCompanyDataFetcher:
         """日付指定での特定企業データ取得テスト"""
         # モックの設定
         company_data = {"Code": "1234", "CompanyName": "テスト株式会社"}
-        mock_jquants_client.get_company_info.return_value = company_data
+        mock_jquants_client.get_listed_companies.return_value = [company_data]
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         target_date = date(2024, 1, 15)
@@ -208,8 +207,8 @@ class TestCompanyDataFetcher:
         
         # 検証
         assert result == company_data
-        mock_jquants_client.get_company_info.assert_called_once_with(
-            code="1234", date=target_date
+        mock_jquants_client.get_listed_companies.assert_called_once_with(
+            code="1234", target_date=target_date
         )
     
     @pytest.mark.asyncio
@@ -218,7 +217,7 @@ class TestCompanyDataFetcher:
     ):
         """クライアントの遅延初期化テスト"""
         # モックの設定
-        mock_jquants_client.get_all_listed_companies.return_value = sample_companies_data
+        mock_jquants_client.get_listed_companies.return_value = sample_companies_data
         mock_jquants_client_manager.get_client.return_value = mock_jquants_client
         
         # 初回呼び出し
@@ -231,7 +230,7 @@ class TestCompanyDataFetcher:
         mock_jquants_client_manager.get_client.assert_called_once()
         
         # API呼び出しは2回実行される
-        assert mock_jquants_client.get_all_listed_companies.call_count == 2
+        assert mock_jquants_client.get_listed_companies.call_count == 2
     
     @pytest.mark.asyncio
     async def test_client_initialization_error(

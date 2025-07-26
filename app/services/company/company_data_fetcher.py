@@ -57,7 +57,7 @@ class CompanyDataFetcher(ICompanyDataFetcher):
         
         try:
             client = await self._get_client()
-            companies_data = await client.get_all_listed_companies(date=target_date)
+            companies_data = await client.get_listed_companies(target_date=target_date)
             
             if not companies_data:
                 logger.warning("No company data received from J-Quants API")
@@ -101,7 +101,8 @@ class CompanyDataFetcher(ICompanyDataFetcher):
         
         try:
             client = await self._get_client()
-            company_data = await client.get_company_info(code=code, date=target_date)
+            companies = await client.get_listed_companies(code=code, target_date=target_date)
+            company_data = companies[0] if companies else None
             
             if company_data:
                 logger.info(f"Successfully fetched company data for code: {code}")

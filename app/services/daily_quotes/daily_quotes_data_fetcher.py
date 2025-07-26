@@ -46,7 +46,7 @@ class DailyQuotesDataFetcher(IDailyQuotesDataFetcher):
         """J-Quantsクライアントを取得（遅延初期化）"""
         if self._client is None:
             try:
-                self._client = await self.jquants_client_manager.get_daily_quotes_client(
+                self._client = await self.jquants_client_manager.get_client(
                     self.data_source_id
                 )
             except Exception as e:
@@ -75,7 +75,6 @@ class DailyQuotesDataFetcher(IDailyQuotesDataFetcher):
             RateLimitError: レート制限に達した場合
         """
         client = await self._get_client()
-        date_str = target_date.strftime('%Y-%m-%d')
         
         try:
             if codes:
@@ -83,21 +82,24 @@ class DailyQuotesDataFetcher(IDailyQuotesDataFetcher):
                 all_quotes = []
                 for code in codes:
                     try:
-                        quotes = await client.get_stock_prices_by_date(date_str, codes=[code])
+                        quotes = await client.get_daily_quotes(
+                            code=code,
+                            target_date=target_date
+                        )
                         all_quotes.extend(quotes)
                         
                         # レート制限対策
                         await asyncio.sleep(self._rate_limit_delay)
                         
                     except Exception as e:
-                        logger.error(f"Error fetching data for code {code} on {date_str}: {e}")
+                        logger.error(f"Error fetching data for code {code} on {target_date}: {e}")
                         # 個別銘柄のエラーは継続
                         continue
                 
                 return all_quotes
             else:
                 # 全銘柄の取得
-                quotes = await client.get_stock_prices_by_date(date_str)
+                quotes = await client.get_daily_quotes(target_date=target_date)
                 return quotes or []
                 
         except Exception as e:
@@ -114,11 +116,11 @@ class DailyQuotesDataFetcher(IDailyQuotesDataFetcher):
                 )
             elif "404" in error_msg:
                 # データが存在しない場合は空リストを返す
-                logger.info(f"No data available for date {date_str}")
+                logger.info(f"No data available for date {target_date}")
                 return []
             else:
                 raise DataFetchError(
-                    f"Failed to fetch quotes for date {date_str}: {error_msg}"
+                    f"Failed to fetch quotes for date {target_date}: {error_msg}"
                 )
     
     async def fetch_quotes_by_date_range(
