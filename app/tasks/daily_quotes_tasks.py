@@ -354,25 +354,30 @@ def daily_quotes_health_check() -> Dict:
 
 
 @celery_app.task(bind=True, name="sync_daily_quotes_scheduled")
-def sync_daily_quotes_scheduled(
-    self,
-    schedule_id: int,
-    sync_type: str,
-    data_source_id: int,
-    relative_preset: Optional[str] = None
-) -> Dict:
+def sync_daily_quotes_scheduled(self, **kwargs) -> Dict:
     """
     定期実行用の株価データ同期タスク
     
-    Args:
-        schedule_id: スケジュールID
-        sync_type: 同期タイプ（full/incremental）
-        data_source_id: データソースID
-        relative_preset: 相対日付プリセット（last7days等）
+    Kwargs:
+        schedule_id (int): スケジュールID
+        sync_type (str): 同期タイプ（full/incremental）
+        data_source_id (int): データソースID
+        relative_preset (str, optional): 相対日付プリセット（last7days等）
         
     Returns:
         Dict: 同期結果
     """
+    # パラメータの取得と検証
+    required_params = ['schedule_id', 'sync_type', 'data_source_id']
+    missing_params = [p for p in required_params if p not in kwargs]
+    if missing_params:
+        raise ValueError(f"Missing required parameters: {missing_params}")
+    
+    schedule_id = kwargs['schedule_id']
+    sync_type = kwargs['sync_type']
+    data_source_id = kwargs['data_source_id']
+    relative_preset = kwargs.get('relative_preset')
+    
     print(f"Starting scheduled daily quotes sync for schedule_id: {schedule_id}")
     
     try:
@@ -426,5 +431,5 @@ def sync_daily_quotes_scheduled(
         return {
             'error': str(e),
             'status': 'failed',
-            'schedule_id': schedule_id
+            'schedule_id': kwargs.get('schedule_id')
         }

@@ -43,7 +43,7 @@ def load_schedules_from_database():
                         hour=utc_datetime.hour,
                         minute=utc_datetime.minute
                     ),
-                    'args': ['scheduled'],
+                    'kwargs': {'execution_type': 'scheduled'},
                     'options': {
                         'queue': 'default',
                         'expires': 3600,
