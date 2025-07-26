@@ -1,0 +1,25 @@
+# Include base requirements
+-r requirements.txt
+
+# Development Tools
+ipython==8.18.1
+ipdb==0.13.13
+
+# Code Quality Tools
+pylint==3.0.2
+autopep8==2.0.4
+bandit==1.7.5
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+myst-parser==2.0.0
+
+# Performance Testing
+locust==2.17.0
+
+# Database Tools
+pgcli==4.0.1
+
+# Debugging
+debugpy==1.8.0
