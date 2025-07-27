@@ -45,7 +45,11 @@ pytest==8.4.1
 pytest-asyncio==1.1.0
 pytest-cov==6.2.1
 pytest-mock==3.14.1
+pytest-env==1.1.1
+pytest-xdist==3.5.0
 faker==37.4.2
+factory-boy==3.3.3
+freezegun==1.2.2
 
 # Dependency Injection
 dependency-injector==4.48.1
