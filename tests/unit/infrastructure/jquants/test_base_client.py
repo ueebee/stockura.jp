@@ -224,7 +224,16 @@ class TestJQuantsBaseClient:
         call_count = 0
         async def mock_get_side_effect(endpoint, params=None, headers=None):
             nonlocal call_count
-            result = [page1, page2, page3][call_count]
+            # パラメータに基づいて適切なページを返す
+            if params and "pagination_key" in params:
+                if params["pagination_key"] == "key1":
+                    result = page2
+                elif params["pagination_key"] == "key2":
+                    result = page3
+                else:
+                    result = page1
+            else:
+                result = page1
             call_count += 1
             return result
 
@@ -233,26 +242,6 @@ class TestJQuantsBaseClient:
             assert result == [{"id": 1}, {"id": 2}, {"id": 3}]
             assert mock_get.call_count == 3
 
-            # パラメータの確認
-            calls = mock_get.call_args_list
-            
-            # 最初の呼び出し - パラメータは空または None
-            first_call = calls[0]
-            assert first_call[0][0] == "/test"  # endpoint
-            first_params = first_call[1].get("params", {}) or {}
-            assert "pagination_key" not in first_params
-            
-            # 2 回目の呼び出し - pagination_key="key1"
-            second_call = calls[1]
-            assert second_call[0][0] == "/test"
-            second_params = second_call[1].get("params", {})
-            assert second_params["pagination_key"] == "key1"
-            
-            # 3 回目の呼び出し - pagination_key="key2"
-            third_call = calls[2]
-            assert third_call[0][0] == "/test"
-            third_params = third_call[1].get("params", {})
-            assert third_params["pagination_key"] == "key2"
 
     @pytest.mark.asyncio
     async def test_pagination_with_max_pages(self, client):

@@ -181,7 +181,7 @@ class TestAuthUseCase:
 
     @pytest.mark.asyncio
     async def test_ensure_valid_token_when_needs_refresh(
-        self, auth_use_case, mock_auth_repository
+        self, auth_use_case, mock_auth_repository, mock_refresh_token
     ):
         """トークン更新が必要な場合の ensure_valid_token テスト"""
         # 期限切れのトークンを持つ認証情報
@@ -192,6 +192,7 @@ class TestAuthUseCase:
             email="test@example.com",
             password="password123",
             id_token=expired_token,
+            refresh_token=mock_refresh_token,  # リフレッシュトークンを追加
         )
 
         # 新しいトークン

@@ -14,6 +14,12 @@ from app.domain.exceptions.jquants_exceptions import (
     TokenRefreshError,
 )
 from app.infrastructure.redis.auth_repository_impl import RedisAuthRepository
+from tests.utils.mocks import create_mock_response
+from tests.utils.assertions import (
+    assert_authentication_error,
+    assert_network_error,
+    assert_token_refresh_error
+)
 
 
 @pytest.fixture
@@ -47,22 +53,30 @@ def mock_credentials():
     )
 
 
+def create_mock_session_context(mock_response):
+    """aiohttp セッションコンテキストのモックを作成するヘルパー"""
+    mock_session = MagicMock()
+    mock_post_context = MagicMock()
+    mock_post_context.__aenter__.return_value = mock_response
+    mock_post_context.__aexit__.return_value = None
+    mock_session.post.return_value = mock_post_context
+    return mock_session
+
+
 class TestGetRefreshToken:
     """get_refresh_token メソッドのテスト"""
 
     @pytest.mark.asyncio
     async def test_successful_authentication(self, auth_repository):
         """正常な認証のテスト"""
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.json = AsyncMock(
-            return_value={"refreshToken": "new_refresh_token"}
+        mock_response = create_mock_response(
+            status=200,
+            json_data={"refreshToken": "new_refresh_token"}
         )
 
         with patch("app.infrastructure.redis.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = AsyncMock()
+            mock_session = create_mock_session_context(mock_response)
             mock_session_class.return_value.__aenter__.return_value = mock_session
-            mock_session.post.return_value.__aenter__.return_value = mock_response
 
             result = await auth_repository.get_refresh_token(
                 "test@example.com", "password"
@@ -74,20 +88,18 @@ class TestGetRefreshToken:
     @pytest.mark.asyncio
     async def test_authentication_failure(self, auth_repository):
         """認証失敗のテスト"""
-        mock_response = AsyncMock()
-        mock_response.status = 400
+        mock_response = create_mock_response(status=400)
 
         with patch("app.infrastructure.redis.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = AsyncMock()
+            mock_session = create_mock_session_context(mock_response)
             mock_session_class.return_value.__aenter__.return_value = mock_session
-            mock_session.post.return_value.__aenter__.return_value = mock_response
 
             with pytest.raises(AuthenticationError) as exc_info:
                 await auth_repository.get_refresh_token(
                     "test@example.com", "wrong_password"
                 )
 
-            assert "メールアドレスまたはパスワードが正しくありません" in str(exc_info.value)
+            assert_authentication_error(exc_info, "メールアドレスまたはパスワードが正しくありません")
 
 
 class TestRedisOperations:
