@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     jquants_api_key: str = Field(
         default="", description="J-Quants API key"
     )
+    jquants_email: str = Field(
+        default="", description="J-Quants API email"
+    )
+    jquants_password: str = Field(
+        default="", description="J-Quants API password"
+    )
     jquants_base_url: str = Field(
         default="https://api.jquants.com/v1", description="J-Quants base URL"
     )

@@ -1,4 +1,5 @@
 """Database connection module."""
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -103,3 +104,24 @@ async def close_database() -> None:
         await _engine.dispose()
         _engine = None
         logger.info("Database connections closed")
+
+
+@asynccontextmanager
+async def get_async_session_context():
+    """Get async database session context manager for CLI usage.
+    
+    This is specifically for CLI commands that need a session context.
+    
+    Yields:
+        AsyncSession instance
+    """
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
