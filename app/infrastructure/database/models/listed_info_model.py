@@ -17,7 +17,7 @@ class ListedInfoModel(Base):
     )
 
     date = Column(Date, nullable=False)
-    code = Column(String(4), nullable=False)
+    code = Column(String(10), nullable=False)  # 銘柄コード（最大 10 文字）
     company_name = Column(String(255), nullable=False)
     company_name_english = Column(String(255), nullable=True)
     sector_17_code = Column(String(10), nullable=True)

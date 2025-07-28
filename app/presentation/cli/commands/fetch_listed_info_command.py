@@ -10,6 +10,11 @@ from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.domain.entities.auth import JQuantsCredentials
+from app.domain.entities.stock import StockCode
+from app.domain.exceptions.listed_info_exceptions import (
+    ListedInfoAPIError,
+    ListedInfoDataError,
+)
 from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.database.repositories.listed_info_repository_impl import (
     ListedInfoRepositoryImpl,
@@ -97,11 +102,29 @@ async def _fetch_listed_info_async(
 
         # 認証
         auth_repo = JQuantsAuthRepository()
-        credentials = await auth_repo.authenticate(jquants_email, jquants_password)
-
-        if not credentials:
+        
+        # リフレッシュトークンを取得
+        refresh_token = await auth_repo.get_refresh_token(jquants_email, jquants_password)
+        if not refresh_token:
             click.echo("エラー: J-Quants API の認証に失敗しました。", err=True)
             sys.exit(1)
+        
+        # ID トークンを取得
+        id_token = await auth_repo.get_id_token(refresh_token)
+        if not id_token:
+            click.echo("エラー: ID トークンの取得に失敗しました。", err=True)
+            sys.exit(1)
+        
+        # 認証情報を作成
+        credentials = JQuantsCredentials(
+            email=jquants_email,
+            password=jquants_password,
+            refresh_token=refresh_token,
+            id_token=id_token
+        )
+        
+        # 認証情報を保存（オプション）
+        await auth_repo.save_credentials(credentials)
 
         click.echo("認証成功")
 

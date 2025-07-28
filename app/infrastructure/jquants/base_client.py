@@ -44,6 +44,7 @@ class JQuantsBaseClient:
     async def _ensure_session(self) -> None:
         """セッションの初期化を確実に行う"""
         if self._session is None or self._session.closed:
+            # aiohttp が Content-Encoding に基づいて自動的に Gzip 解凍を処理
             self._session = ClientSession()
 
     async def close(self) -> None:
@@ -70,21 +71,17 @@ class JQuantsBaseClient:
 
     async def _handle_response(self, response: ClientResponse) -> Dict[str, Any]:
         """レスポンスの処理とエラーハンドリング"""
-        # Gzip 圧縮されたレスポンスの処理
-        content = await response.read()
-        
-        # Content-Encoding ヘッダーを確認
-        if response.headers.get("Content-Encoding") == "gzip":
-            try:
-                content = gzip.decompress(content)
-            except Exception as e:
-                raise NetworkError(f"Gzip 解凍エラー: {str(e)}")
+        # aiohttp が自動的に Gzip 解凍を処理するため、テキストとして直接読み取る
+        try:
+            text_content = await response.text()
+        except Exception as e:
+            raise NetworkError(f"レスポンスの読み取りエラー: {str(e)}")
 
         # JSON のパース
         try:
-            data = json.loads(content.decode("utf-8"))
+            data = json.loads(text_content)
         except json.JSONDecodeError as e:
-            raise ValidationError(f"JSON パースエラー: {str(e)}")
+            raise ValidationError(f"JSON パースエラー: {str(e)} - Content: {text_content[:100]}")
 
         # ステータスコードによるエラーハンドリング
         if response.status == 429:

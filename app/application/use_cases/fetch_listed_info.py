@@ -76,6 +76,10 @@ class FetchListedInfoUseCase:
 
             fetched_count = len(api_data)
             self._logger.info(f"Fetched {fetched_count} records from API")
+            
+            # デバッグ用に API レスポンスの一部をログ出力
+            if api_data:
+                self._logger.debug(f"First API response: {api_data[0]}")
 
             if fetched_count == 0:
                 return FetchListedInfoResult(
