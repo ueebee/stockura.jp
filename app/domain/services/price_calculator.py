@@ -31,8 +31,8 @@ class PriceCalculator:
             )
 
         recent_prices = prices[-period:]
-        total = sum(price.close for price in recent_prices)
-        return total / period
+        total = sum(Decimal(str(price.close)) for price in recent_prices)
+        return total / Decimal(period)
 
     @staticmethod
     def calculate_ema(prices: List[Price], period: int) -> Decimal:
@@ -59,11 +59,11 @@ class PriceCalculator:
         sma = PriceCalculator.calculate_sma(prices[:period], period)
         
         # Calculate EMA
-        multiplier = Decimal(2) / (period + 1)
+        multiplier = Decimal(2) / Decimal(period + 1)
         ema = sma
         
         for price in prices[period:]:
-            ema = (price.close - ema) * multiplier + ema
+            ema = (Decimal(str(price.close)) - ema) * multiplier + ema
         
         return ema
 
@@ -92,7 +92,7 @@ class PriceCalculator:
         losses = []
         
         for i in range(1, len(prices)):
-            change = prices[i].close - prices[i-1].close
+            change = Decimal(str(prices[i].close)) - Decimal(str(prices[i-1].close))
             if change > 0:
                 gains.append(change)
                 losses.append(Decimal(0))
@@ -101,14 +101,14 @@ class PriceCalculator:
                 losses.append(abs(change))
         
         # Calculate average gain and loss
-        avg_gain = sum(gains[-period:]) / period
-        avg_loss = sum(losses[-period:]) / period
+        avg_gain = sum(gains[-period:]) / Decimal(period)
+        avg_loss = sum(losses[-period:]) / Decimal(period)
         
         if avg_loss == 0:
             return Decimal(100)
         
         rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
+        rsi = Decimal(100) - (Decimal(100) / (Decimal(1) + rs))
         
         return rsi
 
@@ -138,8 +138,8 @@ class PriceCalculator:
         
         for i in range(1, len(recent_prices)):
             daily_return = (
-                (recent_prices[i].close - recent_prices[i-1].close) / 
-                recent_prices[i-1].close
+                (Decimal(str(recent_prices[i].close)) - Decimal(str(recent_prices[i-1].close))) / 
+                Decimal(str(recent_prices[i-1].close))
             )
             returns.append(daily_return)
         
@@ -147,13 +147,14 @@ class PriceCalculator:
             return Decimal(0)
         
         # Calculate mean return
-        mean_return = sum(returns) / len(returns)
+        mean_return = sum(returns) / Decimal(len(returns))
         
         # Calculate variance
-        variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
+        variance = sum((r - mean_return) ** 2 for r in returns) / Decimal(len(returns))
         
         # Calculate standard deviation
-        volatility = variance.sqrt() if hasattr(variance, 'sqrt') else Decimal(str(float(variance) ** 0.5))
+        import math
+        volatility = Decimal(str(math.sqrt(float(variance))))
         
         return volatility
 
@@ -177,13 +178,13 @@ class PriceCalculator:
                 operation="VWAP calculation"
             )
 
-        total_volume = sum(price.volume for price in prices)
+        total_volume = sum(Decimal(str(price.volume)) for price in prices)
         
         if total_volume == 0:
             return None
         
         typical_price_volume_sum = sum(
-            ((price.high + price.low + price.close) / 3) * price.volume
+            ((Decimal(str(price.high)) + Decimal(str(price.low)) + Decimal(str(price.close))) / Decimal(3)) * Decimal(str(price.volume))
             for price in prices
         )
         
@@ -215,11 +216,11 @@ class PriceCalculator:
         for i in range(window, len(prices) - window):
             # Check for local maximum (resistance)
             if all(prices[i].high >= prices[j].high for j in range(i - window, i + window + 1) if j != i):
-                resistance_levels.append(prices[i].high)
+                resistance_levels.append(Decimal(str(prices[i].high)))
             
             # Check for local minimum (support)
             if all(prices[i].low <= prices[j].low for j in range(i - window, i + window + 1) if j != i):
-                support_levels.append(prices[i].low)
+                support_levels.append(Decimal(str(prices[i].low)))
         
         # Group similar levels
         def group_levels(levels: List[Decimal]) -> List[Decimal]:
@@ -234,11 +235,11 @@ class PriceCalculator:
                 if abs(level - current_group[-1]) / current_group[-1] < threshold:
                     current_group.append(level)
                 else:
-                    grouped.append(sum(current_group) / len(current_group))
+                    grouped.append(sum(current_group) / Decimal(len(current_group)))
                     current_group = [level]
             
             if current_group:
-                grouped.append(sum(current_group) / len(current_group))
+                grouped.append(sum(current_group) / Decimal(len(current_group)))
             
             return grouped
         

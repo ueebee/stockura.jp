@@ -75,7 +75,7 @@ class PriceDTO:
         from datetime import datetime
         
         # Convert date to datetime if needed
-        timestamp = entity.timestamp if hasattr(entity, 'timestamp') else datetime.combine(entity.date, datetime.min.time())
+        timestamp = entity.timestamp if hasattr(entity, 'timestamp') and entity.timestamp else datetime.combine(entity.date, datetime.min.time())
         
         return cls(
             id=None,  # Price entity doesn't have id
