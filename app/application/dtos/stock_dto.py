@@ -33,16 +33,16 @@ class StockDTO:
         from app.domain.entities.stock import Stock
         
         return cls(
-            id=entity.id,
-            ticker_symbol=entity.ticker_symbol.value,
+            id=None,  # Stock entity doesn't have id
+            ticker_symbol=entity.code.value,
             company_name=entity.company_name,
-            market=entity.market,
-            sector=entity.sector,
-            industry=entity.industry,
-            market_cap=entity.market_cap,
-            description=entity.description,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
+            market=entity.market_name if entity.market_name else "",
+            sector=entity.sector_17_name,
+            industry=entity.sector_33_name,
+            market_cap=None,  # Not available in Stock entity
+            description=None,  # Not available in Stock entity
+            created_at=None,  # Not available in Stock entity
+            updated_at=None,  # Not available in Stock entity
         )
 
 
@@ -72,18 +72,22 @@ class PriceDTO:
             PriceDTO instance
         """
         from app.domain.entities.price import Price
+        from datetime import datetime
+        
+        # Convert date to datetime if needed
+        timestamp = entity.timestamp if hasattr(entity, 'timestamp') else datetime.combine(entity.date, datetime.min.time())
         
         return cls(
-            id=entity.id,
+            id=None,  # Price entity doesn't have id
             ticker_symbol=entity.ticker_symbol.value,
-            timestamp=entity.timestamp,
+            timestamp=timestamp,
             open=float(entity.open),
             high=float(entity.high),
             low=float(entity.low),
             close=float(entity.close),
             volume=entity.volume,
             adjusted_close=float(entity.adjusted_close) if entity.adjusted_close else None,
-            created_at=entity.created_at,
+            created_at=None,  # Not available in Price entity
         )
 
 

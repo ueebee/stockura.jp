@@ -80,7 +80,7 @@ class JQuantsStockRepository(StockRepository):
             
             return StockList(stocks=stocks, updated_date=updated_date)
 
-        except NetworkError:
+        except (NetworkError, DataNotFoundError):
             raise
         except Exception as e:
             raise NetworkError(f"銘柄一覧の取得中にエラーが発生しました: {str(e)}")

@@ -165,10 +165,11 @@ class FetchStockPriceUseCase:
             
             return Price(
                 ticker_symbol=ticker_symbol,
+                date=date.today(),
                 timestamp=datetime.now(),
-                open=Decimal(str(realtime.get("open", 0))),
-                high=Decimal(str(realtime.get("high", 0))),
-                low=Decimal(str(realtime.get("low", 0))),
-                close=Decimal(str(realtime.get("close", 0))),
+                open=float(realtime.get("open", 0)),
+                high=float(realtime.get("high", 0)),
+                low=float(realtime.get("low", 0)),
+                close=float(realtime.get("close", 0)),
                 volume=int(realtime.get("volume", 0)),
             )

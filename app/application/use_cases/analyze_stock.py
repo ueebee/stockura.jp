@@ -1,5 +1,5 @@
 """Analyze stock use case."""
-from typing import List
+from typing import List, Optional
 
 from app.application.dtos.stock_dto import StockAnalysisDTO, StockDTO
 from app.application.interfaces.external.jquants_client import JQuantsClientInterface
