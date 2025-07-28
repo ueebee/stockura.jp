@@ -1,13 +1,14 @@
 """J-Quants Listed Info API client."""
 from typing import Any, Dict, List, Optional
 
+from app.application.interfaces.external.listed_info_client import ListedInfoClientInterface
 from app.core.logger import get_logger
 from app.infrastructure.jquants.base_client import JQuantsBaseClient
 
 logger = get_logger(__name__)
 
 
-class JQuantsListedInfoClient:
+class JQuantsListedInfoClient(ListedInfoClientInterface):
     """J-Quants 上場銘柄情報 API クライアント"""
 
     def __init__(self, base_client: JQuantsBaseClient) -> None:
