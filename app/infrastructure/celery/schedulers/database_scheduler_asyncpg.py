@@ -86,10 +86,15 @@ class DatabaseSchedulerAsyncPG(Scheduler):
     
     def __init__(self, *args, **kwargs):
         """Initialize database scheduler."""
-        super().__init__(*args, **kwargs)
+        # Initialize attributes before calling super()
         self._last_updated = None
         self._schedule_cache = {}
         self._event_loop = None
+        
+        # Call parent constructor
+        super().__init__(*args, **kwargs)
+        
+        # Setup event loop after parent init
         self._setup_event_loop()
         
     def _setup_event_loop(self):
@@ -99,6 +104,9 @@ class DatabaseSchedulerAsyncPG(Scheduler):
         
     def setup_schedule(self):
         """Initial schedule setup."""
+        # Ensure event loop is set up
+        if not hasattr(self, '_event_loop') or self._event_loop is None:
+            self._setup_event_loop()
         self.sync_schedules()
         
     def sync_schedules(self):
@@ -107,7 +115,7 @@ class DatabaseSchedulerAsyncPG(Scheduler):
         
         try:
             # Ensure we have an event loop
-            if self._event_loop is None or self._event_loop.is_closed():
+            if not hasattr(self, '_event_loop') or self._event_loop is None or self._event_loop.is_closed():
                 self._setup_event_loop()
                 
             # Run async code in the scheduler's event loop
