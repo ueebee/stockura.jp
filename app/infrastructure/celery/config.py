@@ -7,8 +7,8 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # Broker settings
-broker_url = settings.redis_url
-result_backend = settings.redis_url
+broker_url = settings.celery_broker_url
+result_backend = settings.celery_result_backend
 
 # Task settings
 task_serializer = "json"

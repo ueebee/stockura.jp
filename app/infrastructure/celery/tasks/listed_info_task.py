@@ -8,7 +8,7 @@ from celery import Task
 from celery.utils.log import get_task_logger
 
 from app.infrastructure.celery.app import celery_app
-from app.infrastructure.database.connection import get_async_session
+from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.repositories.task_log_repository import TaskLogRepository
 
 logger = get_task_logger(__name__)
@@ -92,7 +92,7 @@ async def _fetch_listed_info_async(
     )
     from app.core.logging import get_logger
 
-    async with get_async_session() as session:
+    async with get_async_session_context() as session:
         # Initialize task log
         task_log_repo = TaskLogRepository(session)
         
