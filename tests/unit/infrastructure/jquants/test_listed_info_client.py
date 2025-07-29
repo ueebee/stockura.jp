@@ -241,12 +241,14 @@ class TestJQuantsListedInfoClient:
         
         # get メソッドが 2 回呼ばれたことを確認
         assert self.base_client.get.call_count == 2
+        # 呼び出しの検証
+        calls = self.base_client.get.call_args_list
         # 1 回目の呼び出し
-        self.base_client.get.assert_any_call("/listed/info", params={})
-        # 2 回目の呼び出し（pagination_key 付き）
-        self.base_client.get.assert_any_call(
-            "/listed/info", params={"pagination_key": "next_page_key"}
-        )
+        assert calls[0][0][0] == "/listed/info"
+        # 2 回目の呼び出しで pagination_key が含まれていることを確認
+        assert calls[1][0][0] == "/listed/info"
+        assert "pagination_key" in calls[1][1]["params"]
+        assert calls[1][1]["params"]["pagination_key"] == "next_page_key"
 
     @pytest.mark.asyncio
     async def test_get_all_listed_info_with_date(self):
