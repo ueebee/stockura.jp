@@ -52,6 +52,7 @@ services:
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
       - ./scripts:/app/scripts:ro
     depends_on:
       postgres:
