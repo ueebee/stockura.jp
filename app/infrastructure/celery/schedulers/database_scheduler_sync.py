@@ -1,5 +1,4 @@
-"""Database-based Celery Beat scheduler."""
-import asyncio
+"""Synchronous database scheduler for Celery Beat."""
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -7,12 +6,14 @@ from celery import schedules
 from celery.beat import ScheduleEntry, Scheduler
 from celery.utils.log import get_logger
 from croniter import croniter
-from sqlalchemy import select
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
-from app.infrastructure.database.connection import get_async_session_sync
+from app.core.config import get_settings
 from app.infrastructure.database.models.schedule import CeleryBeatSchedule
 
 logger = get_logger(__name__)
+settings = get_settings()
 
 
 class DatabaseScheduleEntry(ScheduleEntry):
@@ -65,7 +66,7 @@ class DatabaseScheduleEntry(ScheduleEntry):
 
 
 class DatabaseScheduler(Scheduler):
-    """Custom scheduler that reads schedules from database."""
+    """Custom scheduler that reads schedules from database using sync connection."""
 
     Entry = DatabaseScheduleEntry
     
@@ -74,6 +75,12 @@ class DatabaseScheduler(Scheduler):
         super().__init__(*args, **kwargs)
         self._last_updated = None
         self._schedule_cache = {}
+        
+        # Create sync database connection
+        # Convert async URL to sync URL
+        db_url = settings.database_url.replace("+asyncpg", "")
+        self.engine = create_engine(db_url)
+        self.Session = sessionmaker(bind=self.engine)
         
     def setup_schedule(self):
         """Initial schedule setup."""
@@ -84,13 +91,12 @@ class DatabaseScheduler(Scheduler):
         logger.info("Syncing schedules from database")
         
         try:
-            # Create new event loop for sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                schedules = loop.run_until_complete(self._load_schedules_from_db())
-            finally:
-                loop.close()
+            # Load schedules using sync session
+            with self.Session() as session:
+                result = session.execute(
+                    select(CeleryBeatSchedule).where(CeleryBeatSchedule.enabled == True)
+                )
+                schedules = result.scalars().all()
             
             # Update schedule
             self.schedule.clear()
@@ -104,14 +110,6 @@ class DatabaseScheduler(Scheduler):
             
         except Exception as e:
             logger.error(f"Failed to sync schedules: {str(e)}")
-    
-    async def _load_schedules_from_db(self):
-        """Load schedules from database."""
-        async with get_async_session_sync() as session:
-            result = await session.execute(
-                select(CeleryBeatSchedule).where(CeleryBeatSchedule.enabled == True)
-            )
-            return result.scalars().all()
     
     def tick(self):
         """Run one iteration of the scheduler."""
@@ -137,27 +135,6 @@ class DatabaseScheduler(Scheduler):
     
     def close(self):
         """Clean up resources."""
+        if hasattr(self, 'engine'):
+            self.engine.dispose()
         super().close()
-
-
-class DatabaseSchedulerWithModels(DatabaseScheduler):
-    """Database scheduler with model synchronization."""
-    
-    def sync_schedules(self):
-        """Sync schedules and create periodic tasks."""
-        super().sync_schedules()
-        
-        # Update celery beat models for monitoring
-        self._update_periodic_tasks()
-    
-    def _update_periodic_tasks(self):
-        """Update periodic task models for monitoring."""
-        try:
-            from celery_sqlalchemy_scheduler.models import PeriodicTask
-            
-            # This would sync with celery-sqlalchemy-scheduler models
-            # if we're using it for monitoring
-            pass
-        except ImportError:
-            # celery-sqlalchemy-scheduler not installed
-            pass

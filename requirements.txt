@@ -14,10 +14,9 @@ redis==5.2.1
 hiredis==3.2.1
 
 # Celery
-celery==5.5.3
 celery[redis]==5.5.3
 flower==2.0.1
-croniter==5.0.1
+croniter==6.0.0
 celery-sqlalchemy-scheduler==0.3.0
 
 # External APIs

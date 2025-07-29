@@ -3,6 +3,9 @@ from celery import Celery
 
 from app.core.config import get_settings
 
+# Import worker hooks to register signals
+from . import worker_hooks  # noqa
+
 settings = get_settings()
 
 # Create Celery instance

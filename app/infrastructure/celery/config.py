@@ -33,7 +33,11 @@ worker_disable_rate_limits = False
 # beat_schedule_filename = "celerybeat-schedule.db"
 
 # Custom scheduler (database-based)
-beat_scheduler = "app.infrastructure.celery.schedulers.database_scheduler:DatabaseScheduler"
+# Option 1: Sync version (stable)
+# beat_scheduler = "app.infrastructure.celery.schedulers.database_scheduler_sync:DatabaseScheduler"
+
+# Option 2: Asyncpg version (high performance)
+beat_scheduler = "app.infrastructure.celery.schedulers.database_scheduler_asyncpg:DatabaseSchedulerAsyncPG"
 
 # Result backend settings
 result_expires = 3600  # 1 hour

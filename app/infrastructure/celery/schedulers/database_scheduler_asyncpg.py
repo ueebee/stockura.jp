@@ -1,5 +1,6 @@
-"""Database-based Celery Beat scheduler."""
+"""Database scheduler for Celery Beat with asyncpg support."""
 import asyncio
+import threading
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -9,10 +10,24 @@ from celery.utils.log import get_logger
 from croniter import croniter
 from sqlalchemy import select
 
-from app.infrastructure.database.connection import get_async_session_sync
+from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.database.models.schedule import CeleryBeatSchedule
 
 logger = get_logger(__name__)
+
+# Thread-local storage for event loop
+_thread_local = threading.local()
+
+
+def get_or_create_event_loop():
+    """Get or create event loop for the current thread."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        if not hasattr(_thread_local, 'loop') or _thread_local.loop.is_closed():
+            _thread_local.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(_thread_local.loop)
+        return _thread_local.loop
 
 
 class DatabaseScheduleEntry(ScheduleEntry):
@@ -64,8 +79,8 @@ class DatabaseScheduleEntry(ScheduleEntry):
         return f"<DatabaseScheduleEntry: {self.name} {self.schedule}>"
 
 
-class DatabaseScheduler(Scheduler):
-    """Custom scheduler that reads schedules from database."""
+class DatabaseSchedulerAsyncPG(Scheduler):
+    """Custom scheduler that reads schedules from database using asyncpg."""
 
     Entry = DatabaseScheduleEntry
     
@@ -74,6 +89,13 @@ class DatabaseScheduler(Scheduler):
         super().__init__(*args, **kwargs)
         self._last_updated = None
         self._schedule_cache = {}
+        self._event_loop = None
+        self._setup_event_loop()
+        
+    def _setup_event_loop(self):
+        """Setup event loop for scheduler."""
+        self._event_loop = get_or_create_event_loop()
+        logger.info("Event loop setup for database scheduler")
         
     def setup_schedule(self):
         """Initial schedule setup."""
@@ -84,13 +106,14 @@ class DatabaseScheduler(Scheduler):
         logger.info("Syncing schedules from database")
         
         try:
-            # Create new event loop for sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                schedules = loop.run_until_complete(self._load_schedules_from_db())
-            finally:
-                loop.close()
+            # Ensure we have an event loop
+            if self._event_loop is None or self._event_loop.is_closed():
+                self._setup_event_loop()
+                
+            # Run async code in the scheduler's event loop
+            schedules = self._event_loop.run_until_complete(
+                self._load_schedules_from_db()
+            )
             
             # Update schedule
             self.schedule.clear()
@@ -103,11 +126,11 @@ class DatabaseScheduler(Scheduler):
             self._last_updated = datetime.utcnow()
             
         except Exception as e:
-            logger.error(f"Failed to sync schedules: {str(e)}")
+            logger.error(f"Failed to sync schedules: {str(e)}", exc_info=True)
     
     async def _load_schedules_from_db(self):
         """Load schedules from database."""
-        async with get_async_session_sync() as session:
+        async with get_async_session_context() as session:
             result = await session.execute(
                 select(CeleryBeatSchedule).where(CeleryBeatSchedule.enabled == True)
             )
@@ -133,31 +156,19 @@ class DatabaseScheduler(Scheduler):
     @property
     def info(self) -> str:
         """Return scheduler info."""
-        return "DatabaseScheduler"
+        return "DatabaseSchedulerAsyncPG"
     
     def close(self):
         """Clean up resources."""
+        if self._event_loop and not self._event_loop.is_closed():
+            # Schedule cleanup in the event loop
+            asyncio.run_coroutine_threadsafe(
+                self._cleanup_async(), self._event_loop
+            ).result()
+            self._event_loop.close()
         super().close()
-
-
-class DatabaseSchedulerWithModels(DatabaseScheduler):
-    """Database scheduler with model synchronization."""
-    
-    def sync_schedules(self):
-        """Sync schedules and create periodic tasks."""
-        super().sync_schedules()
         
-        # Update celery beat models for monitoring
-        self._update_periodic_tasks()
-    
-    def _update_periodic_tasks(self):
-        """Update periodic task models for monitoring."""
-        try:
-            from celery_sqlalchemy_scheduler.models import PeriodicTask
-            
-            # This would sync with celery-sqlalchemy-scheduler models
-            # if we're using it for monitoring
-            pass
-        except ImportError:
-            # celery-sqlalchemy-scheduler not installed
-            pass
+    async def _cleanup_async(self):
+        """Async cleanup tasks."""
+        # Add any async cleanup here if needed
+        pass
