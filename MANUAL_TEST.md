@@ -30,15 +30,26 @@ psql -U postgres -d stockura -c "\dt task_execution_logs;"
 #### 2.1 Celery Worker を起動
 
 ```bash
-# Terminal 3: Worker を起動
+# Terminal 3: Worker を起動（asyncpg 対応版）
 celery -A app.infrastructure.celery.app worker --loglevel=info
+```
+
+ワーカー起動時に以下のログが表示されることを確認：
+```
+[INFO/MainProcess] Setting up event loop for worker process
 ```
 
 #### 2.2 Celery Beat を起動
 
 ```bash
-# Terminal 4: Beat を起動
+# Terminal 4: Beat を起動（asyncpg 対応版）
 celery -A app.infrastructure.celery.app beat --loglevel=info
+```
+
+Beat 起動時に以下のログが表示されることを確認：
+```
+[INFO/MainProcess] Event loop setup for database scheduler
+[INFO/MainProcess] Syncing schedules from database
 ```
 
 #### 2.3 Flower（監視ツール）を起動（オプション）
@@ -65,7 +76,7 @@ API ドキュメント: http://localhost:8000/docs
 
 ```bash
 # 毎分実行するテストスケジュールを作成
-curl -X POST http://localhost:8000/api/v1/schedules \
+curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_every_minute",
@@ -101,7 +112,7 @@ curl -X POST http://localhost:8000/api/v1/schedules \
 #### 4.2 スケジュール一覧の確認
 
 ```bash
-curl http://localhost:8000/api/v1/schedules
+curl http://localhost:8000/api/v1/schedules/
 ```
 
 #### 4.3 スケジュールの詳細確認
@@ -118,7 +129,7 @@ curl http://localhost:8000/api/v1/schedules/{schedule_id}
 Worker のターミナルで以下のようなログが表示されることを確認:
 
 ```
-[2025-07-29 10:01:00,123: INFO/MainProcess] Received task: fetch_listed_info_task[task-id]
+[2025-07-29 10:01:00,123: INFO/MainProcess] Received task: fetch_listed_info_task_asyncpg[task-id]
 [2025-07-29 10:01:00,456: INFO/ForkPoolWorker-1] Starting fetch_listed_info_task - task_id: task-id, schedule_id: schedule-id, period_type: yesterday
 [2025-07-29 10:01:05,789: INFO/ForkPoolWorker-1] Task completed - status: success, fetched: 100, saved: 100
 ```
@@ -130,15 +141,15 @@ Worker のターミナルで以下のようなログが表示されることを�
 psql -U postgres -d stockura
 
 -- 最新の実行ログを確認
-SELECT 
+SELECT
     id,
     task_name,
     status,
     started_at,
     finished_at,
     result::text
-FROM task_execution_logs 
-ORDER BY started_at DESC 
+FROM task_execution_logs
+ORDER BY started_at DESC
 LIMIT 5;
 ```
 
@@ -147,7 +158,7 @@ LIMIT 5;
 #### 6.1 7 日間のデータ取得
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/schedules \
+curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_7days",
@@ -163,7 +174,7 @@ curl -X POST http://localhost:8000/api/v1/schedules \
 #### 6.2 特定銘柄のデータ取得
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/schedules \
+curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_specific_codes",
@@ -180,7 +191,7 @@ curl -X POST http://localhost:8000/api/v1/schedules \
 #### 6.3 カスタム期間のデータ取得
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/schedules \
+curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_custom_period",
@@ -257,7 +268,7 @@ print(result.get(timeout=300))
 2. データベースでスケジュールが有効になっているか確認:
 
 ```sql
-SELECT name, enabled, cron_expression 
+SELECT name, enabled, cron_expression
 FROM celery_beat_schedules;
 ```
 
@@ -267,10 +278,10 @@ FROM celery_beat_schedules;
 2. データベースでエラーメッセージを確認:
 
 ```sql
-SELECT task_name, status, error_message 
-FROM task_execution_logs 
-WHERE status = 'failed' 
-ORDER BY started_at DESC 
+SELECT task_name, status, error_message
+FROM task_execution_logs
+WHERE status = 'failed'
+ORDER BY started_at DESC
 LIMIT 5;
 ```
 
