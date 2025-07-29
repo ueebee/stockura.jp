@@ -28,11 +28,12 @@ worker_max_tasks_per_child = 1000
 worker_disable_rate_limits = False
 
 # Beat settings
-beat_scheduler = "celery.beat:PersistentScheduler"
-beat_schedule_filename = "celerybeat-schedule.db"
+# Default scheduler (file-based)
+# beat_scheduler = "celery.beat:PersistentScheduler"
+# beat_schedule_filename = "celerybeat-schedule.db"
 
-# Custom scheduler (will be updated to use database scheduler)
-# beat_scheduler = "app.infrastructure.celery.schedulers.database_scheduler:DatabaseScheduler"
+# Custom scheduler (database-based)
+beat_scheduler = "app.infrastructure.celery.schedulers.database_scheduler:DatabaseScheduler"
 
 # Result backend settings
 result_expires = 3600  # 1 hour
