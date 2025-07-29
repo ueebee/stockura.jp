@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
 from app.domain.entities.listed_info import ListedInfo
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 from app.domain.repositories.listed_info_repository import ListedInfoRepository
 from app.infrastructure.database.models.listed_info_model import ListedInfoModel
 

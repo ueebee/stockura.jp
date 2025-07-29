@@ -8,9 +8,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.domain.entities.auth import JQuantsCredentials
-from app.domain.entities.stock import Stock, StockCode
+from app.domain.value_objects.stock_code import StockCode
+from app.domain.value_objects.market_codes import MarketCode
 from tests.fixtures.factories.auth import JQuantsCredentialsFactory
-from tests.fixtures.factories.stock import StockFactory, StockListFactory
 
 
 class TestSampleEnvironment:
@@ -25,24 +25,12 @@ class TestSampleEnvironment:
         assert credentials.refresh_token
         assert credentials.id_token
 
-        # 株式情報ファクトリー
-        stock = StockFactory.build()
-        assert isinstance(stock.code, StockCode)
-        assert stock.company_name
-        assert stock.market_code
-
     def test_factories_with_traits(self):
         """ファクトリーのトレイト機能確認"""
         # テストユーザートレイト
         test_creds = JQuantsCredentialsFactory.build(test_user=True)
         assert test_creds.email == "test@example.com"
         assert test_creds.password == "test_password_123"
-
-        # トヨタ自動車トレイト
-        toyota = StockFactory.build(toyota=True)
-        assert toyota.code.value == "7203"
-        assert toyota.company_name == "トヨタ自動車"
-        assert toyota.is_prime_market()
 
     def test_basic_client(self, test_client: TestClient):
         """基本的なテストクライアントの動作確認"""
@@ -70,16 +58,15 @@ class TestSampleEnvironment:
         mock_env_vars("TEST_VAR", "test_value")
         assert os.getenv("TEST_VAR") == "test_value"
 
-    def test_stock_list_factory(self):
-        """株式リストファクトリーの動作確認"""
-        stock_list = StockListFactory.build()
-        assert len(stock_list.stocks) >= 3
-        assert stock_list.updated_date
-
-        # 追加の銘柄を生成
-        additional_stocks = [StockFactory.build() for _ in range(2)]
-        stock_list_with_extra = StockListFactory.build(add_stocks=additional_stocks)
-        assert len(stock_list_with_extra.stocks) >= 5
+    def test_stock_code_value_object(self):
+        """StockCode バリューオブジェクトの動作確認"""
+        # 正常なケース
+        code = StockCode("7203")
+        assert code.value == "7203"
+        
+        # エラーケース
+        with pytest.raises(ValueError):
+            StockCode("")  # 空文字列
 
 
 @pytest.mark.unit
@@ -98,21 +85,14 @@ class TestSampleUnit:
         assert not expired_creds.has_valid_id_token()
         assert expired_creds.needs_refresh()
 
-    def test_stock_filtering(self):
-        """株式フィルタリング機能"""
-        # プライム市場の銘柄を作成
-        prime_stocks = [StockFactory.build(prime=True) for _ in range(3)]
-        # スタンダード市場の銘柄を作成
-        standard_stocks = [StockFactory.build(standard=True) for _ in range(2)]
-        
-        stock_list = StockListFactory.build(
-            stocks=prime_stocks + standard_stocks
-        )
-        
-        # プライム市場でフィルタリング
-        from app.domain.entities.stock import MarketCode
-        prime_filtered = stock_list.filter_by_market(MarketCode.PRIME)
-        assert len(prime_filtered) == 3
+    def test_market_code_enum(self):
+        """MarketCode エニュメレーションの動作確認"""
+        # プライム市場
+        assert MarketCode.PRIME.value == "0101"
+        # スタンダード市場
+        assert MarketCode.STANDARD.value == "0102"
+        # グロース市場
+        assert MarketCode.GROWTH.value == "0103"
 
 
 @pytest.mark.integration

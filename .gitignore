@@ -201,3 +201,6 @@ cache/
 _tmp/
 memo/
 
+# Test credentials
+.test_credentials.json
+

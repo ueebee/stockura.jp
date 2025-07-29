@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from app.domain.entities.listed_info import ListedInfo
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 
 
 @dataclass(frozen=True)

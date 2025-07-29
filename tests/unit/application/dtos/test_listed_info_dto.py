@@ -8,7 +8,7 @@ from app.application.dtos.listed_info_dto import (
     ListedInfoSearchCriteria,
 )
 from app.domain.entities.listed_info import ListedInfo
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 
 
 class TestListedInfoDTO:
