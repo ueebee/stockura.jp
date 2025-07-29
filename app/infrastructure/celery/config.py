@@ -11,11 +11,11 @@ broker_url = settings.celery_broker_url
 result_backend = settings.celery_result_backend
 
 # Task settings
-task_serializer = "json"
-result_serializer = "json"
-accept_content = ["json"]
-timezone = "Asia/Tokyo"
-enable_utc = True
+task_serializer = settings.celery_task_serializer
+result_serializer = settings.celery_result_serializer
+accept_content = settings.celery_accept_content
+timezone = settings.celery_timezone
+enable_utc = settings.celery_enable_utc
 
 # Task execution settings
 task_acks_late = True
