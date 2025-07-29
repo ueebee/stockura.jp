@@ -3,7 +3,7 @@ import pytest
 from datetime import date
 
 from app.domain.entities.listed_info import ListedInfo
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 
 
 class TestListedInfo:

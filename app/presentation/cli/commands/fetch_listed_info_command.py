@@ -10,7 +10,7 @@ from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.domain.entities.auth import JQuantsCredentials
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoAPIError,
     ListedInfoDataError,

@@ -75,8 +75,8 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 200
         mock_response.headers = {}
-        mock_response.read = AsyncMock(
-            return_value=json.dumps({"data": "test_data"}).encode()
+        mock_response.text = AsyncMock(
+            return_value=json.dumps({"data": "test_data"})
         )
 
         with patch.object(client, "_ensure_session", AsyncMock()):
@@ -92,8 +92,8 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 200
         mock_response.headers = {}
-        mock_response.read = AsyncMock(
-            return_value=json.dumps({"success": True}).encode()
+        mock_response.text = AsyncMock(
+            return_value=json.dumps({"success": True})
         )
 
         with patch.object(client, "_ensure_session", AsyncMock()):
@@ -112,7 +112,7 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 200
         mock_response.headers = {"Content-Encoding": "gzip"}
-        mock_response.read = AsyncMock(return_value=compressed_data)
+        mock_response.text = AsyncMock(return_value=json.dumps(test_data))
 
         result = await client._handle_response(mock_response)
         assert result == test_data
@@ -123,7 +123,7 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 429
         mock_response.headers = {}
-        mock_response.read = AsyncMock(return_value=json.dumps({}).encode())
+        mock_response.text = AsyncMock(return_value=json.dumps({}))
 
         with pytest.raises(RateLimitError) as exc_info:
             await client._handle_response(mock_response)
@@ -135,8 +135,8 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 500
         mock_response.headers = {}
-        mock_response.read = AsyncMock(
-            return_value=json.dumps({"message": "Internal Server Error"}).encode()
+        mock_response.text = AsyncMock(
+            return_value=json.dumps({"message": "Internal Server Error"})
         )
 
         with pytest.raises(NetworkError) as exc_info:
@@ -149,7 +149,7 @@ class TestJQuantsBaseClient:
         mock_response = MagicMock()
         mock_response.status = 200
         mock_response.headers = {}
-        mock_response.read = AsyncMock(return_value=b"invalid json")
+        mock_response.text = AsyncMock(return_value="invalid json")
 
         with pytest.raises(ValidationError) as exc_info:
             await client._handle_response(mock_response)
@@ -165,8 +165,8 @@ class TestJQuantsBaseClient:
             MagicMock(
                 status=200,
                 headers={},
-                read=AsyncMock(
-                    return_value=json.dumps({"data": "success"}).encode()
+                text=AsyncMock(
+                    return_value=json.dumps({"data": "success"})
                 ),
             ),
         ]

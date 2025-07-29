@@ -4,7 +4,7 @@ from datetime import date
 from typing import List, Optional
 
 from app.domain.entities.listed_info import ListedInfo
-from app.domain.entities.stock import StockCode
+from app.domain.value_objects.stock_code import StockCode
 
 
 class ListedInfoRepository(ABC):
