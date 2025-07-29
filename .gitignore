@@ -171,7 +171,11 @@ config.local.yml
 settings.local.json
 
 # Docker
-.dockerignore
+docker-compose.override.yml
+.env.prod
+*.env.local
+backups/
+docker/nginx/ssl/
 
 # Backup files
 *.bak
