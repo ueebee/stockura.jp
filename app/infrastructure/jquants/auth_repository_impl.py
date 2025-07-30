@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timedelta
 from typing import Dict, Optional
@@ -34,56 +35,106 @@ class JQuantsAuthRepository(AuthRepository):
         self, email: str, password: str
     ) -> Optional[RefreshToken]:
         """メールアドレスとパスワードからリフレッシュトークンを取得"""
+        # TCP コネクターの設定
+        connector = aiohttp.TCPConnector(
+            force_close=True,  # 接続を強制的にクローズ
+            limit=100,         # 接続数の制限
+            ttl_dns_cache=300  # DNS キャッシュの TTL
+        )
+        
+        # タイムアウトの設定
+        timeout = aiohttp.ClientTimeout(
+            total=30,      # 全体のタイムアウト
+            connect=10,    # 接続タイムアウト
+            sock_read=10   # 読み取りタイムアウト
+        )
+        
+        session = None
         try:
-            async with ClientSession() as session:
-                payload = {"mailaddress": email, "password": password}
-                
-                async with session.post(
-                    f"{self.BASE_URL}{self.REFRESH_TOKEN_ENDPOINT}",
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return RefreshToken(value=data["refreshToken"])
-                    elif response.status == 400:
-                        raise AuthenticationError("メールアドレスまたはパスワードが正しくありません。")
-                    else:
-                        raise AuthenticationError(
-                            f"認証エラーが発生しました。ステータスコード: {response.status}"
-                        )
-                        
-        except ClientError as e:
+            session = aiohttp.ClientSession(
+                connector=connector,
+                timeout=timeout
+            )
+            
+            payload = {"mailaddress": email, "password": password}
+            
+            async with session.post(
+                f"{self.BASE_URL}{self.REFRESH_TOKEN_ENDPOINT}",
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return RefreshToken(value=data["refreshToken"])
+                elif response.status == 400:
+                    raise AuthenticationError("メールアドレスまたはパスワードが正しくありません。")
+                else:
+                    raise AuthenticationError(
+                        f"認証エラーが発生しました。ステータスコード: {response.status}"
+                    )
+                    
+        except aiohttp.ClientError as e:
             raise NetworkError(f"ネットワークエラーが発生しました: {str(e)}")
         except (KeyError, json.JSONDecodeError) as e:
             raise AuthenticationError(f"レスポンスの解析に失敗しました: {str(e)}")
+        finally:
+            # セッションを確実にクローズ
+            if session:
+                await session.close()
+                # TCP コネクションが完全にクローズされるまで少し待つ
+                await asyncio.sleep(0.1)
 
     async def get_id_token(self, refresh_token: RefreshToken) -> Optional[IdToken]:
         """リフレッシュトークンから ID トークンを取得"""
+        # TCP コネクターの設定
+        connector = aiohttp.TCPConnector(
+            force_close=True,  # 接続を強制的にクローズ
+            limit=100,         # 接続数の制限
+            ttl_dns_cache=300  # DNS キャッシュの TTL
+        )
+        
+        # タイムアウトの設定
+        timeout = aiohttp.ClientTimeout(
+            total=30,      # 全体のタイムアウト
+            connect=10,    # 接続タイムアウト
+            sock_read=10   # 読み取りタイムアウト
+        )
+        
+        session = None
         try:
-            async with ClientSession() as session:
-                params = {"refreshtoken": refresh_token.value}
-                
-                async with session.post(
-                    f"{self.BASE_URL}{self.ID_TOKEN_ENDPOINT}",
-                    params=params,
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        # ID トークンの有効期限は通常 24 時間
-                        expires_at = datetime.now() + timedelta(hours=24)
-                        return IdToken(value=data["idToken"], expires_at=expires_at)
-                    elif response.status == 400:
-                        raise TokenRefreshError("リフレッシュトークンが無効です。")
-                    else:
-                        raise TokenRefreshError(
-                            f"トークンリフレッシュエラーが発生しました。ステータスコード: {response.status}"
-                        )
-                        
-        except ClientError as e:
+            session = aiohttp.ClientSession(
+                connector=connector,
+                timeout=timeout
+            )
+            
+            params = {"refreshtoken": refresh_token.value}
+            
+            async with session.post(
+                f"{self.BASE_URL}{self.ID_TOKEN_ENDPOINT}",
+                params=params,
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # ID トークンの有効期限は通常 24 時間
+                    expires_at = datetime.now() + timedelta(hours=24)
+                    return IdToken(value=data["idToken"], expires_at=expires_at)
+                elif response.status == 400:
+                    raise TokenRefreshError("リフレッシュトークンが無効です。")
+                else:
+                    raise TokenRefreshError(
+                        f"トークンリフレッシュエラーが発生しました。ステータスコード: {response.status}"
+                    )
+                    
+        except aiohttp.ClientError as e:
             raise NetworkError(f"ネットワークエラーが発生しました: {str(e)}")
         except (KeyError, json.JSONDecodeError) as e:
             raise TokenRefreshError(f"レスポンスの解析に失敗しました: {str(e)}")
+        finally:
+            # セッションを確実にクローズ
+            if session:
+                await session.close()
+                # TCP コネクションが完全にクローズされるまで少し待つ
+                await asyncio.sleep(0.1)
 
     async def save_credentials(self, credentials: JQuantsCredentials) -> None:
         """認証情報を永続化"""
