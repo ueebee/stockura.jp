@@ -100,9 +100,11 @@ def check():
 
 
 @db_group.command()
-def init():
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
+def init(yes: bool):
     """Initialize database with all migrations."""
-    click.confirm("This will initialize the database. Continue?", abort=True)
+    if not yes:
+        click.confirm("This will initialize the database. Continue?", abort=True)
     try:
         asyncio.run(init_database())
         click.echo("✅ Database initialized successfully")

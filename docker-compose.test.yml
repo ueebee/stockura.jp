@@ -1,0 +1,67 @@
+services:
+  test-postgres:
+    image: postgres:16
+    container_name: stockura-test-postgres
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: stockura_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - stockura-test-network
+
+  test-redis:
+    image: redis:7
+    container_name: stockura-test-redis
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - stockura-test-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: stockura-test-runner
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://test_user:test_password@test-postgres:5432/stockura_test
+      - REDIS_URL=redis://test-redis:6379/0
+      - CELERY_BROKER_URL=redis://test-redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://test-redis:6379/2
+      - PYTHONPATH=/app
+      - TEST_ENV=docker
+    volumes:
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
+      - ./alembic:/app/alembic:ro
+      - ./scripts:/app/scripts:ro
+      - ./coverage:/app/coverage
+      - ./htmlcov:/app/htmlcov
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+    networks:
+      - stockura-test-network
+    command: >
+      sh -c "
+        python scripts/db_migrate.py init --yes &&
+        pytest -v --cov=app --cov-report=html --cov-report=xml --cov-report=term
+      "
+
+networks:
+  stockura-test-network:
+    driver: bridge

@@ -1,0 +1,45 @@
+# Distroless version for enhanced security (optional)
+# Multi-stage build for production with distroless
+FROM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Runtime stage using distroless
+FROM gcr.io/distroless/python3-debian12
+
+# Copy Python site-packages from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+
+# Copy application code from builder
+COPY --from=builder /app /app
+
+# Set working directory
+WORKDIR /app
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Note: distroless images only contain essential runtime dependencies
+# They don't have a shell, package manager, or many other utilities
+# This makes them more secure but less flexible for debugging
+
+# Run the application
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

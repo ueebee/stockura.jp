@@ -125,3 +125,12 @@ async def get_async_session_context():
             raise
         finally:
             await session.close()
+
+
+def get_async_session_sync():
+    """Get async session for synchronous context (e.g., Celery Beat).
+    
+    Returns:
+        AsyncSession context manager
+    """
+    return get_async_session_context()

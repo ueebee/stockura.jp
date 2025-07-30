@@ -1,0 +1,45 @@
+# Development environment specific overrides
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+    environment:
+      - LOG_LEVEL=DEBUG
+    command: celery -A app.infrastructure.celery.app worker --loglevel=debug
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app/app
+    environment:
+      - LOG_LEVEL=DEBUG
+    command: celery -A app.infrastructure.celery.app beat --loglevel=debug
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

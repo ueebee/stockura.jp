@@ -145,6 +145,22 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in v.split(",")]
         return v
 
+    @field_validator("celery_accept_content", mode="before")
+    @classmethod
+    def parse_celery_accept_content(cls, v: str | List[str]) -> List[str]:
+        """Parse Celery accept content from string or list."""
+        if isinstance(v, str):
+            # Handle JSON array string like '["json"]'
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Handle comma-separated string
+            return [content.strip() for content in v.split(",")]
+        return v
+
 
 @lru_cache()
 def get_settings() -> Settings:

@@ -1,0 +1,35 @@
+# Development Dockerfile with hot-reload support
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r stockura && useradd -r -g stockura stockura
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements files
+COPY requirements.txt requirements-dev.txt ./
+
+# Install all dependencies (including dev)
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+
+# Change ownership of app directory
+RUN chown -R stockura:stockura /app
+
+# Switch to non-root user
+USER stockura
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Default command
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
