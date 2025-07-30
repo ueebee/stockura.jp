@@ -80,6 +80,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_every_minute",
+    "task_name": "fetch_listed_info",
     "cron_expression": "* * * * *",
     "enabled": true,
     "description": "毎分実行するテスト",
@@ -94,6 +95,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
 {
   "id": "12345678-1234-1234-1234-123456789012",
   "name": "test_every_minute",
+  "task_name": "fetch_listed_info",
   "cron_expression": "* * * * *",
   "enabled": true,
   "description": "毎分実行するテスト",
@@ -162,6 +164,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_7days",
+    "task_name": "fetch_listed_info",
     "cron_expression": "0 10 * * *",
     "enabled": true,
     "description": "7 日間のデータ取得テスト",
@@ -178,6 +181,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_specific_codes",
+    "task_name": "fetch_listed_info",
     "cron_expression": "0 11 * * *",
     "enabled": true,
     "description": "特定銘柄のデータ取得テスト",
@@ -195,6 +199,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_custom_period",
+    "task_name": "fetch_listed_info",
     "cron_expression": "0 12 * * *",
     "enabled": true,
     "description": "カスタム期間のデータ取得テスト",
