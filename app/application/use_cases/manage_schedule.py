@@ -38,7 +38,7 @@ class ManageScheduleUseCase:
         schedule = Schedule(
             id=schedule_id,
             name=dto.name,
-            task_name="fetch_listed_info_task_asyncpg",  # AsyncPG version
+            task_name=dto.task_name,
             cron_expression=dto.cron_expression,
             enabled=dto.enabled,
             args=args,
