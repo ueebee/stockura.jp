@@ -30,7 +30,7 @@ class RedisAuthRepository(AuthRepository):
     
     # トークンの有効期限
     REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60  # 7 日間（秒）
-    ID_TOKEN_TTL = 24 * 60 * 60  # 24 時間（秒）
+    ID_TOKEN_TTL = 23 * 60 * 60  # 23 時間（秒） - トークンの有効期限（24 時間）より少し短く
 
     def __init__(self, redis_client: Redis) -> None:
         """
