@@ -52,6 +52,7 @@ async def create_schedule(
     
     dto = ScheduleCreateDto(
         name=schedule_data.name,
+        task_name=schedule_data.task_name,
         cron_expression=schedule_data.cron_expression,
         enabled=schedule_data.enabled,
         description=schedule_data.description,
@@ -65,6 +66,7 @@ async def create_schedule(
     return ScheduleResponse(
         id=result.id,
         name=result.name,
+        task_name=result.task_name,
         cron_expression=result.cron_expression,
         enabled=result.enabled,
         description=result.description,
@@ -94,6 +96,7 @@ async def list_schedules(
             ScheduleResponse(
                 id=schedule.id,
                 name=schedule.name,
+                task_name=schedule.task_name,
                 cron_expression=schedule.cron_expression,
                 enabled=schedule.enabled,
                 description=schedule.description,
@@ -129,6 +132,7 @@ async def get_schedule(
     return ScheduleResponse(
         id=schedule.id,
         name=schedule.name,
+        task_name=schedule.task_name,
         cron_expression=schedule.cron_expression,
         enabled=schedule.enabled,
         description=schedule.description,
@@ -182,6 +186,7 @@ async def update_schedule(
     return ScheduleResponse(
         id=result.id,
         name=result.name,
+        task_name=result.task_name,
         cron_expression=result.cron_expression,
         enabled=result.enabled,
         description=result.description,

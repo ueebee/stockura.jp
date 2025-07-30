@@ -36,6 +36,7 @@ class ScheduleCreateDto:
     """Schedule creation DTO."""
 
     name: str
+    task_name: str
     cron_expression: str
     enabled: bool = True
     description: Optional[str] = None

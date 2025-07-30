@@ -188,6 +188,9 @@ async def _fetch_listed_info_async(
                 f"fetched: {total_fetched}, saved: {total_saved}"
             )
             
+            # base_client をクローズ
+            await base_client.close()
+            
             return result_data
             
         except Exception as e:
@@ -200,6 +203,10 @@ async def _fetch_listed_info_async(
                 finished_at=datetime.utcnow(),
                 error_message=str(e),
             )
+            
+            # エラー時も base_client をクローズ
+            if 'base_client' in locals():
+                await base_client.close()
             
             raise
 

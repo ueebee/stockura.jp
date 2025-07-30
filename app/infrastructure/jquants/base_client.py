@@ -44,13 +44,32 @@ class JQuantsBaseClient:
     async def _ensure_session(self) -> None:
         """セッションの初期化を確実に行う"""
         if self._session is None or self._session.closed:
+            # TCP コネクターの設定
+            connector = aiohttp.TCPConnector(
+                force_close=True,  # 接続を強制的にクローズ
+                limit=100,         # 接続数の制限
+                ttl_dns_cache=300  # DNS キャッシュの TTL
+            )
+            
+            # タイムアウトの設定
+            timeout = aiohttp.ClientTimeout(
+                total=30,      # 全体のタイムアウト
+                connect=10,    # 接続タイムアウト
+                sock_read=10   # 読み取りタイムアウト
+            )
+            
             # aiohttp が Content-Encoding に基づいて自動的に Gzip 解凍を処理
-            self._session = ClientSession()
+            self._session = ClientSession(
+                connector=connector,
+                timeout=timeout
+            )
 
     async def close(self) -> None:
         """セッションのクローズ"""
         if self._session and not self._session.closed:
             await self._session.close()
+            # TCP コネクションが完全にクローズされるまで少し待つ
+            await asyncio.sleep(0.1)
 
     def _get_headers(self, additional_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """リクエストヘッダーの生成"""
@@ -114,7 +133,7 @@ class JQuantsBaseClient:
                     params=params,
                     json=json_data,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=self.DEFAULT_TIMEOUT),
+                    # タイムアウトはセッションレベルで設定済み
                 ) as response:
                     return await self._handle_response(response)
 

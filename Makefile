@@ -9,7 +9,7 @@ help:
 	@echo "  make logs        - View container logs"
 	@echo "  make test        - Run tests in Docker"
 	@echo "  make clean       - Clean up containers and volumes"
-	@echo "  make migrate     - Run database migrations"
+	@echo "  make migrate     - Run database migrations (see 'make migrate' for options)"
 	@echo "  make shell       - Open shell in app container"
 	@echo "  make prod-build  - Build production images"
 	@echo "  make prod-up     - Start production environment"
@@ -36,7 +36,25 @@ test-watch:
 
 # Database
 migrate:
-	docker-compose exec app python scripts/db_migrate.py
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo "Usage: make migrate [command] [options]"; \
+		echo "Commands:"; \
+		echo "  upgrade [revision]  - Upgrade database (default: head)"; \
+		echo "  downgrade revision  - Downgrade database"; \
+		echo "  current            - Show current revision"; \
+		echo "  history            - Show migration history"; \
+		echo "  pending            - Check pending migrations"; \
+		echo "  create             - Create new migration"; \
+		echo "  init               - Initialize database"; \
+		echo "  reset              - Reset database (CAUTION!)"; \
+		docker-compose exec app python scripts/db_migrate.py --help; \
+	else \
+		docker-compose exec app python scripts/db_migrate.py $(filter-out $@,$(MAKECMDGOALS)); \
+	fi
+
+# Prevent make from treating migration commands as targets
+%:
+	@:
 
 migrate-create:
 	docker-compose exec app alembic revision -m "$(MSG)"
