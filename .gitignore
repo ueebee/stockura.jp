@@ -208,3 +208,5 @@ memo/
 # Test credentials
 .test_credentials.json
 
+# serena configuration
+.serena
