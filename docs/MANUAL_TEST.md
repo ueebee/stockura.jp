@@ -278,6 +278,120 @@ WHERE date = (SELECT MAX(date) FROM listed_info);
 "
 ```
 
+## Celery タスクとしての実行
+
+### 1. Celery ワーカーの起動
+
+別ターミナルで Celery ワーカーを起動します：
+
+```bash
+# Celery ワーカーの起動
+celery -A app.infrastructure.tasks.config worker --loglevel=info
+```
+
+### 2. 昨日のデータを取得するタスクの実行
+
+```python
+# Python インタラクティブシェルで実行
+from app.infrastructure.tasks.data_collection_tasks import fetch_listed_info_task
+from datetime import datetime, timedelta
+
+# 昨日の日付を計算
+yesterday = datetime.now() - timedelta(days=1)
+yesterday_str = yesterday.strftime("%Y%m%d")
+
+# タスクを非同期で実行（キューに追加）
+result = fetch_listed_info_task.delay(date=yesterday_str)
+
+# タスク ID を確認
+print(f"Task ID: {result.id}")
+
+# タスクの状態を確認
+print(f"Task Status: {result.status}")
+
+# 結果を待つ（最大 300 秒）
+try:
+    task_result = result.get(timeout=300)
+    print(f"Task completed successfully: {task_result}")
+except Exception as e:
+    print(f"Task failed: {e}")
+```
+
+### 3. 特定銘柄の昨日のデータを取得
+
+```python
+# トヨタ自動車（7203）の昨日のデータを取得
+from app.infrastructure.tasks.data_collection_tasks import fetch_listed_info_task
+from datetime import datetime, timedelta
+
+yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+
+# 単一銘柄のタスク実行
+result = fetch_listed_info_task.delay(code="7203", date=yesterday)
+
+# 結果を確認
+task_result = result.get(timeout=60)
+print(f"取得件数: {task_result['fetched_count']}")
+print(f"保存件数: {task_result['saved_count']}")
+```
+
+### 4. Celery Beat での定期実行設定
+
+`app/infrastructure/tasks/config.py`で以下のように設定されている場合：
+
+```python
+from celery.schedules import crontab
+
+app.conf.beat_schedule = {
+    'fetch-yesterday-listed-info': {
+        'task': 'app.infrastructure.tasks.data_collection_tasks.fetch_listed_info_task',
+        'schedule': crontab(hour=19, minute=0),  # 毎日 19:00 に実行
+        'kwargs': {
+            'date': 'yesterday'  # 特別な値として'yesterday'を処理
+        }
+    },
+}
+```
+
+Celery Beat を起動：
+
+```bash
+# Celery Beat スケジューラーの起動
+celery -A app.infrastructure.tasks.config beat --loglevel=info
+```
+
+### 5. タスク実行状況の確認
+
+```bash
+# Celery ワーカーのログを確認
+tail -f logs/celery_worker.log
+
+# データベースで取得されたデータを確認
+psql -U postgres -d stockura -c "
+SELECT date, COUNT(*) as count, 
+       MIN(created_at) as first_created, 
+       MAX(created_at) as last_created
+FROM listed_info 
+WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY date 
+ORDER BY date DESC;
+"
+```
+
+### 6. 手動でのタスクトリガー（CLI 経由）
+
+```bash
+# Celery タスクを手動で実行
+python -c "
+from app.infrastructure.tasks.data_collection_tasks import fetch_listed_info_task
+from datetime import datetime, timedelta
+
+yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y%m%d')
+result = fetch_listed_info_task.apply_async(kwargs={'date': yesterday})
+print(f'Task triggered with ID: {result.id}')
+"
+```
+
 ## トラブルシューティング
 
 ### 1. psycopg2 エラーが発生する場合

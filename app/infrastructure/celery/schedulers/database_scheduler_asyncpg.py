@@ -49,6 +49,10 @@ class DatabaseScheduleEntry(ScheduleEntry):
             options={},
             app=app,
         )
+        
+        # Initialize last_run_at to None to ensure the task runs
+        if not hasattr(self, 'last_run_at'):
+            self.last_run_at = None
 
     def _cron_to_schedule(self, cron_expression: str) -> schedules.crontab:
         """Convert cron expression to celery crontab schedule."""
@@ -72,7 +76,18 @@ class DatabaseScheduleEntry(ScheduleEntry):
         if not self.model.enabled:
             return False, 60.0  # Check again in 60 seconds
         
-        return super().is_due()
+        result = super().is_due()
+        is_due, next_run_seconds = result
+        logger.debug(f"Task {self.name} is_due check: is_due={is_due}, "
+                    f"next_run_seconds={next_run_seconds}, schedule={self.schedule}, "
+                    f"last_run_at={self.last_run_at}")
+        return result
+    
+    def __next__(self):
+        """Return a new instance of the same entry."""
+        return self.__class__(self.model, app=self.app)
+    
+    next = __next__  # Python 2/3 compatibility
 
     def __repr__(self):
         """String representation."""
@@ -149,8 +164,39 @@ class DatabaseSchedulerAsyncPG(Scheduler):
         # Reload schedules every 60 seconds
         if self._should_reload_schedules():
             self.sync_schedules()
+        
+        # Calculate minimum interval until next run
+        min_interval = self.max_interval
+        
+        # Process each schedule entry
+        for entry in self.schedule.values():
+            is_due, next_run_seconds = entry.is_due()
             
-        return super().tick()
+            if is_due:
+                logger.info(f"Task {entry.name} is due, applying entry")
+                try:
+                    self.apply_entry(entry)
+                except Exception as e:
+                    logger.error(f"Failed to apply entry {entry.name}: {e}", exc_info=True)
+            
+            # Update minimum interval
+            min_interval = min(min_interval, next_run_seconds)
+        
+        return min_interval
+    
+    def apply_entry(self, entry, producer=None):
+        """Apply schedule entry - send task to worker."""
+        logger.info(f"Applying entry: {entry.name}, task: {entry.task}, "
+                    f"args: {entry.args}, kwargs: {entry.kwargs}")
+        
+        try:
+            # Call parent class apply_entry to send the task
+            result = super().apply_entry(entry, producer)
+            logger.info(f"Task {entry.name} sent successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to send task {entry.name}: {e}", exc_info=True)
+            raise
     
     def _should_reload_schedules(self) -> bool:
         """Check if schedules should be reloaded."""

@@ -46,7 +46,8 @@ result_compression = "gzip"
 
 # Routing
 task_routes = {
-    "app.infrastructure.celery.tasks.listed_info_task.*": {"queue": "default"},
+    "fetch_listed_info_task": {"queue": "default"},
+    "fetch_listed_info_task_asyncpg": {"queue": "default"},
 }
 
 # Queue configuration
