@@ -36,12 +36,14 @@ class ScheduleBase(BaseModel):
     """Base schedule schema."""
 
     name: str = Field(..., description="Unique schedule name")
+    task_name: str = Field(..., description="Celery task name")
     cron_expression: str = Field(
         ..., description="Cron expression (e.g., '0 9 * * *' for daily at 9 AM)"
     )
     enabled: bool = Field(default=True, description="Whether schedule is enabled")
+    args: Optional[List[Any]] = Field(default_factory=list, description="Task positional arguments")
+    kwargs: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Task keyword arguments")
     description: Optional[str] = Field(default=None, description="Schedule description")
-    task_params: TaskParams = Field(default_factory=TaskParams, description="Task parameters")
 
     @field_validator("cron_expression")
     @classmethod
@@ -57,17 +59,19 @@ class ScheduleBase(BaseModel):
 class ScheduleCreate(ScheduleBase):
     """Schedule creation schema."""
 
-    pass
+    task_params: Optional[TaskParams] = Field(default=None, description="Legacy task parameters (for compatibility)")
 
 
 class ScheduleUpdate(BaseModel):
     """Schedule update schema."""
 
     name: Optional[str] = None
+    task_name: Optional[str] = None
     cron_expression: Optional[str] = None
     enabled: Optional[bool] = None
+    args: Optional[List[Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
     description: Optional[str] = None
-    task_params: Optional[TaskParams] = None
 
     @field_validator("cron_expression")
     @classmethod
@@ -87,6 +91,8 @@ class ScheduleResponse(ScheduleBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    
+    task_params: Optional[TaskParams] = Field(default=None, description="Legacy task parameters (computed)")
 
     class Config:
         """Pydantic config."""

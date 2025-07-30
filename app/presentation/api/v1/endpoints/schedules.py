@@ -40,13 +40,15 @@ async def create_schedule(
 ) -> ScheduleResponse:
     """Create a new schedule."""
     # Convert API schema to DTO
-    task_params_dto = TaskParamsDto(
-        period_type=schedule_data.task_params.period_type,
-        from_date=schedule_data.task_params.from_date,
-        to_date=schedule_data.task_params.to_date,
-        codes=schedule_data.task_params.codes,
-        market=schedule_data.task_params.market,
-    )
+    task_params_dto = None
+    if schedule_data.task_params:
+        task_params_dto = TaskParamsDto(
+            period_type=schedule_data.task_params.period_type,
+            from_date=schedule_data.task_params.from_date,
+            to_date=schedule_data.task_params.to_date,
+            codes=schedule_data.task_params.codes,
+            market=schedule_data.task_params.market,
+        )
     
     dto = ScheduleCreateDto(
         name=schedule_data.name,
