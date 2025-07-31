@@ -19,6 +19,7 @@ from tests.utils.assertions import (
     assert_network_error,
     assert_token_refresh_error
 )
+from tests.utils.mock_helpers import AsyncMockHelpers
 
 
 @pytest.fixture
@@ -78,15 +79,22 @@ class TestJQuantsAuthRepository:
     @pytest.mark.asyncio
     async def test_get_refresh_token_success(self, auth_repository):
         """リフレッシュトークン取得成功のテスト"""
-        mock_response = create_mock_response(
-            status=200,
-            json_data={"refreshToken": "test_refresh_token"}
-        )
-
-        with patch("app.infrastructure.jquants.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-
+        # モックレスポンスを作成
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={"refreshToken": "test_refresh_token"})
+        
+        # コンテキストマネージャーのモック
+        mock_context = MagicMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        
+        # セッションのモックを作成
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_context)
+        mock_session.close = AsyncMock()
+        
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await auth_repository.get_refresh_token(
                 "test@example.com", "password123"
             )
@@ -97,12 +105,22 @@ class TestJQuantsAuthRepository:
     @pytest.mark.asyncio
     async def test_get_refresh_token_invalid_credentials(self, auth_repository):
         """無効な認証情報でのリフレッシュトークン取得のテスト"""
-        mock_response = create_mock_response(status=400)
-
-        with patch("app.infrastructure.jquants.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-
+        # モックレスポンスを作成
+        mock_response = AsyncMock()
+        mock_response.status = 400
+        mock_response.json = AsyncMock(return_value={})
+        
+        # コンテキストマネージャーのモック
+        mock_context = MagicMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        
+        # セッションのモックを作成
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_context)
+        mock_session.close = AsyncMock()
+        
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(AuthenticationError) as exc_info:
                 await auth_repository.get_refresh_token(
                     "test@example.com", "wrong_password"
@@ -113,11 +131,17 @@ class TestJQuantsAuthRepository:
     @pytest.mark.asyncio
     async def test_get_refresh_token_network_error(self, auth_repository):
         """ネットワークエラー時のリフレッシュトークン取得のテスト"""
-        with patch("app.infrastructure.jquants.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = MagicMock()
-            mock_session.post.side_effect = ClientError("Connection error")
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-
+        # コンテキストマネージャーのモック（エラーを発生させる）
+        mock_context = MagicMock()
+        mock_context.__aenter__ = AsyncMock(side_effect=ClientError("Connection error"))
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        
+        # セッションのモックを作成
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_context)
+        mock_session.close = AsyncMock()
+        
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(NetworkError) as exc_info:
                 await auth_repository.get_refresh_token(
                     "test@example.com", "password123"
@@ -128,15 +152,22 @@ class TestJQuantsAuthRepository:
     @pytest.mark.asyncio
     async def test_get_id_token_success(self, auth_repository, mock_refresh_token):
         """ID トークン取得成功のテスト"""
-        mock_response = create_mock_response(
-            status=200,
-            json_data={"idToken": "test_id_token"}
-        )
-
-        with patch("app.infrastructure.jquants.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-
+        # モックレスポンスを作成
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={"idToken": "test_id_token"})
+        
+        # コンテキストマネージャーのモック
+        mock_context = MagicMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        
+        # セッションのモックを作成
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_context)
+        mock_session.close = AsyncMock()
+        
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             result = await auth_repository.get_id_token(mock_refresh_token)
 
             assert isinstance(result, IdToken)
@@ -148,12 +179,22 @@ class TestJQuantsAuthRepository:
         self, auth_repository, mock_refresh_token
     ):
         """無効なリフレッシュトークンでの ID トークン取得のテスト"""
-        mock_response = create_mock_response(status=400)
-
-        with patch("app.infrastructure.jquants.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-
+        # モックレスポンスを作成
+        mock_response = AsyncMock()
+        mock_response.status = 400
+        mock_response.json = AsyncMock(return_value={})
+        
+        # コンテキストマネージャーのモック
+        mock_context = MagicMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        
+        # セッションのモックを作成
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_context)
+        mock_session.close = AsyncMock()
+        
+        with patch("aiohttp.ClientSession", return_value=mock_session):
             with pytest.raises(TokenRefreshError) as exc_info:
                 await auth_repository.get_id_token(mock_refresh_token)
 

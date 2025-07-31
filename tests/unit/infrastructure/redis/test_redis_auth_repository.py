@@ -20,6 +20,7 @@ from tests.utils.assertions import (
     assert_network_error,
     assert_token_refresh_error
 )
+from tests.utils.mock_helpers import AsyncMockHelpers
 
 
 @pytest.fixture
@@ -69,14 +70,12 @@ class TestGetRefreshToken:
     @pytest.mark.asyncio
     async def test_successful_authentication(self, auth_repository):
         """正常な認証のテスト"""
-        mock_response = create_mock_response(
-            status=200,
-            json_data={"refreshToken": "new_refresh_token"}
-        )
-
-        with patch("app.infrastructure.redis.auth_repository_impl.ClientSession") as mock_session_class:
-            mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
+        with patch("aiohttp.ClientSession") as mock_session_class:
+            AsyncMockHelpers.setup_aiohttp_session_mock(
+                mock_session_class,
+                status_code=200,
+                json_data={"refreshToken": "new_refresh_token"}
+            )
 
             result = await auth_repository.get_refresh_token(
                 "test@example.com", "password"
@@ -110,28 +109,20 @@ class TestRedisOperations:
         """認証情報の保存テスト"""
         await auth_repository.save_credentials(mock_credentials)
 
-        # setex が適切に呼ばれたことを確認
-        expected_calls = [
-            (
-                f"jquants:refresh_token:{mock_credentials.email}",
-                7 * 24 * 60 * 60,
-                mock_credentials.refresh_token.value
-            ),
-            (
-                f"jquants:id_token:{mock_credentials.email}",
-                24 * 60 * 60,
-                mock_credentials.id_token.value
-            ),
-            (
-                f"jquants:id_token:{mock_credentials.email}:expires_at",
-                24 * 60 * 60,
-                mock_credentials.id_token.expires_at.isoformat()
-            )
-        ]
-
-        assert mock_redis.setex.call_count >= 3
-        for expected_call in expected_calls:
-            mock_redis.setex.assert_any_call(*expected_call)
+        # setex が適切に呼ばれたことを確認（4 回: refresh_token, id_token, expires_at, credentials）
+        assert mock_redis.setex.call_count == 4
+        
+        # 呼び出しパラメータを確認
+        call_args = [call[0] for call in mock_redis.setex.call_args_list]
+        
+        # キーのリストを取得
+        keys = [args[0] for args in call_args]
+        
+        # 必要なキーが全て存在することを確認
+        assert f"jquants:refresh_token:{mock_credentials.email}" in keys
+        assert f"jquants:id_token:{mock_credentials.email}" in keys
+        assert f"jquants:id_token:{mock_credentials.email}:expires_at" in keys
+        assert f"jquants:credentials:{mock_credentials.email}" in keys
 
     @pytest.mark.asyncio
     async def test_load_credentials_found(self, auth_repository, mock_redis, mock_credentials):

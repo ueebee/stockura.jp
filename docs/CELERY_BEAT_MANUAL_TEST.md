@@ -70,6 +70,15 @@ uvicorn app.main:app --reload
 
 API ドキュメント: http://localhost:8000/docs
 
+**推奨タスク名**: 
+- `fetch_listed_info_task_asyncpg` - 最適化版（永続的なイベントループ、**推奨**）
+  - 高頻度実行（毎分など）に最適
+  - asyncpg ドライバの性能を最大限活用
+  - リソース効率が良い
+- `fetch_listed_info_task` - 通常版（各実行で新しいイベントループ）
+  - シンプルな実装
+  - 低頻度実行には十分
+
 ### 4. スケジュール管理 API のテスト
 
 #### 4.1 スケジュールの作成
@@ -80,7 +89,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_every_minute",
-    "task_name": "fetch_listed_info",
+    "task_name": "fetch_listed_info_task_asyncpg",
     "cron_expression": "* * * * *",
     "enabled": true,
     "description": "毎分実行するテスト",
@@ -95,7 +104,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
 {
   "id": "12345678-1234-1234-1234-123456789012",
   "name": "test_every_minute",
-  "task_name": "fetch_listed_info",
+  "task_name": "fetch_listed_info_task",
   "cron_expression": "* * * * *",
   "enabled": true,
   "description": "毎分実行するテスト",
@@ -164,7 +173,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_7days",
-    "task_name": "fetch_listed_info",
+    "task_name": "fetch_listed_info_task_asyncpg",
     "cron_expression": "0 10 * * *",
     "enabled": true,
     "description": "7 日間のデータ取得テスト",
@@ -181,7 +190,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_specific_codes",
-    "task_name": "fetch_listed_info",
+    "task_name": "fetch_listed_info_task_asyncpg",
     "cron_expression": "0 11 * * *",
     "enabled": true,
     "description": "特定銘柄のデータ取得テスト",
@@ -199,7 +208,7 @@ curl -X POST http://localhost:8000/api/v1/schedules/ \
   -H "Content-Type: application/json" \
   -d '{
     "name": "test_custom_period",
-    "task_name": "fetch_listed_info",
+    "task_name": "fetch_listed_info_task_asyncpg",
     "cron_expression": "0 12 * * *",
     "enabled": true,
     "description": "カスタム期間のデータ取得テスト",
