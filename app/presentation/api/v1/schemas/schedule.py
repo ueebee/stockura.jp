@@ -66,12 +66,10 @@ class ScheduleUpdate(BaseModel):
     """Schedule update schema."""
 
     name: Optional[str] = None
-    task_name: Optional[str] = None
     cron_expression: Optional[str] = None
     enabled: Optional[bool] = None
-    args: Optional[List[Any]] = None
-    kwargs: Optional[Dict[str, Any]] = None
     description: Optional[str] = None
+    task_params: Optional[TaskParams] = None
 
     @field_validator("cron_expression")
     @classmethod
