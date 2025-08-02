@@ -1,11 +1,13 @@
 import time
 import yfinance as yf
+from app.infrastructure.yfinance import YFinanceClient
+from app.infrastructure.rate_limiting import RateLimiterFactory
 from typing import Dict, List, Optional
 from celery import current_task
 from app.core.celery_app import celery_app
 
 @celery_app.task(bind=True)
-def fetch_stock_data(self, symbol: str, period: str = "1mo", interval: str = "1d") -> Dict:
+async def fetch_stock_data(self, symbol: str, period: str = "1mo", interval: str = "1d") -> Dict:
     """株価データを取得するタスク"""
     print(f"Fetching stock data for {symbol}, period: {period}, interval: {interval}")
     
@@ -16,9 +18,13 @@ def fetch_stock_data(self, symbol: str, period: str = "1mo", interval: str = "1d
             meta={"message": f"Fetching data for {symbol}..."}
         )
         
+        # レート制限付きyfinanceクライアントを作成
+        rate_limiter = await RateLimiterFactory.create_for_provider("yfinance")
+        yf_client = YFinanceClient(rate_limiter)
+        
         # yfinanceを使用してデータを取得
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period=period, interval=interval)
+        hist_data = await yf_client.get_history(symbol, period=period, interval=interval)
+        ticker_info = await yf_client.get_ticker_info(symbol)
         
         # 進捗を更新
         self.update_state(
@@ -26,22 +32,13 @@ def fetch_stock_data(self, symbol: str, period: str = "1mo", interval: str = "1d
             meta={"message": f"Processing data for {symbol}..."}
         )
         
-        # データを整形
-        data = []
-        for date, row in hist.iterrows():
-            data.append({
-                "date": date.isoformat(),
-                "open": float(row['Open']),
-                "high": float(row['High']),
-                "low": float(row['Low']),
-                "close": float(row['Close']),
-                "volume": int(row['Volume'])
-            })
+        # データはすでに整形済み
+        data = hist_data
         
         result = {
             "symbol": symbol,
-            "company_name": ticker.info.get('longName', symbol),
-            "currency": ticker.info.get('currency', 'USD'),
+            "company_name": ticker_info.get('longName', symbol),
+            "currency": ticker_info.get('currency', 'USD'),
             "period": period,
             "interval": interval,
             "data": data,

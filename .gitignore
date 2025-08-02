@@ -65,3 +65,6 @@ dump.txt
 node_modules/
 package-lock.json
 
+# Serena
+.serena/
+
