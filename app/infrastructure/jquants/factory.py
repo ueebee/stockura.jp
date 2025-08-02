@@ -11,6 +11,7 @@ from app.domain.interfaces import IAPIClient
 from app.services.data_source_service import DataSourceService
 from app.services.token_manager import TokenManager, get_token_manager
 from app.infrastructure.http import HTTPClient, RetryConfig
+from app.infrastructure.rate_limiting import RateLimitedHTTPClient, RateLimiterFactory
 from app.infrastructure.auth import JQuantsAuthenticationService
 from .api_client import JQuantsAPIClient
 from .request_builder import JQuantsRequestBuilder
@@ -65,8 +66,12 @@ class JQuantsClientFactory:
             if token_manager is None:
                 token_manager = await get_token_manager()
             
-            # HTTPクライアントを生成
-            http_client = HTTPClient(
+            # レートリミッターを作成
+            rate_limiter = await RateLimiterFactory.create_for_data_source(data_source)
+            
+            # レート制限付きHTTPクライアントを生成
+            http_client = RateLimitedHTTPClient(
+                rate_limiter=rate_limiter,
                 base_url=data_source.base_url or "https://api.jquants.com",
                 timeout=30.0,
                 retry_config=retry_config or RetryConfig(
