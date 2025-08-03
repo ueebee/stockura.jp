@@ -2,8 +2,9 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.domain.entities.schedule import Schedule
 from app.domain.repositories.schedule_repository_interface import (
@@ -30,6 +31,10 @@ class ScheduleRepository(ScheduleRepositoryInterface):
             args=schedule.args,
             kwargs=schedule.kwargs,
             description=schedule.description,
+            category=schedule.category,
+            tags=schedule.tags,
+            execution_policy=schedule.execution_policy,
+            auto_generated_name=schedule.auto_generated_name,
         )
         self._session.add(db_schedule)
         await self._session.commit()
@@ -73,6 +78,10 @@ class ScheduleRepository(ScheduleRepositoryInterface):
                 args=schedule.args,
                 kwargs=schedule.kwargs,
                 description=schedule.description,
+                category=schedule.category,
+                tags=schedule.tags,
+                execution_policy=schedule.execution_policy,
+                auto_generated_name=schedule.auto_generated_name,
             )
         )
         await self._session.commit()
@@ -110,6 +119,37 @@ class ScheduleRepository(ScheduleRepositoryInterface):
         await self._session.commit()
         return result.rowcount > 0
 
+    async def get_filtered(
+        self,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        task_name: Optional[str] = None,
+        enabled_only: bool = False,
+    ) -> List[Schedule]:
+        """Get schedules with filters."""
+        query = select(CeleryBeatSchedule)
+        conditions = []
+        
+        if category:
+            conditions.append(CeleryBeatSchedule.category == category)
+        
+        if tags:
+            # Check if all specified tags are present in the schedule's tags
+            for tag in tags:
+                conditions.append(CeleryBeatSchedule.tags.contains([tag]))
+        
+        if task_name:
+            conditions.append(CeleryBeatSchedule.task_name == task_name)
+        
+        if enabled_only:
+            conditions.append(CeleryBeatSchedule.enabled == True)
+        
+        if conditions:
+            query = query.where(and_(*conditions))
+        
+        result = await self._session.execute(query)
+        return [self._to_entity(s) for s in result.scalars().all()]
+
     def _to_entity(self, db_schedule: CeleryBeatSchedule) -> Schedule:
         """Convert database model to domain entity."""
         return Schedule(
@@ -121,6 +161,10 @@ class ScheduleRepository(ScheduleRepositoryInterface):
             args=db_schedule.args,
             kwargs=db_schedule.kwargs,
             description=db_schedule.description,
+            category=db_schedule.category,
+            tags=db_schedule.tags,
+            execution_policy=db_schedule.execution_policy,
+            auto_generated_name=db_schedule.auto_generated_name,
             created_at=db_schedule.created_at,
             updated_at=db_schedule.updated_at,
         )
