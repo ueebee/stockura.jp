@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from app.domain.entities.schedule import Schedule
+
 
 @dataclass
 class TaskParamsDto:
@@ -35,12 +37,15 @@ class TaskParamsDto:
 class ScheduleCreateDto:
     """Schedule creation DTO."""
 
-    name: str
+    name: Optional[str]  # Optional now for auto-generation
     task_name: str
     cron_expression: str
     enabled: bool = True
     description: Optional[str] = None
     task_params: Optional[TaskParamsDto] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    execution_policy: Optional[str] = None
 
 
 @dataclass
@@ -52,6 +57,9 @@ class ScheduleUpdateDto:
     enabled: Optional[bool] = None
     description: Optional[str] = None
     task_params: Optional[TaskParamsDto] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    execution_policy: Optional[str] = None
 
 
 @dataclass
@@ -67,3 +75,42 @@ class ScheduleDto:
     created_at: datetime
     updated_at: datetime
     task_params: Optional[TaskParamsDto] = None
+    category: Optional[str] = None
+    tags: List[str] = None
+    execution_policy: str = "allow"
+    auto_generated_name: bool = False
+
+    def __post_init__(self):
+        """Post initialization."""
+        if self.tags is None:
+            self.tags = []
+
+    @classmethod
+    def from_entity(cls, entity: Schedule) -> "ScheduleDto":
+        """Create DTO from entity."""
+        # Extract task_params from kwargs
+        task_params = None
+        if entity.kwargs:
+            task_params = TaskParamsDto(
+                period_type=entity.kwargs.get("period_type", "yesterday"),
+                from_date=entity.kwargs.get("from_date"),
+                to_date=entity.kwargs.get("to_date"),
+                codes=entity.kwargs.get("codes"),
+                market=entity.kwargs.get("market"),
+            )
+        
+        return cls(
+            id=entity.id,
+            name=entity.name,
+            task_name=entity.task_name,
+            cron_expression=entity.cron_expression,
+            enabled=entity.enabled,
+            description=entity.description,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+            task_params=task_params,
+            category=entity.category,
+            tags=entity.tags,
+            execution_policy=entity.execution_policy,
+            auto_generated_name=entity.auto_generated_name,
+        )

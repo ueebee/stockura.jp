@@ -1,6 +1,6 @@
 """Schedule repository interface."""
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from app.domain.entities.schedule import Schedule
@@ -27,6 +27,17 @@ class ScheduleRepositoryInterface(ABC):
     @abstractmethod
     async def get_all(self, enabled_only: bool = False) -> List[Schedule]:
         """Get all schedules."""
+        pass
+
+    @abstractmethod
+    async def get_filtered(
+        self,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        task_name: Optional[str] = None,
+        enabled_only: bool = False,
+    ) -> List[Schedule]:
+        """Get schedules with filters."""
         pass
 
     @abstractmethod
