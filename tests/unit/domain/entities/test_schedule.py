@@ -128,6 +128,10 @@ class TestSchedule:
             "args": [],
             "kwargs": {},
             "description": None,
+            "category": None,
+            "tags": [],
+            "execution_policy": "allow",
+            "auto_generated_name": False,
             "created_at": None,
             "updated_at": None
         }
@@ -146,6 +150,10 @@ class TestSchedule:
             args=["arg1", 123],
             kwargs={"key1": "value1", "key2": 456},
             description="Test description",
+            category="data_fetch",
+            tags=["jquants", "daily"],
+            execution_policy="skip",
+            auto_generated_name=True,
             created_at=now,
             updated_at=now
         )
@@ -163,6 +171,10 @@ class TestSchedule:
             "args": ["arg1", 123],
             "kwargs": {"key1": "value1", "key2": 456},
             "description": "Test description",
+            "category": "data_fetch",
+            "tags": ["jquants", "daily"],
+            "execution_policy": "skip",
+            "auto_generated_name": True,
             "created_at": now.isoformat(),
             "updated_at": now.isoformat()
         }

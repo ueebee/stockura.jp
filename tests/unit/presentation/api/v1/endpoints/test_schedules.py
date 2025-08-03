@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from app.presentation.api.v1.endpoints import schedules as schedules_module
 from app.presentation.api.v1.endpoints.schedules import (
     create_schedule,
     list_schedules,
@@ -35,6 +36,7 @@ class TestScheduleEndpoints:
         use_case = MagicMock()
         use_case.create_schedule = AsyncMock()
         use_case.get_all_schedules = AsyncMock()
+        use_case.get_filtered_schedules = AsyncMock()
         use_case.get_schedule = AsyncMock()
         use_case.update_schedule = AsyncMock()
         use_case.delete_schedule = AsyncMock()
@@ -64,40 +66,47 @@ class TestScheduleEndpoints:
     async def test_create_schedule_success(self, mock_use_case, sample_schedule_dto):
         """スケジュール作成成功のテスト"""
         # Arrange
-        create_data = ScheduleCreate(
-            name="test_schedule",
-            task_name="fetch_listed_info",
-            cron_expression="0 9 * * *",
-            enabled=True,
-            description="Test schedule",
-            task_params=TaskParams(
-                period_type="yesterday",
-                codes=["1301", "1305"]
-            )
-        )
+        create_data = {
+            "name": "test_schedule",
+            "task_name": "fetch_listed_info",
+            "cron_expression": "0 9 * * *",
+            "enabled": True,
+            "description": "Test schedule",
+            "task_params": {
+                "period_type": "yesterday",
+                "codes": ["1301", "1305"]
+            }
+        }
         
         mock_use_case.create_schedule.return_value = sample_schedule_dto
         
         # Act
-        with patch('app.presentation.api.v1.endpoints.schedules.get_manage_schedule_use_case', return_value=mock_use_case):
-            result = await create_schedule(create_data, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.post("/schedules/", json=create_data)
         
         # Assert
-        assert result.id == sample_schedule_dto.id
-        assert result.name == sample_schedule_dto.name
-        assert result.task_name == sample_schedule_dto.task_name
-        assert result.task_params.codes == ["1301", "1305"]
+        assert response.status_code == 201
+        data = response.json()
+        assert data["id"] == str(sample_schedule_dto.id)
+        assert data["name"] == sample_schedule_dto.name
+        assert data["task_name"] == sample_schedule_dto.task_name
+        assert data["task_params"]["codes"] == ["1301", "1305"]
         mock_use_case.create_schedule.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_create_schedule_without_task_params(self, mock_use_case):
         """タスクパラメータなしでスケジュール作成のテスト"""
         # Arrange
-        create_data = ScheduleCreate(
-            name="simple_schedule",
-            task_name="simple_task",
-            cron_expression="0 0 * * *"
-        )
+        create_data = {
+            "name": "simple_schedule",
+            "task_name": "simple_task",
+            "cron_expression": "0 0 * * *"
+        }
         
         schedule_dto = ScheduleDto(
             id=uuid4(),
@@ -114,11 +123,19 @@ class TestScheduleEndpoints:
         mock_use_case.create_schedule.return_value = schedule_dto
         
         # Act
-        result = await create_schedule(create_data, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.post("/schedules/", json=create_data)
         
         # Assert
-        assert result.name == "simple_schedule"
-        assert result.task_params.period_type == "yesterday"  # デフォルト値
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "simple_schedule"
+        assert data["task_params"]["period_type"] == "yesterday"  # デフォルト値
         mock_use_case.create_schedule.assert_called_once()
 
     @pytest.mark.asyncio
@@ -133,6 +150,10 @@ class TestScheduleEndpoints:
                 cron_expression="0 0 * * *",
                 enabled=i % 2 == 0,
                 description=None,
+                category=None,
+                tags=[],
+                execution_policy="allow",
+                auto_generated_name=False,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
                 task_params=None
@@ -140,15 +161,26 @@ class TestScheduleEndpoints:
             for i in range(3)
         ]
         
-        mock_use_case.get_all_schedules.return_value = schedules
+        # AsyncMock を使用
+        mock_use_case.get_all_schedules = AsyncMock(return_value=schedules)
         
         # Act
-        result = await list_schedules(enabled_only=False, use_case=mock_use_case)
+        # FastAPI の override_dependency を使用
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        # TestClient で呼び出す
+        with TestClient(app) as client:
+            response = client.get("/schedules?enabled_only=false")
         
         # Assert
-        assert result.total == 3
-        assert len(result.items) == 3
-        assert result.items[0].name == "schedule_0"
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
+        assert data["items"][0]["name"] == "schedule_0"
         mock_use_case.get_all_schedules.assert_called_once_with(enabled_only=False)
 
     @pytest.mark.asyncio
@@ -163,6 +195,10 @@ class TestScheduleEndpoints:
                 cron_expression="0 0 * * *",
                 enabled=True,
                 description=None,
+                category=None,
+                tags=[],
+                execution_policy="allow",
+                auto_generated_name=False,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
                 task_params=None
@@ -170,14 +206,23 @@ class TestScheduleEndpoints:
             for i in range(2)
         ]
         
-        mock_use_case.get_all_schedules.return_value = enabled_schedules
+        # AsyncMock を使用
+        mock_use_case.get_all_schedules = AsyncMock(return_value=enabled_schedules)
         
         # Act
-        result = await list_schedules(enabled_only=True, use_case=mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.get("/schedules?enabled_only=true")
         
         # Assert
-        assert result.total == 2
-        assert all(item.enabled for item in result.items)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert all(item["enabled"] for item in data["items"])
         mock_use_case.get_all_schedules.assert_called_once_with(enabled_only=True)
 
     @pytest.mark.asyncio
@@ -188,11 +233,19 @@ class TestScheduleEndpoints:
         mock_use_case.get_schedule.return_value = sample_schedule_dto
         
         # Act
-        result = await get_schedule(schedule_id, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.get(f"/schedules/{schedule_id}")
         
         # Assert
-        assert result.id == schedule_id
-        assert result.name == sample_schedule_dto.name
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(schedule_id)
+        assert data["name"] == sample_schedule_dto.name
         mock_use_case.get_schedule.assert_called_once_with(schedule_id)
 
     @pytest.mark.asyncio
@@ -202,23 +255,29 @@ class TestScheduleEndpoints:
         schedule_id = uuid4()
         mock_use_case.get_schedule.return_value = None
         
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            await get_schedule(schedule_id, mock_use_case)
+        # Act
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
         
-        assert exc_info.value.status_code == 404
-        assert f"Schedule {schedule_id} not found" in str(exc_info.value.detail)
+        with TestClient(app) as client:
+            response = client.get(f"/schedules/{schedule_id}")
+        
+        # Assert
+        assert response.status_code == 404
+        assert f"Schedule {schedule_id} not found" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_update_schedule_success(self, mock_use_case, sample_schedule_dto):
         """スケジュール更新成功のテスト"""
         # Arrange
         schedule_id = sample_schedule_dto.id
-        update_data = ScheduleUpdate(
-            name="updated_schedule",
-            cron_expression="0 10 * * *",
-            enabled=False
-        )
+        update_data = {
+            "name": "updated_schedule",
+            "cron_expression": "0 10 * * *",
+            "enabled": False
+        }
         
         updated_dto = ScheduleDto(
             id=schedule_id,
@@ -235,12 +294,20 @@ class TestScheduleEndpoints:
         mock_use_case.update_schedule.return_value = updated_dto
         
         # Act
-        result = await update_schedule(schedule_id, update_data, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.put(f"/schedules/{schedule_id}", json=update_data)
         
         # Assert
-        assert result.name == "updated_schedule"
-        assert result.cron_expression == "0 10 * * *"
-        assert result.enabled is False
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "updated_schedule"
+        assert data["cron_expression"] == "0 10 * * *"
+        assert data["enabled"] is False
         mock_use_case.update_schedule.assert_called_once()
 
     @pytest.mark.asyncio
@@ -248,14 +315,23 @@ class TestScheduleEndpoints:
         """存在しないスケジュール更新のテスト"""
         # Arrange
         schedule_id = uuid4()
-        update_data = ScheduleUpdate(name="updated")
+        update_data = {
+            "name": "updated"
+        }
         mock_use_case.update_schedule.return_value = None
         
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            await update_schedule(schedule_id, update_data, mock_use_case)
+        # Act
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
         
-        assert exc_info.value.status_code == 404
+        with TestClient(app) as client:
+            response = client.put(f"/schedules/{schedule_id}", json=update_data)
+        
+        # Assert
+        assert response.status_code == 404
+        assert f"Schedule {schedule_id} not found" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_delete_schedule_success(self, mock_use_case):
@@ -265,10 +341,16 @@ class TestScheduleEndpoints:
         mock_use_case.delete_schedule.return_value = True
         
         # Act
-        result = await delete_schedule(schedule_id, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.delete(f"/schedules/{schedule_id}")
         
         # Assert
-        assert result is None
+        assert response.status_code == 204
         mock_use_case.delete_schedule.assert_called_once_with(schedule_id)
 
     @pytest.mark.asyncio
@@ -278,11 +360,18 @@ class TestScheduleEndpoints:
         schedule_id = uuid4()
         mock_use_case.delete_schedule.return_value = False
         
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            await delete_schedule(schedule_id, mock_use_case)
+        # Act
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
         
-        assert exc_info.value.status_code == 404
+        with TestClient(app) as client:
+            response = client.delete(f"/schedules/{schedule_id}")
+        
+        # Assert
+        assert response.status_code == 404
+        assert f"Schedule {schedule_id} not found" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_enable_schedule_success(self, mock_use_case):
@@ -292,12 +381,20 @@ class TestScheduleEndpoints:
         mock_use_case.enable_schedule.return_value = True
         
         # Act
-        result = await enable_schedule(schedule_id, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.post(f"/schedules/{schedule_id}/enable")
         
         # Assert
-        assert result.id == schedule_id
-        assert result.enabled is True
-        assert "enabled successfully" in result.message
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(schedule_id)
+        assert data["enabled"] is True
+        assert "enabled successfully" in data["message"]
         mock_use_case.enable_schedule.assert_called_once_with(schedule_id)
 
     @pytest.mark.asyncio
@@ -307,11 +404,18 @@ class TestScheduleEndpoints:
         schedule_id = uuid4()
         mock_use_case.enable_schedule.return_value = False
         
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            await enable_schedule(schedule_id, mock_use_case)
+        # Act
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
         
-        assert exc_info.value.status_code == 404
+        with TestClient(app) as client:
+            response = client.post(f"/schedules/{schedule_id}/enable")
+        
+        # Assert
+        assert response.status_code == 404
+        assert f"Schedule {schedule_id} not found" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_disable_schedule_success(self, mock_use_case):
@@ -321,12 +425,20 @@ class TestScheduleEndpoints:
         mock_use_case.disable_schedule.return_value = True
         
         # Act
-        result = await disable_schedule(schedule_id, mock_use_case)
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
+        
+        with TestClient(app) as client:
+            response = client.post(f"/schedules/{schedule_id}/disable")
         
         # Assert
-        assert result.id == schedule_id
-        assert result.enabled is False
-        assert "disabled successfully" in result.message
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(schedule_id)
+        assert data["enabled"] is False
+        assert "disabled successfully" in data["message"]
         mock_use_case.disable_schedule.assert_called_once_with(schedule_id)
 
     @pytest.mark.asyncio
@@ -336,11 +448,18 @@ class TestScheduleEndpoints:
         schedule_id = uuid4()
         mock_use_case.disable_schedule.return_value = False
         
-        # Act & Assert
-        with pytest.raises(HTTPException) as exc_info:
-            await disable_schedule(schedule_id, mock_use_case)
+        # Act
+        from fastapi import FastAPI
+        app = FastAPI()
+        app.include_router(schedules_module.router)
+        app.dependency_overrides[get_manage_schedule_use_case] = lambda: mock_use_case
         
-        assert exc_info.value.status_code == 404
+        with TestClient(app) as client:
+            response = client.post(f"/schedules/{schedule_id}/disable")
+        
+        # Assert
+        assert response.status_code == 404
+        assert f"Schedule {schedule_id} not found" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_get_manage_schedule_use_case(self):
