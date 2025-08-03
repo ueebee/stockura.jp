@@ -35,7 +35,7 @@ class TaskParams(BaseModel):
 class ScheduleBase(BaseModel):
     """Base schedule schema."""
 
-    name: str = Field(..., description="Unique schedule name")
+    name: Optional[str] = Field(None, description="Schedule name (auto-generated if not provided)")
     task_name: str = Field(..., description="Celery task name")
     cron_expression: str = Field(
         ..., description="Cron expression (e.g., '0 9 * * *' for daily at 9 AM)"
@@ -44,6 +44,13 @@ class ScheduleBase(BaseModel):
     args: Optional[List[Any]] = Field(default_factory=list, description="Task positional arguments")
     kwargs: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Task keyword arguments")
     description: Optional[str] = Field(default=None, description="Schedule description")
+    category: Optional[str] = Field(default=None, description="Task category for filtering")
+    tags: Optional[List[str]] = Field(default_factory=list, description="Tags for filtering")
+    execution_policy: Optional[str] = Field(
+        default="allow",
+        pattern="^(allow|skip|queue)$",
+        description="Execution policy when task is already running"
+    )
 
     @field_validator("cron_expression")
     @classmethod
@@ -70,6 +77,13 @@ class ScheduleUpdate(BaseModel):
     enabled: Optional[bool] = None
     description: Optional[str] = None
     task_params: Optional[TaskParams] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    execution_policy: Optional[str] = Field(
+        default=None,
+        pattern="^(allow|skip|queue)$",
+        description="Execution policy when task is already running"
+    )
 
     @field_validator("cron_expression")
     @classmethod
@@ -83,10 +97,21 @@ class ScheduleUpdate(BaseModel):
         return v
 
 
-class ScheduleResponse(ScheduleBase):
+class ScheduleResponse(BaseModel):
     """Schedule response schema."""
 
     id: UUID
+    name: str  # Required in response
+    task_name: str
+    cron_expression: str
+    enabled: bool
+    args: Optional[List[Any]] = Field(default_factory=list)
+    kwargs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    execution_policy: str = "allow"
+    auto_generated_name: bool = False
     created_at: datetime
     updated_at: datetime
     
@@ -103,6 +128,15 @@ class ScheduleListResponse(BaseModel):
 
     items: List[ScheduleResponse]
     total: int
+
+
+class ScheduleFilter(BaseModel):
+    """Schedule filter schema."""
+
+    category: Optional[str] = Field(default=None, description="Filter by category")
+    tags: Optional[List[str]] = Field(default=None, description="Filter by tags (all tags must match)")
+    task_name: Optional[str] = Field(default=None, description="Filter by task name")
+    enabled_only: bool = Field(default=False, description="Show only enabled schedules")
 
 
 class ScheduleEnableResponse(BaseModel):

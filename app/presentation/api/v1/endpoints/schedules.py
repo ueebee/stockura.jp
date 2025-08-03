@@ -1,8 +1,8 @@
 """Schedule management endpoints."""
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.presentation.api.v1.schemas.schedule import (
@@ -11,6 +11,7 @@ from app.presentation.api.v1.schemas.schedule import (
     ScheduleListResponse,
     ScheduleResponse,
     ScheduleUpdate,
+    ScheduleFilter,
     TaskParams,
 )
 from app.application.dto.schedule_dto import (
@@ -57,6 +58,9 @@ async def create_schedule(
         enabled=schedule_data.enabled,
         description=schedule_data.description,
         task_params=task_params_dto,
+        category=schedule_data.category,
+        tags=schedule_data.tags,
+        execution_policy=schedule_data.execution_policy,
     )
     
     # Create schedule
@@ -70,6 +74,10 @@ async def create_schedule(
         cron_expression=result.cron_expression,
         enabled=result.enabled,
         description=result.description,
+        category=result.category,
+        tags=result.tags,
+        execution_policy=result.execution_policy,
+        auto_generated_name=result.auto_generated_name,
         created_at=result.created_at,
         updated_at=result.updated_at,
         task_params=TaskParams(
@@ -85,14 +93,27 @@ async def create_schedule(
 @router.get("/", response_model=ScheduleListResponse)
 async def list_schedules(
     enabled_only: bool = False,
+    category: Optional[str] = None,
+    tags: Optional[List[str]] = Query(None),
+    task_name: Optional[str] = None,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
 ) -> ScheduleListResponse:
-    """List all schedules."""
-    schedules = await use_case.get_all_schedules(enabled_only=enabled_only)
+    """List all schedules with optional filters."""
+    # If any filter is provided, use filtered search
+    if category or tags or task_name:
+        schedules = await use_case.get_filtered_schedules(
+            category=category,
+            tags=tags,
+            task_name=task_name,
+            enabled_only=enabled_only,
+        )
+    else:
+        schedules = await use_case.get_all_schedules(enabled_only=enabled_only)
     
     items = []
     for schedule in schedules:
-        items.append(
+        try:
+            items.append(
             ScheduleResponse(
                 id=schedule.id,
                 name=schedule.name,
@@ -100,6 +121,10 @@ async def list_schedules(
                 cron_expression=schedule.cron_expression,
                 enabled=schedule.enabled,
                 description=schedule.description,
+                category=schedule.category,
+                tags=schedule.tags,
+                execution_policy=schedule.execution_policy,
+                auto_generated_name=schedule.auto_generated_name,
                 created_at=schedule.created_at,
                 updated_at=schedule.updated_at,
                 task_params=TaskParams(
@@ -108,9 +133,12 @@ async def list_schedules(
                     to_date=schedule.task_params.to_date,
                     codes=schedule.task_params.codes,
                     market=schedule.task_params.market,
-                ) if schedule.task_params else TaskParams(),
+                ) if schedule.task_params else None,
             )
         )
+        except Exception as e:
+            # Skip schedules that fail to process
+            continue
     
     return ScheduleListResponse(items=items, total=len(items))
 
@@ -136,6 +164,10 @@ async def get_schedule(
         cron_expression=schedule.cron_expression,
         enabled=schedule.enabled,
         description=schedule.description,
+        category=schedule.category,
+        tags=schedule.tags,
+        execution_policy=schedule.execution_policy,
+        auto_generated_name=schedule.auto_generated_name,
         created_at=schedule.created_at,
         updated_at=schedule.updated_at,
         task_params=TaskParams(
@@ -172,6 +204,9 @@ async def update_schedule(
         enabled=schedule_data.enabled,
         description=schedule_data.description,
         task_params=task_params_dto,
+        category=schedule_data.category,
+        tags=schedule_data.tags,
+        execution_policy=schedule_data.execution_policy,
     )
     
     # Update schedule
@@ -190,6 +225,10 @@ async def update_schedule(
         cron_expression=result.cron_expression,
         enabled=result.enabled,
         description=result.description,
+        category=result.category,
+        tags=result.tags,
+        execution_policy=result.execution_policy,
+        auto_generated_name=result.auto_generated_name,
         created_at=result.created_at,
         updated_at=result.updated_at,
         task_params=TaskParams(
