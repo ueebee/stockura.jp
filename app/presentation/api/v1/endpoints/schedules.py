@@ -296,3 +296,142 @@ async def disable_schedule(
         enabled=False,
         message=f"Schedule {schedule_id} disabled successfully",
     )
+
+
+@router.post("/trigger/listed-info", response_model=dict)
+async def trigger_listed_info_task(
+    period_type: str = "yesterday",
+    codes: Optional[List[str]] = None,
+    market: Optional[str] = None,
+) -> dict:
+    """Manually trigger listed_info task for testing.
+    
+    Args:
+        period_type: Period type for data fetch (yesterday, 7days, 30days, custom)
+        codes: Optional list of stock codes to fetch
+        market: Optional market code to filter
+    
+    Returns:
+        Task execution information
+    """
+    from app.infrastructure.celery.tasks.listed_info_task import fetch_listed_info_task
+    from datetime import datetime
+    
+    try:
+        # タスクを非同期で実行
+        result = fetch_listed_info_task.delay(
+            schedule_id=None,  # 手動実行なのでNone
+            from_date=None,
+            to_date=None,
+            codes=codes,
+            market=market,
+            period_type=period_type,
+        )
+        
+        return {
+            "task_id": result.id,
+            "status": "PENDING",
+            "message": "Task submitted successfully",
+            "parameters": {
+                "period_type": period_type,
+                "codes": codes,
+                "market": market,
+            },
+            "submitted_at": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to trigger task: {str(e)}",
+        )
+
+
+@router.get("/tasks/{task_id}/status", response_model=dict)
+async def get_task_status(task_id: str) -> dict:
+    """Get status of a Celery task.
+    
+    Args:
+        task_id: Celery task ID
+        
+    Returns:
+        Task status information
+    """
+    from celery.result import AsyncResult
+    from app.infrastructure.celery.app import celery_app
+    
+    try:
+        result = AsyncResult(task_id, app=celery_app)
+        
+        response = {
+            "task_id": task_id,
+            "status": result.status,
+            "ready": result.ready(),
+        }
+        
+        if result.ready():
+            if result.successful():
+                response["result"] = result.result
+            else:
+                response["error"] = str(result.info)
+                
+        return response
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get task status: {str(e)}",
+        )
+
+
+@router.post("/trigger/listed-info-direct", response_model=dict)
+async def trigger_listed_info_direct(
+    period_type: str = "yesterday",
+    codes: Optional[List[str]] = None,
+    market: Optional[str] = None,
+) -> dict:
+    """Directly execute listed_info task without Celery (for testing).
+    
+    Args:
+        period_type: Period type for data fetch (yesterday, 7days, 30days, custom)
+        codes: Optional list of stock codes to fetch
+        market: Optional market code to filter
+    
+    Returns:
+        Task execution result
+    """
+    from app.infrastructure.celery.tasks.listed_info_task import _fetch_listed_info_async
+    from datetime import datetime
+    from uuid import uuid4
+    
+    try:
+        task_id = str(uuid4())
+        log_id = uuid4()
+        
+        # タスクを直接実行（Celeryを経由しない）
+        result = await _fetch_listed_info_async(
+            task_id=task_id,
+            log_id=log_id,
+            schedule_id=None,
+            from_date=None,
+            to_date=None,
+            codes=codes,
+            market=market,
+            period_type=period_type,
+        )
+        
+        return {
+            "task_id": task_id,
+            "status": "SUCCESS",
+            "message": "Task executed directly (without Celery)",
+            "parameters": {
+                "period_type": period_type,
+                "codes": codes,
+                "market": market,
+            },
+            "result": result,
+            "executed_at": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute task: {str(e)}",
+        )

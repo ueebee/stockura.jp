@@ -86,11 +86,11 @@ async def _fetch_listed_info_async(
 ):
     """Async implementation of fetch_listed_info task."""
     from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
-    from app.infrastructure.external.jquants.jquants_client import JQuantsClient
-    from app.infrastructure.repositories.listed_info_repository_impl import (
+    from app.infrastructure.jquants.client_factory import create_authenticated_client
+    from app.infrastructure.database.repositories.listed_info_repository_impl import (
         ListedInfoRepositoryImpl,
     )
-    from app.core.logging import get_logger
+    from app.core.logger import get_logger
 
     async with get_async_session_context() as session:
         # Initialize task log
@@ -119,7 +119,7 @@ async def _fetch_listed_info_async(
             logger.info(f"Processing dates: {target_dates}")
             
             # Initialize dependencies
-            jquants_client = JQuantsClient()
+            base_client, jquants_client = await create_authenticated_client()
             listed_info_repo = ListedInfoRepositoryImpl(session)
             app_logger = get_logger(__name__)
             
