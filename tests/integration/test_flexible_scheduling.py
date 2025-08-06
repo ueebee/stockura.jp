@@ -16,7 +16,7 @@ def test_create_schedule_without_name(client: TestClient):
     response = client.post(
         "/api/v1/schedules",
         json={
-            "task_name": "fetch_listed_info_task_asyncpg",
+            "task_name": "fetch_listed_info_task",
             "cron_expression": "0 9 * * *",
             "enabled": True,
             "task_params": {"period_type": "yesterday"},
@@ -29,7 +29,7 @@ def test_create_schedule_without_name(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["auto_generated_name"] is True
-    assert "fetch_listed_info_task_asyncpg" in data["name"]
+    assert "fetch_listed_info_task" in data["name"]
     assert data["category"] == "data_fetch"
     assert data["tags"] == ["jquants", "daily"]
     assert data["execution_policy"] == "skip"
@@ -42,7 +42,7 @@ def test_create_multiple_schedules_same_task(client: TestClient):
         "/api/v1/schedules",
         json={
             "name": "fetch_listed_info_yesterday",
-            "task_name": "fetch_listed_info_task_asyncpg",
+            "task_name": "fetch_listed_info_task",
             "cron_expression": "0 9 * * *",
             "enabled": True,
             "task_params": {"period_type": "yesterday"},
@@ -57,7 +57,7 @@ def test_create_multiple_schedules_same_task(client: TestClient):
         "/api/v1/schedules",
         json={
             "name": "fetch_listed_info_7days",
-            "task_name": "fetch_listed_info_task_asyncpg",
+            "task_name": "fetch_listed_info_task",
             "cron_expression": "0 10 * * 1",
             "enabled": True,
             "task_params": {"period_type": "7days"},
@@ -72,7 +72,7 @@ def test_create_multiple_schedules_same_task(client: TestClient):
     assert response_list.status_code == 200
     schedules = response_list.json()["items"]
     task_names = [s["task_name"] for s in schedules]
-    assert task_names.count("fetch_listed_info_task_asyncpg") >= 2
+    assert task_names.count("fetch_listed_info_task") >= 2
 
 
 def test_filter_schedules_by_category(client: TestClient):
