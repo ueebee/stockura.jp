@@ -104,7 +104,7 @@ app/application/dtos/
 - 6 つのファイルでインポート文を更新
 - テストが全て成功することを確認
 
-### 2. 空ディレクトリの削除 🔄 (TODO: 後日対応)
+### 2. 空ディレクトリの削除 ✅ (対応済み: 2025-01-06)
 
 以下のディレクトリを削除：
 - `app/services/`
@@ -113,8 +113,8 @@ app/application/dtos/
 - `app/api/`
 
 **対応状況:**
-- 2025-01-06: 一旦先送りとし、他の優先度の高いタスクを先に対応することに決定
-- 今後の開発で必要に応じて削除を検討
+- 2025-01-06: 全ての空ディレクトリを削除完了
+- 削除したディレクトリはコードから参照されていないことを確認済み
 
 ### 3. リポジトリ実装の配置統一 ✅ (対応済み: 2025-01-06)
 
@@ -143,27 +143,29 @@ app/infrastructure/repositories/
 - 25 以上のファイルでインポート文を更新
 - テストが全て成功することを確認
 
-### 4. Celery タスクファイルの整理 🔄 (TODO: 後日対応)
+### 4. Celery タスクファイルの整理 ✅ (対応済み: 2025-01-06)
 
 ```bash
-# 変更後の構造（予定）
+# 変更後の構造
 app/infrastructure/celery/tasks/
 ├── __init__.py
-├── listed_info_task.py      # メインタスク実装
-├── trades_spec_task.py      
-├── announcement_task.py     
-└── weekly_margin_interest_task.py
+├── listed_info_task.py          # 統一されたタスク実装（asyncpg 版）
+├── trades_spec_task_asyncpg.py  
+├── announcement_task_asyncpg.py     
+└── weekly_margin_interest_task_asyncpg.py
 ```
 
 **対応内容:**
 - 使用されていないバリエーションファイルを削除
-- 各機能につき 1 つのタスクファイルに統一
+- `listed_info_task_asyncpg.py` を `listed_info_task.py` にリネーム
+- タスク関数名を `fetch_listed_info_task` に統一
 - 非同期処理の実装は内部で管理
 
-**対応状況:**
-- 2025-01-06: 調査の結果、複数のタスク名が混在しており、影響範囲が大きいため先送り
-- 現在は `fetch_listed_info_task` と `fetch_listed_info_task_asyncpg` が共存
-- 今後、タスク名の統一と併せて整理を検討
+**実施済み内容:**
+- 2025-01-06: 全てのタスクファイル整理を完了
+- `listed_info_task_sync.py` と `listed_info_task_wrapped.py` を削除
+- asyncpg 版を正式版として採用し、タスク名を統一
+- API エンドポイント、テスト、 Celery 設定を更新
 
 ### 5. データベースモデル命名規則の統一 ✅ (対応済み: 2025-01-06)
 
@@ -198,8 +200,8 @@ listed_info.py
 
 1. **高優先度（即時対応推奨）**
    - DTO ディレクトリの統一 ✅ (完了)
-   - 空ディレクトリの削除 🔄 (TODO: 後日対応)
-   - Celery タスクファイルの整理 🔄 (TODO: 後日対応)
+   - 空ディレクトリの削除 ✅ (完了: 2025-01-06)
+   - Celery タスクファイルの整理 ✅ (完了: 2025-01-06)
 
 2. **中優先度（段階的対応）**
    - リポジトリ実装の配置統一 ✅ (完了)

@@ -1,4 +1,4 @@
-"""Listed info Celery task."""
+"""Listed info Celery task with proper async handling."""
 import asyncio
 from datetime import date, datetime, timedelta
 from typing import List, Optional
@@ -8,6 +8,7 @@ from celery import Task
 from celery.utils.log import get_task_logger
 
 from app.infrastructure.celery.app import celery_app
+from app.infrastructure.celery.worker_hooks import get_or_create_event_loop
 from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 
@@ -41,7 +42,7 @@ def fetch_listed_info_task(
     period_type: Optional[str] = "yesterday",  # "yesterday", "7days", "30days", "custom"
 ):
     """
-    Fetch listed info data from J-Quants API.
+    Fetch listed info data from J-Quants API with proper async handling.
 
     Args:
         schedule_id: Schedule ID if triggered by schedule
@@ -59,8 +60,11 @@ def fetch_listed_info_task(
         f"schedule_id: {schedule_id}, period_type: {period_type}"
     )
 
-    # Run async code in sync context
-    return asyncio.run(
+    # Get or create event loop for this worker
+    loop = get_or_create_event_loop()
+    
+    # Run async code in the worker's event loop
+    return loop.run_until_complete(
         _fetch_listed_info_async(
             task_id=task_id,
             log_id=log_id,
@@ -101,7 +105,7 @@ async def _fetch_listed_info_async(
         
         task_log = TaskExecutionLog(
             id=log_id,
-            schedule_id=UUID(schedule_id) if schedule_id else None,
+            schedule_id=UUID(str(schedule_id)) if schedule_id else None,
             task_name="fetch_listed_info_task",
             task_id=task_id,
             started_at=datetime.utcnow(),
@@ -119,6 +123,7 @@ async def _fetch_listed_info_async(
             logger.info(f"Processing dates: {target_dates}")
             
             # Initialize dependencies
+            # 認証済みクライアントを取得
             base_client, jquants_client = await create_authenticated_client()
             listed_info_repo = ListedInfoRepositoryImpl(session)
             app_logger = get_logger(__name__)
@@ -183,6 +188,9 @@ async def _fetch_listed_info_async(
                 f"fetched: {total_fetched}, saved: {total_saved}"
             )
             
+            # base_client をクローズ
+            await base_client.close()
+            
             return result_data
             
         except Exception as e:
@@ -195,6 +203,10 @@ async def _fetch_listed_info_async(
                 finished_at=datetime.utcnow(),
                 error_message=str(e),
             )
+            
+            # エラー時も base_client をクローズ
+            if 'base_client' in locals():
+                await base_client.close()
             
             raise
 
