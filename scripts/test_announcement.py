@@ -31,6 +31,15 @@ logger = get_logger(__name__)
 
 async def test_celery_task():
     """Celery タスクを使用してデータを取得"""
+    print("\n=== Celery タスク実行 ===")
+    
+    # 日付情報を表示
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    tomorrow = now + timedelta(days=1)
+    print(f"\n📅 実行日時: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📅 対象日（翌日）: {tomorrow.strftime('%Y-%m-%d')} ({tomorrow.strftime('%A')})")
+    
     try:
         from app.infrastructure.celery.tasks.announcement_task_asyncpg import fetch_announcement_data
         
@@ -49,10 +58,18 @@ async def test_celery_task():
         try:
             task_result = result.get(timeout=60)
             print("\n✅ タスクが完了しました")
-            print(f"   結果: {task_result}")
+            print(f"   ステータス: {task_result.get('status', 'unknown')}")
+            print(f"   取得件数: {task_result.get('total_count', 0)}")
+            
+            if task_result.get('total_count', 0) == 0:
+                print("\n⚠️  決算発表予定が 0 件でした。")
+                print("   詳細はログを確認するか、選択肢 2 で直接実行してください。")
+            
+            print(f"\n   詳細結果: {task_result}")
         except Exception as e:
             print(f"\n⚠️  タスクのタイムアウトまたはエラー: {e}")
             print("   Celery ワーカーが起動していることを確認してください")
+            print("   起動コマンド: celery -A app.infrastructure.celery.app worker --loglevel=info")
             
     except ImportError as e:
         logger.error(f"Celery タスクのインポートエラー: {e}")
@@ -101,6 +118,17 @@ async def fetch_and_save_announcements():
     """決算発表予定データを取得して DB に保存"""
     print("\n=== 決算発表予定データ取得・保存 ===")
     
+    # 日付情報を表示
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    tomorrow = now + timedelta(days=1)
+    print(f"\n📅 実行日時: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📅 対象日（翌日）: {tomorrow.strftime('%Y-%m-%d')} ({tomorrow.strftime('%A')})")
+    
+    # 19 時チェック
+    if now.hour < 19:
+        print("⚠️  注意: 現在 19 時前です。 J-Quants API は 19 時頃にデータを更新します。")
+    
     try:
         factory = JQuantsClientFactory()
         client = await factory.create_announcement_client()
@@ -112,13 +140,23 @@ async def fetch_and_save_announcements():
                 announcement_repository=repository,
             )
             
-            print("データ取得中...")
+            print("\n📡 API からデータ取得中...")
             result = await use_case.fetch_and_save_announcements()
             
-            print(f"✓ {result.total_count} 件のデータを取得・保存しました")
+            print(f"\n✅ 取得結果: {result.total_count} 件")
+            
+            # 0 件の場合のガイダンス
+            if result.total_count == 0:
+                print("\n⚠️  決算発表予定が 0 件です。以下を確認してください：")
+                print("  1. 翌日は営業日ですか？（土日祝日は決算発表がありません）")
+                print("  2. 決算発表シーズンですか？（2 月、 5 月、 8 月、 11 月が多い）")
+                print("  3. 19 時以降に実行していますか？（データ更新は 19 時頃）")
+                print("  4. J-Quants API は 3 月・ 9 月決算企業のみ対象です")
+                print("\n💡 ヒント: 決算発表は四半期ごとに集中する傾向があります。")
+                print("          日によってはデータが 0 件でも正常です。")
             
             # 取得したデータのサンプル表示
-            if result.announcements:
+            elif result.announcements:
                 print("\n=== 取得データサンプル（最新 10 件） ===")
                 for i, announcement in enumerate(result.announcements[:10], 1):
                     print(f"\n{i}. {announcement.company_name} ({announcement.code})")

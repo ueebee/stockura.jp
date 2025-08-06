@@ -41,16 +41,38 @@ class JQuantsAnnouncementClient(AnnouncementClientInterface):
             params["pagination_key"] = pagination_key
 
         logger.info(f"Fetching announcements with params: {params}")
+        
+        # デバッグ情報を追加
+        from datetime import datetime, timedelta
+        logger.debug(f"Current time: {datetime.now()}")
+        logger.debug(f"Target date (tomorrow): {(datetime.now() + timedelta(days=1)).date()}")
 
         try:
             response = await self._client.get("/fins/announcement", params=params)
+            
+            # レスポンスの詳細をログ出力
+            logger.debug(f"Raw API response: {response}")
+            
             announcement_list = response.get("announcement", [])
+            
+            if not announcement_list:
+                logger.warning(
+                    "No announcements in response. This might be normal if:\n"
+                    "1. No earnings announcements are scheduled for tomorrow\n"
+                    "2. Tomorrow is not a business day\n"
+                    "3. Data hasn't been updated yet (updates around 19:00)\n"
+                    "4. Only March/September fiscal year companies are included"
+                )
+            else:
+                # 最初のデータをサンプルとして表示
+                logger.debug(f"Sample announcement data: {announcement_list[0] if announcement_list else 'None'}")
 
             logger.info(f"Successfully fetched {len(announcement_list)} announcement records")
             return response
 
         except Exception as e:
             logger.error(f"Failed to fetch announcements: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
             raise
 
     async def get_all_announcements(self) -> List[Dict[str, Any]]:
