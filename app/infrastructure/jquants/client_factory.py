@@ -5,6 +5,7 @@ from app.application.use_cases.auth_use_case import AuthUseCase
 from app.core.config import get_settings
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.exceptions.jquants_exceptions import AuthenticationError
+from app.infrastructure.jquants.announcement_client import JQuantsAnnouncementClient
 from app.infrastructure.jquants.auth_repository_impl import JQuantsAuthRepository
 from app.infrastructure.jquants.base_client import JQuantsBaseClient
 from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
@@ -93,6 +94,11 @@ class JQuantsClientFactory:
         from app.infrastructure.jquants.weekly_margin_interest_client import WeeklyMarginInterestClient
         credentials = await self._ensure_authenticated()
         return WeeklyMarginInterestClient(credentials=credentials)
+
+    async def create_announcement_client(self) -> JQuantsAnnouncementClient:
+        """決算発表予定クライアントを作成"""
+        base_client = await self._get_base_client()
+        return JQuantsAnnouncementClient(base_client)
     
     async def create_authenticated_clients(self) -> Tuple[JQuantsBaseClient, JQuantsListedInfoClient]:
         """後方互換性のための認証済みクライアント生成メソッド"""
