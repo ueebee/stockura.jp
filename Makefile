@@ -1,4 +1,4 @@
-.PHONY: help build up down logs test clean migrate shell docs
+.PHONY: help build up down logs test clean migrate shell docs run-script test-script test-scripts test-scripts-all
 
 # Default target
 help:
@@ -13,6 +13,12 @@ help:
 	@echo "  make shell       - Open shell in app container"
 	@echo "  make prod-build  - Build production images"
 	@echo "  make prod-up     - Start production environment"
+	@echo ""
+	@echo "Script execution commands:"
+	@echo "  make run-script SCRIPT=<name>    - Run any script in scripts/"
+	@echo "  make test-script <name>          - Run a specific test script"
+	@echo "  make test-scripts                - List available test scripts"
+	@echo "  make test-scripts-all            - Run all test scripts"
 
 # Development commands
 build:
@@ -81,6 +87,50 @@ prod-down:
 
 prod-logs:
 	docker-compose -f docker-compose.prod.yml logs -f
+
+# Run scripts in Docker
+run-script:
+	@if [ -z "$(SCRIPT)" ]; then \
+		echo "Usage: make run-script SCRIPT=<script_name>"; \
+		echo "Example: make run-script SCRIPT=test_weekly_margin_interest.py"; \
+		echo ""; \
+		echo "Available scripts:"; \
+		ls scripts/*.py | grep -v __pycache__ | grep -v __init__ | sed 's/scripts\///g'; \
+	else \
+		docker-compose exec app python scripts/$(SCRIPT); \
+	fi
+
+# Run test scripts
+test-script:
+	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \
+		echo "Usage: make test-script [script_name]"; \
+		echo "Available test scripts:"; \
+		ls scripts/test_*.py | sed 's/scripts\///g'; \
+	else \
+		docker-compose exec app python scripts/$(filter-out $@,$(MAKECMDGOALS)); \
+	fi
+
+# Interactive test script selector
+test-scripts:
+	@echo "Available test scripts:"
+	@echo "======================"
+	@ls scripts/test_*.py | sed 's/scripts\///g' | nl -v 1
+	@echo ""
+	@echo "Run with: make test-script <script_name>"
+	@echo "Example: make test-script test_weekly_margin_interest.py"
+
+# Run all test scripts
+test-scripts-all:
+	@echo "Running all test scripts..."
+	@for script in scripts/test_*.py; do \
+		if [ -f "$$script" ]; then \
+			echo ""; \
+			echo "========================================"; \
+			echo "Running: $$script"; \
+			echo "========================================"; \
+			docker-compose exec app python $$script || true; \
+		fi; \
+	done
 
 # Cleanup
 clean:
