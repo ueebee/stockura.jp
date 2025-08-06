@@ -36,7 +36,15 @@ def run_task():
         print("2. 同期実行 (.apply()) - 即座に実行")
         print("3. 直接実行 (関数呼び出し) - Celery を経由しない")
         
-        choice = input("\n 選択 (1/2/3): ").strip()
+        # 非対話的モードで実行する場合は選択 3 (直接実行) を使用
+        import os
+        if os.environ.get('CI') or not sys.stdin.isatty():
+            print("
+⚠️  非対話的モードで実行中のため、選択 3 (直接実行) を自動選択します")
+            choice = "3"
+        else:
+            choice = input("
+ 選択 (1/2/3): ").strip()
         
         if choice == "1":
             print("\n 非同期実行を開始します...")

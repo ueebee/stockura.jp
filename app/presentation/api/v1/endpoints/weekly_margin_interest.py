@@ -15,7 +15,7 @@ from app.application.use_cases.fetch_weekly_margin_interest import (
     FetchWeeklyMarginInterestUseCase,
 )
 from app.domain.repositories import WeeklyMarginInterestRepository
-from app.infrastructure.database.connection import get_async_session
+from app.infrastructure.database.connection import get_session as get_async_session
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.jquants.weekly_margin_interest_client import (
     WeeklyMarginInterestClient,
