@@ -10,7 +10,7 @@ from app.application.use_cases.fetch_announcement import FetchAnnouncementUseCas
 from app.core.config import get_settings
 from app.infrastructure.celery.app import celery_app
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
-from app.infrastructure.repositories.announcement_repository_impl import AnnouncementRepositoryImpl
+from app.infrastructure.repositories.database.announcement_repository_impl import AnnouncementRepositoryImpl
 from app.infrastructure.database.connection import get_sessionmaker
 
 logger = get_task_logger(__name__)

@@ -23,7 +23,7 @@ from app.presentation.api.v1.schemas.schedule import (
     ScheduleUpdate,
     TaskParams
 )
-from app.application.dto.schedule_dto import ScheduleDto, TaskParamsDto
+from app.application.dtos.schedule_dto import ScheduleDto, TaskParamsDto
 from tests.factories.schedule_factory import ScheduleFactory
 
 

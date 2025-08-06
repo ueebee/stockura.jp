@@ -9,7 +9,7 @@ from celery.utils.log import get_task_logger
 
 from app.infrastructure.celery.app import celery_app
 from app.infrastructure.database.connection import get_async_session_context
-from app.infrastructure.repositories.task_log_repository import TaskLogRepository
+from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 
 logger = get_task_logger(__name__)
 
@@ -87,7 +87,7 @@ async def _fetch_listed_info_async(
     """Async implementation of fetch_listed_info task."""
     from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
     from app.infrastructure.jquants.client_factory import create_authenticated_client
-    from app.infrastructure.database.repositories.listed_info_repository_impl import (
+    from app.infrastructure.repositories.database.listed_info_repository_impl import (
         ListedInfoRepositoryImpl,
     )
     from app.core.logger import get_logger

@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.infrastructure.database.connection import Base
 
 # すべてのモデルをインポート（autogenerate のため）
-from app.infrastructure.database.models.listed_info_model import ListedInfoModel
+from app.infrastructure.database.models.listed_info import ListedInfoModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

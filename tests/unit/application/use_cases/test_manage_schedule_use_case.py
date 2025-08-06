@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from app.application.dto.schedule_dto import (
+from app.application.dtos.schedule_dto import (
     ScheduleCreateDto,
     ScheduleUpdateDto,
     TaskParamsDto

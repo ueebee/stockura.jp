@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from app.application.dto.schedule_dto import ScheduleCreateDto, ScheduleDto, ScheduleUpdateDto, TaskParamsDto
+from app.application.dtos.schedule_dto import ScheduleCreateDto, ScheduleDto, ScheduleUpdateDto, TaskParamsDto
 from app.domain.entities.schedule import Schedule
 
 

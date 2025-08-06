@@ -13,7 +13,7 @@ from app.domain.exceptions.jquants_exceptions import (
     StorageError,
     TokenRefreshError,
 )
-from app.infrastructure.redis.auth_repository_impl import RedisAuthRepository
+from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
 from tests.utils.mocks import create_mock_response
 from tests.utils.assertions import (
     assert_authentication_error,

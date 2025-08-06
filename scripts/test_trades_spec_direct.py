@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 from app.application.use_cases.fetch_trades_spec import FetchTradesSpecUseCase
 from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
-from app.infrastructure.repositories.trades_spec_repository_impl import TradesSpecRepositoryImpl
+from app.infrastructure.repositories.database.trades_spec_repository_impl import TradesSpecRepositoryImpl
 
 
 async def test_direct():

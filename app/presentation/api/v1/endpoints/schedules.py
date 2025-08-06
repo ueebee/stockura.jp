@@ -14,14 +14,14 @@ from app.presentation.api.v1.schemas.schedule import (
     ScheduleFilter,
     TaskParams,
 )
-from app.application.dto.schedule_dto import (
+from app.application.dtos.schedule_dto import (
     ScheduleCreateDto,
     ScheduleUpdateDto,
     TaskParamsDto,
 )
 from app.application.use_cases.manage_schedule import ManageScheduleUseCase
 from app.infrastructure.database.connection import get_session
-from app.infrastructure.repositories.schedule_repository import ScheduleRepository
+from app.infrastructure.repositories.database.schedule_repository import ScheduleRepository
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
@@ -320,7 +320,7 @@ async def trigger_listed_info_task(
     try:
         # タスクを非同期で実行
         result = fetch_listed_info_task.delay(
-            schedule_id=None,  # 手動実行なのでNone
+            schedule_id=None,  # 手動実行なので None
             from_date=None,
             to_date=None,
             codes=codes,
@@ -406,7 +406,7 @@ async def trigger_listed_info_direct(
         task_id = str(uuid4())
         log_id = uuid4()
         
-        # タスクを直接実行（Celeryを経由しない）
+        # タスクを直接実行（Celery を経由しない）
         result = await _fetch_listed_info_async(
             task_id=task_id,
             log_id=log_id,

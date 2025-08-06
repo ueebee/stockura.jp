@@ -8,7 +8,7 @@ from app.domain.exceptions.jquants_exceptions import (
     TokenRefreshError,
 )
 from app.domain.repositories.auth_repository import AuthRepository
-from app.infrastructure.redis.auth_repository_impl import RedisAuthRepository
+from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
 from app.infrastructure.redis.redis_client import get_redis_client
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
