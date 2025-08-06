@@ -11,6 +11,15 @@ from datetime import datetime
 # プロジェクトのルートディレクトリを Python パスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# 自動入力ユーティリティをインポート
+try:
+    from scripts.utils.auto_input import get_auto_input
+except ImportError:
+    # フォールバック: 通常の input を使用
+    def get_auto_input(prompt: str, default: Optional[str] = None) -> str:
+        user_input = input(prompt).strip()
+        return user_input if user_input else (default or '')
+
 
 class ListedInfoApiTester:
     """API 経由で listed_info タスクを実行・確認するクラス"""
@@ -200,7 +209,7 @@ def main():
     print("4. カスタムパラメータで実行")
     print("5. 簡易実行（昨日のデータ、結果待機なし）")
     
-    choice = input("\n 選択 (1-5): ").strip()
+    choice = get_auto_input("\n 選択 (1-5): ")
     
     if choice == "1":
         # 昨日のデータを全取得
@@ -208,7 +217,7 @@ def main():
         
     elif choice == "2":
         # 特定銘柄
-        codes_input = input("銘柄コード（カンマ区切り）: ").strip()
+        codes_input = get_auto_input("銘柄コード（カンマ区切り）: ")
         codes = [c.strip() for c in codes_input.split(",") if c.strip()]
         
         if codes:
@@ -218,7 +227,7 @@ def main():
             
     elif choice == "3":
         # 特定市場
-        market = input("市場コード (例: 0111=プライム): ").strip()
+        market = get_auto_input("市場コード (例: 0111=プライム): ")
         
         if market:
             tester.run_full_test(period_type="yesterday", market=market)
@@ -227,10 +236,10 @@ def main():
             
     elif choice == "4":
         # カスタム
-        period_type = input("期間タイプ (yesterday/7days/30days): ").strip() or "yesterday"
-        codes_input = input("銘柄コード（カンマ区切り、空欄で全銘柄）: ").strip()
+        period_type = get_auto_input("期間タイプ (yesterday/7days/30days): ", "yesterday")
+        codes_input = get_auto_input("銘柄コード（カンマ区切り、空欄で全銘柄）: ")
         codes = [c.strip() for c in codes_input.split(",") if c.strip()] if codes_input else None
-        market = input("市場コード（空欄で全市場）: ").strip() or None
+        market = get_auto_input("市場コード（空欄で全市場）: ") or None
         
         tester.run_full_test(period_type=period_type, codes=codes, market=market)
         

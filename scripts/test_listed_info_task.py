@@ -3,9 +3,19 @@
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
+from typing import Optional
 
 # プロジェクトのルートディレクトリを Python パスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# 自動入力ユーティリティをインポート
+try:
+    from scripts.utils.auto_input import get_auto_input
+except ImportError:
+    # フォールバック: 通常の input を使用
+    def get_auto_input(prompt: str, default: Optional[str] = None) -> str:
+        user_input = input(prompt).strip()
+        return user_input if user_input else (default or '')
 
 def run_task():
     """手動で Celery タスクを実行して listed_info を取得"""
@@ -42,7 +52,7 @@ def run_task():
             print("\n⚠️  非対話的モードで実行中のため、選択 3 (直接実行) を自動選択します")
             choice = "3"
         else:
-            choice = input("\n 選択 (1/2/3): ").strip()
+            choice = get_auto_input("\n 選択 (1/2/3): ")
         
         if choice == "1":
             print("\n 非同期実行を開始します...")
@@ -87,7 +97,15 @@ def run_task():
             class DummySelf:
                 request = DummyRequest()
             
-            result = fetch_listed_info_task(DummySelf(), **params)
+            result = fetch_listed_info_task(
+                DummySelf(),
+                schedule_id=params['schedule_id'],
+                from_date=params['from_date'],
+                to_date=params['to_date'],
+                codes=params['codes'],
+                market=params['market'],
+                period_type=params['period_type']
+            )
             print("\n✅ タスクが完了しました")
             print(f"結果: {result}")
             

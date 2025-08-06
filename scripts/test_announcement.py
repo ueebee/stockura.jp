@@ -6,9 +6,19 @@ import os
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from typing import Optional
 
 # プロジェクトのルートディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# 自動入力ユーティリティをインポート
+try:
+    from scripts.utils.auto_input import get_auto_input
+except ImportError:
+    # フォールバック: 通常の input を使用
+    def get_auto_input(prompt: str, default: Optional[str] = None) -> str:
+        user_input = input(prompt).strip()
+        return user_input if user_input else (default or '')
 
 from app.application.use_cases.fetch_announcement import FetchAnnouncementUseCase
 from app.core.logger import get_logger
@@ -17,6 +27,39 @@ from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.repositories.database.announcement_repository_impl import AnnouncementRepositoryImpl
 
 logger = get_logger(__name__)
+
+
+async def test_celery_task():
+    """Celery タスクを使用してデータを取得"""
+    try:
+        from app.infrastructure.celery.tasks.announcement_task_asyncpg import fetch_announcement_data
+        
+        print("\n✅ Celery タスクのインポートに成功しました")
+        
+        # タスクを非同期実行
+        print("\n📤 タスクをキューに送信しています...")
+        result = fetch_announcement_data.delay()
+        
+        print(f"✅ タスクが送信されました")
+        print(f"   タスク ID: {result.id}")
+        print(f"   ステータス: {result.status}")
+        
+        # タスクの完了を待つ（最大 60 秒）
+        print("\n⏳ タスクの完了を待機中...")
+        try:
+            task_result = result.get(timeout=60)
+            print("\n✅ タスクが完了しました")
+            print(f"   結果: {task_result}")
+        except Exception as e:
+            print(f"\n⚠️  タスクのタイムアウトまたはエラー: {e}")
+            print("   Celery ワーカーが起動していることを確認してください")
+            
+    except ImportError as e:
+        logger.error(f"Celery タスクのインポートエラー: {e}")
+        print(f"\n❌ Celery タスクのインポートに失敗しました: {e}")
+    except Exception as e:
+        logger.error(f"Celery タスク実行エラー: {e}")
+        print(f"\n❌ エラーが発生しました: {e}")
 
 
 async def test_api_connection():
@@ -178,8 +221,9 @@ async def main():
         print("2. データ取得・保存")
         print("3. 保存データ検索テスト")
         print("4. すべて実行")
+        print("5. Celery タスク実行（非同期）")
         
-        choice = input("\n 選択 (1-4): ").strip()
+        choice = get_auto_input("\n 選択 (1-5): ")
     
     tasks = []
     if choice == "1":
@@ -194,6 +238,8 @@ async def main():
             ("データ取得・保存", fetch_and_save_announcements),
             ("保存データ検索", query_saved_data),
         ]
+    elif choice == "5":
+        tasks = [("Celery タスク実行", test_celery_task)]
     else:
         print("無効な選択です")
         return
