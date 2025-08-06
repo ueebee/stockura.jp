@@ -6,9 +6,19 @@ import os
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from typing import Optional
 
 # プロジェクトのルートディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# 自動入力ユーティリティをインポート
+try:
+    from scripts.utils.auto_input import get_auto_input
+except ImportError:
+    # フォールバック: 通常の input を使用
+    def get_auto_input(prompt: str, default: Optional[str] = None) -> str:
+        user_input = input(prompt).strip()
+        return user_input if user_input else (default or '')
 
 from app.application.use_cases.fetch_announcement import FetchAnnouncementUseCase
 from app.core.logger import get_logger
@@ -17,6 +27,56 @@ from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.repositories.database.announcement_repository_impl import AnnouncementRepositoryImpl
 
 logger = get_logger(__name__)
+
+
+async def test_celery_task():
+    """Celery タスクを使用してデータを取得"""
+    print("\n=== Celery タスク実行 ===")
+    
+    # 日付情報を表示
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    tomorrow = now + timedelta(days=1)
+    print(f"\n📅 実行日時: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📅 対象日（翌日）: {tomorrow.strftime('%Y-%m-%d')} ({tomorrow.strftime('%A')})")
+    
+    try:
+        from app.infrastructure.celery.tasks.announcement_task_asyncpg import fetch_announcement_data
+        
+        print("\n✅ Celery タスクのインポートに成功しました")
+        
+        # タスクを非同期実行
+        print("\n📤 タスクをキューに送信しています...")
+        result = fetch_announcement_data.delay()
+        
+        print(f"✅ タスクが送信されました")
+        print(f"   タスク ID: {result.id}")
+        print(f"   ステータス: {result.status}")
+        
+        # タスクの完了を待つ（最大 60 秒）
+        print("\n⏳ タスクの完了を待機中...")
+        try:
+            task_result = result.get(timeout=60)
+            print("\n✅ タスクが完了しました")
+            print(f"   ステータス: {task_result.get('status', 'unknown')}")
+            print(f"   取得件数: {task_result.get('total_count', 0)}")
+            
+            if task_result.get('total_count', 0) == 0:
+                print("\n⚠️  決算発表予定が 0 件でした。")
+                print("   詳細はログを確認するか、選択肢 2 で直接実行してください。")
+            
+            print(f"\n   詳細結果: {task_result}")
+        except Exception as e:
+            print(f"\n⚠️  タスクのタイムアウトまたはエラー: {e}")
+            print("   Celery ワーカーが起動していることを確認してください")
+            print("   起動コマンド: celery -A app.infrastructure.celery.app worker --loglevel=info")
+            
+    except ImportError as e:
+        logger.error(f"Celery タスクのインポートエラー: {e}")
+        print(f"\n❌ Celery タスクのインポートに失敗しました: {e}")
+    except Exception as e:
+        logger.error(f"Celery タスク実行エラー: {e}")
+        print(f"\n❌ エラーが発生しました: {e}")
 
 
 async def test_api_connection():
@@ -58,6 +118,17 @@ async def fetch_and_save_announcements():
     """決算発表予定データを取得して DB に保存"""
     print("\n=== 決算発表予定データ取得・保存 ===")
     
+    # 日付情報を表示
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    tomorrow = now + timedelta(days=1)
+    print(f"\n📅 実行日時: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"📅 対象日（翌日）: {tomorrow.strftime('%Y-%m-%d')} ({tomorrow.strftime('%A')})")
+    
+    # 19 時チェック
+    if now.hour < 19:
+        print("⚠️  注意: 現在 19 時前です。 J-Quants API は 19 時頃にデータを更新します。")
+    
     try:
         factory = JQuantsClientFactory()
         client = await factory.create_announcement_client()
@@ -69,13 +140,23 @@ async def fetch_and_save_announcements():
                 announcement_repository=repository,
             )
             
-            print("データ取得中...")
+            print("\n📡 API からデータ取得中...")
             result = await use_case.fetch_and_save_announcements()
             
-            print(f"✓ {result.total_count} 件のデータを取得・保存しました")
+            print(f"\n✅ 取得結果: {result.total_count} 件")
+            
+            # 0 件の場合のガイダンス
+            if result.total_count == 0:
+                print("\n⚠️  決算発表予定が 0 件です。以下を確認してください：")
+                print("  1. 翌日は営業日ですか？（土日祝日は決算発表がありません）")
+                print("  2. 決算発表シーズンですか？（2 月、 5 月、 8 月、 11 月が多い）")
+                print("  3. 19 時以降に実行していますか？（データ更新は 19 時頃）")
+                print("  4. J-Quants API は 3 月・ 9 月決算企業のみ対象です")
+                print("\n💡 ヒント: 決算発表は四半期ごとに集中する傾向があります。")
+                print("          日によってはデータが 0 件でも正常です。")
             
             # 取得したデータのサンプル表示
-            if result.announcements:
+            elif result.announcements:
                 print("\n=== 取得データサンプル（最新 10 件） ===")
                 for i, announcement in enumerate(result.announcements[:10], 1):
                     print(f"\n{i}. {announcement.company_name} ({announcement.code})")
@@ -178,8 +259,9 @@ async def main():
         print("2. データ取得・保存")
         print("3. 保存データ検索テスト")
         print("4. すべて実行")
+        print("5. Celery タスク実行（非同期）")
         
-        choice = input("\n 選択 (1-4): ").strip()
+        choice = get_auto_input("\n 選択 (1-5): ")
     
     tasks = []
     if choice == "1":
@@ -194,6 +276,8 @@ async def main():
             ("データ取得・保存", fetch_and_save_announcements),
             ("保存データ検索", query_saved_data),
         ]
+    elif choice == "5":
+        tasks = [("Celery タスク実行", test_celery_task)]
     else:
         print("無効な選択です")
         return

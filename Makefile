@@ -1,4 +1,4 @@
-.PHONY: help build up down logs test clean migrate shell docs run-script test-script test-scripts test-scripts-all
+.PHONY: help build up down logs test clean migrate shell docs run-script test-script test-scripts test-scripts-all test-scripts-all-auto
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  make test-script <name>          - Run a specific test script"
 	@echo "  make test-scripts                - List available test scripts"
 	@echo "  make test-scripts-all            - Run all test scripts"
+	@echo "  make test-scripts-all-auto       - Run all test scripts with default choices"
 
 # Development commands
 build:
@@ -129,6 +130,27 @@ test-scripts-all:
 			echo "Running: $$script"; \
 			echo "========================================"; \
 			docker-compose exec app python $$script || true; \
+		fi; \
+	done
+
+# Run all test scripts with default choices
+test-scripts-all-auto:
+	@echo "Running all test scripts with default choices..."
+	@for script in scripts/test_*.py; do \
+		if [ -f "$$script" ]; then \
+			echo ""; \
+			echo "========================================"; \
+			echo "Running: $$script (auto mode)"; \
+			echo "========================================"; \
+			if [ "$$(basename $$script)" = "test_api_listed_info.py" ]; then \
+				docker-compose exec -e DEFAULT_CHOICES="1" app python $$script || true; \
+			elif [ "$$(basename $$script)" = "test_announcement.py" ]; then \
+				docker-compose exec -e DEFAULT_CHOICES="5" app python $$script || true; \
+			elif [ "$$(basename $$script)" = "test_listed_info_task.py" ]; then \
+				docker-compose exec -e DEFAULT_CHOICES="1" app python $$script || true; \
+			else \
+				docker-compose exec app python $$script || true; \
+			fi; \
 		fi; \
 	done
 
