@@ -18,20 +18,28 @@ logger = get_logger(__name__)
 # Create base class for SQLAlchemy models
 Base = declarative_base()
 
-# Global engine instance
-_engine: AsyncEngine | None = None
-_sessionmaker: async_sessionmaker | None = None
+# Global engine instance - keyed by event loop to prevent cross-loop contamination
+import asyncio
+from typing import Dict
+_engines: Dict[asyncio.AbstractEventLoop, AsyncEngine] = {}
+_sessionmakers: Dict[asyncio.AbstractEventLoop, async_sessionmaker] = {}
 
 
 def get_engine() -> AsyncEngine:
-    """Get or create async engine instance.
+    """Get or create async engine instance for the current event loop.
 
     Returns:
         AsyncEngine instance
     """
-    global _engine
-    if _engine is None:
-        _engine = create_async_engine(
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # If no event loop is running, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    if loop not in _engines:
+        _engines[loop] = create_async_engine(
             settings.database_url,
             echo=settings.database_echo,
             pool_size=settings.database_pool_size,
@@ -39,28 +47,34 @@ def get_engine() -> AsyncEngine:
             pool_timeout=settings.database_pool_timeout,
             pool_pre_ping=True,  # Enable connection health checks
         )
-        logger.info("Database engine created")
-    return _engine
+        logger.info(f"Database engine created for event loop {id(loop)}")
+    return _engines[loop]
 
 
 def get_sessionmaker() -> async_sessionmaker:
-    """Get or create async session maker.
+    """Get or create async session maker for the current event loop.
 
     Returns:
         async_sessionmaker instance
     """
-    global _sessionmaker
-    if _sessionmaker is None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # If no event loop is running, create a new one
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    if loop not in _sessionmakers:
         engine = get_engine()
-        _sessionmaker = async_sessionmaker(
+        _sessionmakers[loop] = async_sessionmaker(
             engine,
             class_=AsyncSession,
             expire_on_commit=False,
             autocommit=False,
             autoflush=False,
         )
-        logger.info("Session maker created")
-    return _sessionmaker
+        logger.info(f"Session maker created for event loop {id(loop)}")
+    return _sessionmakers[loop]
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -98,12 +112,13 @@ async def drop_tables() -> None:
 
 
 async def close_database() -> None:
-    """Close database connections."""
-    global _engine
-    if _engine:
-        await _engine.dispose()
-        _engine = None
-        logger.info("Database connections closed")
+    """Close database connections for all event loops."""
+    global _engines, _sessionmakers
+    for loop, engine in list(_engines.items()):
+        await engine.dispose()
+        logger.info(f"Database connections closed for event loop {id(loop)}")
+    _engines.clear()
+    _sessionmakers.clear()
 
 
 @asynccontextmanager
