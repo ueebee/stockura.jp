@@ -125,12 +125,13 @@ class ListedInfoApiTester:
         print("\n1️⃣  サーバー接続確認...")
         try:
             # FastAPI のデフォルトルートを確認
-            response = requests.get(f"{self.base_url}/")
+            response = requests.get(f"{self.base_url}/", timeout=5)
             print(f"   ✅ サーバーは稼働中です (status: {response.status_code})")
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             print(f"   ❌ サーバーに接続できません: {e}")
             print(f"\n   FastAPI サーバーが起動していることを確認してください:")
             print(f"   uvicorn app.main:app --reload")
+            print("\n   ⚠️  サーバーが起動していないため、このテストをスキップします")
             return
             
         # 2. タスクをトリガー

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.dtos.trades_spec_dto import FetchTradesSpecResult, TradesSpecDTO
 from app.application.use_cases.fetch_trades_spec import FetchTradesSpecUseCase
 from app.domain.repositories.trades_spec_repository import TradesSpecRepository
-from app.infrastructure.database.connection import get_async_session
+from app.infrastructure.database.connection import get_session as get_async_session
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.jquants.trades_spec_client import TradesSpecClient
 from app.infrastructure.repositories.trades_spec_repository_impl import TradesSpecRepositoryImpl
