@@ -2,7 +2,7 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from app.application.dto.schedule_dto import (
+from app.application.dtos.schedule_dto import (
     ScheduleCreateDto,
     ScheduleDto,
     ScheduleUpdateDto,

@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime
 from uuid import uuid4
 
-from app.application.dto.schedule_dto import (
+from app.application.dtos.schedule_dto import (
     TaskParamsDto,
     ScheduleCreateDto,
     ScheduleUpdateDto,
