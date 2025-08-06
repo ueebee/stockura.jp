@@ -39,12 +39,10 @@ def run_task():
         # 非対話的モードで実行する場合は選択 3 (直接実行) を使用
         import os
         if os.environ.get('CI') or not sys.stdin.isatty():
-            print("
-⚠️  非対話的モードで実行中のため、選択 3 (直接実行) を自動選択します")
+            print("\n⚠️  非対話的モードで実行中のため、選択 3 (直接実行) を自動選択します")
             choice = "3"
         else:
-            choice = input("
- 選択 (1/2/3): ").strip()
+            choice = input("\n 選択 (1/2/3): ").strip()
         
         if choice == "1":
             print("\n 非同期実行を開始します...")
