@@ -21,7 +21,7 @@ from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.jquants.weekly_margin_interest_client import (
     WeeklyMarginInterestClient,
 )
-from app.infrastructure.repositories.weekly_margin_interest_repository_impl import (
+from app.infrastructure.repositories.database.weekly_margin_interest_repository_impl import (
     WeeklyMarginInterestRepositoryImpl,
 )
 
@@ -29,7 +29,7 @@ from app.infrastructure.repositories.weekly_margin_interest_repository_impl impo
 from app.application.use_cases.fetch_trades_spec import FetchTradesSpecUseCase
 from app.domain.entities.trades_spec import TradesSpec
 from app.infrastructure.jquants.trades_spec_client import TradesSpecClient
-from app.infrastructure.repositories.trades_spec_repository_impl import (
+from app.infrastructure.repositories.database.trades_spec_repository_impl import (
     TradesSpecRepositoryImpl,
 )
 

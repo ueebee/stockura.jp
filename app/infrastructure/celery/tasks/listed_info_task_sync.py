@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.infrastructure.celery.app import celery_app
-from app.infrastructure.repositories.task_log_repository_sync import TaskLogRepositorySync
+from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository as TaskLogRepositorySync
 
 logger = get_task_logger(__name__)
 settings = get_settings()
@@ -97,7 +97,7 @@ def _fetch_listed_info_sync(
     """Synchronous implementation of fetch_listed_info task."""
     from app.application.use_cases.fetch_listed_info_sync import FetchListedInfoUseCaseSync
     from app.infrastructure.external.jquants.jquants_client_sync import JQuantsClientSync
-    from app.infrastructure.repositories.listed_info_repository_sync import (
+    from app.infrastructure.repositories.database.listed_info_repository_sync import (
         ListedInfoRepositorySync,
     )
     from app.core.logging import get_logger

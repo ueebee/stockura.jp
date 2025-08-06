@@ -20,7 +20,7 @@ from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.jquants.weekly_margin_interest_client import (
     WeeklyMarginInterestClient,
 )
-from app.infrastructure.repositories.weekly_margin_interest_repository_impl import (
+from app.infrastructure.repositories.database.weekly_margin_interest_repository_impl import (
     WeeklyMarginInterestRepositoryImpl,
 )
 

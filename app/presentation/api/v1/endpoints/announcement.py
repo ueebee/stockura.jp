@@ -10,7 +10,7 @@ from app.application.use_cases.fetch_announcement import FetchAnnouncementUseCas
 from app.core.logger import get_logger
 from app.infrastructure.database.connection import get_db_session
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
-from app.infrastructure.repositories.announcement_repository_impl import AnnouncementRepositoryImpl
+from app.infrastructure.repositories.database.announcement_repository_impl import AnnouncementRepositoryImpl
 
 logger = get_logger(__name__)
 router = APIRouter()

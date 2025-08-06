@@ -22,7 +22,7 @@ from app.infrastructure.celery.app import celery_app
 from app.infrastructure.celery.tasks.trades_spec_task_asyncpg import fetch_trades_spec_task_asyncpg
 from app.infrastructure.database.connection import get_async_session_context
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
-from app.infrastructure.repositories.trades_spec_repository_impl import TradesSpecRepositoryImpl
+from app.infrastructure.repositories.database.trades_spec_repository_impl import TradesSpecRepositoryImpl
 
 
 class TradesSpecTester:

@@ -6,11 +6,11 @@ from app.core.config import get_settings
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.exceptions.jquants_exceptions import AuthenticationError
 from app.infrastructure.jquants.announcement_client import JQuantsAnnouncementClient
-from app.infrastructure.jquants.auth_repository_impl import JQuantsAuthRepository
+from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
 from app.infrastructure.jquants.base_client import JQuantsBaseClient
 from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
 from app.infrastructure.jquants.trades_spec_client import TradesSpecClient
-from app.infrastructure.redis.auth_repository_impl import RedisAuthRepository
+from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
 from app.infrastructure.redis.redis_client import get_redis_client
 from app.core.logger import get_logger
 

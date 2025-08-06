@@ -16,10 +16,10 @@ from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoDataError,
 )
 from app.infrastructure.database.connection import get_async_session_context
-from app.infrastructure.database.repositories.listed_info_repository_impl import (
+from app.infrastructure.repositories.database.listed_info_repository_impl import (
     ListedInfoRepositoryImpl,
 )
-from app.infrastructure.jquants.auth_repository_impl import JQuantsAuthRepository
+from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
 from app.infrastructure.jquants.base_client import JQuantsBaseClient
 from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
 

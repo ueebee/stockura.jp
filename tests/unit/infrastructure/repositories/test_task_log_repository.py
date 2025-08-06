@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.repositories.task_log_repository import TaskLogRepository
+from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 from app.infrastructure.database.models.task_log import TaskExecutionLog as DBTaskLog
 from app.domain.entities.task_log import TaskExecutionLog
 from tests.factories.task_log_factory import TaskLogFactory

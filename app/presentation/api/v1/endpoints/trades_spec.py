@@ -12,7 +12,7 @@ from app.domain.repositories.trades_spec_repository import TradesSpecRepository
 from app.infrastructure.database.connection import get_session as get_async_session
 from app.infrastructure.jquants.client_factory import JQuantsClientFactory
 from app.infrastructure.jquants.trades_spec_client import TradesSpecClient
-from app.infrastructure.repositories.trades_spec_repository_impl import TradesSpecRepositoryImpl
+from app.infrastructure.repositories.database.trades_spec_repository_impl import TradesSpecRepositoryImpl
 
 router = APIRouter()
 

@@ -12,7 +12,7 @@ from app.domain.exceptions.jquants_exceptions import (
     NetworkError,
     TokenRefreshError,
 )
-from app.infrastructure.jquants.auth_repository_impl import JQuantsAuthRepository
+from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
 from tests.utils.mocks import create_mock_response
 from tests.utils.assertions import (
     assert_authentication_error,

@@ -21,7 +21,7 @@ from app.application.dtos.schedule_dto import (
 )
 from app.application.use_cases.manage_schedule import ManageScheduleUseCase
 from app.infrastructure.database.connection import get_session
-from app.infrastructure.repositories.schedule_repository import ScheduleRepository
+from app.infrastructure.repositories.database.schedule_repository import ScheduleRepository
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 

@@ -10,7 +10,7 @@ from celery.utils.log import get_task_logger
 from app.infrastructure.celery.app import celery_app
 from app.infrastructure.celery.worker_hooks import get_or_create_event_loop
 from app.infrastructure.database.connection import get_async_session_context
-from app.infrastructure.repositories.task_log_repository import TaskLogRepository
+from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 
 
 logger = get_task_logger(__name__)
@@ -127,7 +127,7 @@ async def _fetch_trades_spec_async(
         try:
             # JQuantsClientFactory とリポジトリを初期化
             from app.infrastructure.jquants.client_factory import JQuantsClientFactory
-            from app.infrastructure.repositories.trades_spec_repository_impl import (
+            from app.infrastructure.repositories.database.trades_spec_repository_impl import (
                 TradesSpecRepositoryImpl,
             )
             from app.application.use_cases.fetch_trades_spec import FetchTradesSpecUseCase
