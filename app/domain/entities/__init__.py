@@ -1,4 +1,5 @@
 """ドメインエンティティ"""
+from .announcement import Announcement
 from .auth import RefreshToken
 from .listed_info import ListedInfo
 from .schedule import Schedule
@@ -7,6 +8,7 @@ from .trades_spec import TradesSpec
 from .weekly_margin_interest import WeeklyMarginInterest
 
 __all__ = [
+    "Announcement",
     "RefreshToken",
     "ListedInfo",
     "Schedule",
