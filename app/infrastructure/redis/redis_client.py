@@ -1,5 +1,6 @@
 """Redis クライアントモジュール"""
-from typing import Optional
+import asyncio
+from typing import Dict, Optional
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
@@ -11,12 +12,19 @@ class RedisClient:
     """Redis クライアントのラッパークラス"""
 
     def __init__(self) -> None:
-        self._client: Optional[Redis] = None
+        # Event loop ごとに Redis クライアントを管理
+        self._clients: Dict[asyncio.AbstractEventLoop, Redis] = {}
 
     async def connect(self) -> None:
         """Redis に接続"""
-        if not self._client:
-            self._client = await redis.from_url(
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        if loop not in self._clients:
+            self._clients[loop] = await redis.from_url(
                 settings.redis_url,
                 encoding="utf-8",
                 decode_responses=True,
@@ -25,16 +33,21 @@ class RedisClient:
 
     async def disconnect(self) -> None:
         """Redis から切断"""
-        if self._client:
-            await self._client.close()
-            self._client = None
+        for loop, client in list(self._clients.items()):
+            await client.close()
+        self._clients.clear()
 
     @property
     def client(self) -> Redis:
         """Redis クライアントを取得"""
-        if not self._client:
-            raise RuntimeError("Redis client is not connected")
-        return self._client
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            raise RuntimeError("Redis client is not connected - no event loop running")
+            
+        if loop not in self._clients:
+            raise RuntimeError("Redis client is not connected for current event loop")
+        return self._clients[loop]
 
     async def __aenter__(self) -> "RedisClient":
         await self.connect()
@@ -50,6 +63,12 @@ redis_client = RedisClient()
 
 async def get_redis_client() -> Redis:
     """依存性注入用の Redis クライアント取得関数"""
-    if not redis_client._client:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+    if loop not in redis_client._clients:
         await redis_client.connect()
     return redis_client.client

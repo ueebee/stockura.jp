@@ -87,6 +87,12 @@ class JQuantsClientFactory:
         """投資部門別売買状況クライアントを作成"""
         credentials = await self._ensure_authenticated()
         return TradesSpecClient(credentials=credentials)
+
+    async def create_weekly_margin_interest_client(self) -> "WeeklyMarginInterestClient":
+        """週次信用取引残高クライアントを作成"""
+        from app.infrastructure.jquants.weekly_margin_interest_client import WeeklyMarginInterestClient
+        credentials = await self._ensure_authenticated()
+        return WeeklyMarginInterestClient(credentials=credentials)
     
     async def create_authenticated_clients(self) -> Tuple[JQuantsBaseClient, JQuantsListedInfoClient]:
         """後方互換性のための認証済みクライアント生成メソッド"""
