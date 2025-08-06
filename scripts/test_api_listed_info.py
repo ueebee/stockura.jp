@@ -129,8 +129,7 @@ class ListedInfoApiTester:
             print(f"   ❌ サーバーに接続できません")
             print(f"   FastAPI サーバーが起動していることを確認してください:")
             print(f"   uvicorn app.main:app --reload")
-            print("
-   ⚠️  サーバーが起動していないため、このテストをスキップします")
+            print("\n   ⚠️  サーバーが起動していないため、このテストをスキップします")
             return
             
         # 2. タスクをトリガー
