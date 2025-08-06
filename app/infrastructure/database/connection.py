@@ -149,3 +149,23 @@ def get_async_session_sync():
         AsyncSession context manager
     """
     return get_async_session_context()
+
+
+async def get_db_session():
+    """FastAPI dependency for getting database session.
+    
+    This function is used for dependency injection in FastAPI endpoints.
+    
+    Yields:
+        AsyncSession instance
+    """
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
