@@ -47,7 +47,6 @@ result_compression = "gzip"
 # Routing
 task_routes = {
     "fetch_listed_info_task": {"queue": "default"},
-    "fetch_trades_spec_task_asyncpg": {"queue": "default"},
 }
 
 # Queue configuration

@@ -5,11 +5,9 @@ from app.application.use_cases.auth_use_case import AuthUseCase
 from app.core.config import get_settings
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.exceptions.jquants_exceptions import AuthenticationError
-from app.infrastructure.jquants.announcement_client import JQuantsAnnouncementClient
 from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
 from app.infrastructure.jquants.base_client import JQuantsBaseClient
 from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
-from app.infrastructure.jquants.trades_spec_client import TradesSpecClient
 from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
 from app.infrastructure.redis.redis_client import get_redis_client
 from app.core.logger import get_logger
@@ -84,21 +82,6 @@ class JQuantsClientFactory:
         base_client = await self._get_base_client()
         return JQuantsListedInfoClient(base_client)
     
-    async def create_trades_spec_client(self) -> TradesSpecClient:
-        """投資部門別売買状況クライアントを作成"""
-        credentials = await self._ensure_authenticated()
-        return TradesSpecClient(credentials=credentials)
-
-    async def create_weekly_margin_interest_client(self) -> "WeeklyMarginInterestClient":
-        """週次信用取引残高クライアントを作成"""
-        from app.infrastructure.jquants.weekly_margin_interest_client import WeeklyMarginInterestClient
-        credentials = await self._ensure_authenticated()
-        return WeeklyMarginInterestClient(credentials=credentials)
-
-    async def create_announcement_client(self) -> JQuantsAnnouncementClient:
-        """決算発表予定クライアントを作成"""
-        base_client = await self._get_base_client()
-        return JQuantsAnnouncementClient(base_client)
     
     async def create_authenticated_clients(self) -> Tuple[JQuantsBaseClient, JQuantsListedInfoClient]:
         """後方互換性のための認証済みクライアント生成メソッド"""
