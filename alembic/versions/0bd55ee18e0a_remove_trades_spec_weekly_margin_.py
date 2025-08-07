@@ -23,7 +23,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     # Drop tables
     op.drop_table("trades_spec")
-    op.drop_table("weekly_margin_interests")
+    op.drop_table("weekly_margin_interest")
     op.drop_table("announcements")
 
 
@@ -47,7 +47,7 @@ def downgrade() -> None:
     
     # Re-create weekly_margin_interests table
     op.create_table(
-        "weekly_margin_interests",
+        "weekly_margin_interest",
         sa.Column("code", sa.String(length=10), nullable=False),
         sa.Column("date", sa.Date(), nullable=False),
         sa.Column("short_margin_trade_volume", sa.Float(), nullable=True),
@@ -61,10 +61,10 @@ def downgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
         sa.PrimaryKeyConstraint("code", "date"),
     )
-    op.create_index("idx_weekly_margin_interest_code", "weekly_margin_interests", ["code"], unique=False)
-    op.create_index("idx_weekly_margin_interest_date", "weekly_margin_interests", ["date"], unique=False)
-    op.create_index("idx_weekly_margin_interest_date_issue_type", "weekly_margin_interests", ["date", "issue_type"], unique=False)
-    op.create_index("idx_weekly_margin_interest_issue_type", "weekly_margin_interests", ["issue_type"], unique=False)
+    op.create_index("idx_weekly_margin_interest_code", "weekly_margin_interest", ["code"], unique=False)
+    op.create_index("idx_weekly_margin_interest_date", "weekly_margin_interest", ["date"], unique=False)
+    op.create_index("idx_weekly_margin_interest_date_issue_type", "weekly_margin_interest", ["date", "issue_type"], unique=False)
+    op.create_index("idx_weekly_margin_interest_issue_type", "weekly_margin_interest", ["issue_type"], unique=False)
     
     # Re-create trades_spec table
     op.create_table(
