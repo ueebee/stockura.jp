@@ -1,4 +1,5 @@
 """Schedule management endpoints."""
+import json
 from typing import List, Optional
 from uuid import UUID
 
@@ -21,17 +22,21 @@ from app.application.dtos.schedule_dto import (
 )
 from app.application.use_cases.manage_schedule import ManageScheduleUseCase
 from app.infrastructure.database.connection import get_session
+from app.infrastructure.di.providers import get_schedule_event_publisher
+from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
 from app.infrastructure.repositories.database.schedule_repository import ScheduleRepository
+from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
 
 async def get_manage_schedule_use_case(
     session: AsyncSession = Depends(get_session),
+    event_publisher: Optional[ScheduleEventPublisher] = Depends(get_schedule_event_publisher),
 ) -> ManageScheduleUseCase:
     """Get manage schedule use case."""
     repository = ScheduleRepository(session)
-    return ManageScheduleUseCase(repository)
+    return ManageScheduleUseCase(repository, event_publisher=event_publisher)
 
 
 @router.post("/", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
@@ -387,6 +392,7 @@ async def trigger_listed_info_direct(
     period_type: str = "yesterday",
     codes: Optional[List[str]] = None,
     market: Optional[str] = None,
+    schedule_id: Optional[UUID] = None,
 ) -> dict:
     """Directly execute listed_info task without Celery (for testing).
     
@@ -410,7 +416,7 @@ async def trigger_listed_info_direct(
         result = await _fetch_listed_info_async(
             task_id=task_id,
             log_id=log_id,
-            schedule_id=None,
+            schedule_id=str(schedule_id) if schedule_id else None,
             from_date=None,
             to_date=None,
             codes=codes,
@@ -435,3 +441,46 @@ async def trigger_listed_info_direct(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to execute task: {str(e)}",
         )
+
+
+@router.get("/{schedule_id}/history", response_model=dict)
+async def get_schedule_history(
+    schedule_id: UUID,
+    use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Get execution history for a schedule.
+    
+    Args:
+        schedule_id: Schedule ID
+        
+    Returns:
+        Schedule execution history
+    """
+    # Verify schedule exists
+    schedule = await use_case.get_schedule(schedule_id)
+    
+    if not schedule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Schedule {schedule_id} not found",
+        )
+    
+    # Get task execution logs
+    task_log_repo = TaskLogRepository(session)
+    logs = await task_log_repo.get_by_schedule_id(schedule_id, limit=100)
+    
+    # Convert logs to history format expected by test script
+    history = []
+    for log in logs:
+        history_item = {
+            "executed_at": log.started_at.isoformat(),
+            "status": log.status,
+            "result": json.dumps(log.result) if log.result else None,
+            "error": log.error_message,
+        }
+        history.append(history_item)
+    
+    return {
+        "history": history,
+    }

@@ -47,6 +47,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - CELERY_BEAT_REDIS_SYNC_ENABLED=${CELERY_BEAT_REDIS_SYNC_ENABLED:-true}
+      - CELERY_BEAT_MIN_SYNC_INTERVAL=${CELERY_BEAT_MIN_SYNC_INTERVAL:-5}
+      - CELERY_BEAT_REDIS_CHANNEL=${CELERY_BEAT_REDIS_CHANNEL:-celery_beat_schedule_updates}
     ports:
       - "8000:8000"
     volumes:
@@ -79,6 +82,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - CELERY_TIMEZONE=${CELERY_TIMEZONE:-UTC}
+      - CELERY_ENABLE_UTC=${CELERY_ENABLE_UTC:-true}
     volumes:
       - ./app:/app/app:ro
       - ./logs:/app/logs
@@ -103,6 +108,11 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - CELERY_TIMEZONE=${CELERY_TIMEZONE:-UTC}
+      - CELERY_ENABLE_UTC=${CELERY_ENABLE_UTC:-true}
+      - CELERY_BEAT_REDIS_SYNC_ENABLED=${CELERY_BEAT_REDIS_SYNC_ENABLED:-true}
+      - CELERY_BEAT_MIN_SYNC_INTERVAL=${CELERY_BEAT_MIN_SYNC_INTERVAL:-5}
+      - CELERY_BEAT_REDIS_CHANNEL=${CELERY_BEAT_REDIS_CHANNEL:-celery_beat_schedule_updates}
     volumes:
       - ./app:/app/app:ro
       - ./logs:/app/logs

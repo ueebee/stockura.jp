@@ -1,4 +1,4 @@
-.PHONY: help build up down logs test clean migrate shell docs run-script test-script test-scripts test-scripts-all test-scripts-all-auto
+.PHONY: help build up down logs test clean migrate shell docs run-script test-script test-scripts test-scripts-all test-scripts-all-auto test-scheduled-api test-scheduled-api-auto
 
 # Default target
 help:
@@ -20,6 +20,8 @@ help:
 	@echo "  make test-scripts                - List available test scripts"
 	@echo "  make test-scripts-all            - Run all test scripts"
 	@echo "  make test-scripts-all-auto       - Run all test scripts with default choices"
+	@echo "  make test-scheduled-api          - Test scheduled listed_info API (interactive)"
+	@echo "  make test-scheduled-api-auto     - Test scheduled listed_info API (auto mode)"
 
 # Development commands
 build:
@@ -153,6 +155,25 @@ test-scripts-all-auto:
 			fi; \
 		fi; \
 	done
+
+# Test scheduled API
+test-scheduled-api:
+	@echo "Testing scheduled listed_info API..."
+	@echo "This will create a schedule to run 2 minutes from now."
+	@if [ -f "/.dockerenv" ]; then \
+		python scripts/test_scheduled_listed_info_api.py --wait-minutes 2; \
+	else \
+		docker-compose exec app python scripts/test_scheduled_listed_info_api.py --wait-minutes 2; \
+	fi
+
+test-scheduled-api-auto:
+	@echo "Testing scheduled listed_info API (auto mode)..."
+	@echo "This will create a schedule to run 2 minutes from now."
+	@if [ -f "/.dockerenv" ]; then \
+		AUTO_MODE=true python scripts/test_scheduled_listed_info_api.py --wait-minutes 2; \
+	else \
+		docker-compose exec -e AUTO_MODE=true app python scripts/test_scheduled_listed_info_api.py --wait-minutes 2; \
+	fi
 
 # Cleanup
 clean:

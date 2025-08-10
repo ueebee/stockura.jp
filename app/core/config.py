@@ -69,9 +69,20 @@ class Settings(BaseSettings):
         default=["json"], description="Celery accept content"
     )
     celery_timezone: str = Field(
-        default="Asia/Tokyo", description="Celery timezone"
+        default="UTC", description="Celery timezone"
     )
     celery_enable_utc: bool = Field(default=True, description="Celery enable UTC")
+
+    # Celery Beat Redis Sync
+    celery_beat_redis_sync_enabled: bool = Field(
+        default=True, description="Enable Redis sync for Celery Beat"
+    )
+    celery_beat_min_sync_interval: int = Field(
+        default=5, description="Minimum sync interval in seconds"
+    )
+    celery_beat_redis_channel: str = Field(
+        default="celery_beat_schedule_updates", description="Redis channel for schedule updates"
+    )
 
     # J-Quants API Settings
     jquants_api_key: str = Field(

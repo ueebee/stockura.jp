@@ -1,0 +1,16 @@
+{
+  "diagnosis": {
+    "status": "error"
+  },
+  "schedule_creation": {
+    "status": "error"
+  },
+  "event_verification": {
+    "status": "error"
+  },
+  "execution_history": {},
+  "overall_status": "failure",
+  "celery_beat_logs": {
+    "status": "error"
+  }
+}
