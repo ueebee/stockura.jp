@@ -90,7 +90,7 @@ async def _fetch_listed_info_async(
 ):
     """Async implementation of fetch_listed_info task."""
     from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
-    from app.infrastructure.jquants.client_factory import create_authenticated_client
+    from app.infrastructure.external_services.jquants.client_factory import create_authenticated_client
     from app.infrastructure.repositories.database.listed_info_repository_impl import (
         ListedInfoRepositoryImpl,
     )

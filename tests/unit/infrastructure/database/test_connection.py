@@ -12,9 +12,7 @@ from app.infrastructure.database.connection import (
     close_database,
     get_async_session_context,
     get_async_session_sync,
-    Base,
-    _engine,
-    _sessionmaker
+    Base
 )
 
 

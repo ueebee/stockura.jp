@@ -2,7 +2,7 @@
 import pytest
 from datetime import date
 
-from app.application.factories.listed_info_factory import ListedInfoFactory
+from app.domain.factories.listed_info_factory import ListedInfoFactory
 from app.domain.entities.listed_info import ListedInfo
 from app.domain.value_objects.stock_code import StockCode
 

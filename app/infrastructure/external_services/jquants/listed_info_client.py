@@ -1,9 +1,10 @@
 """J-Quants Listed Info API client."""
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from app.application.interfaces.external.listed_info_client import ListedInfoClientInterface
 from app.core.logger import get_logger
-from app.infrastructure.jquants.base_client import JQuantsBaseClient
+from app.infrastructure.external_services.jquants.base_client import JQuantsBaseClient
+from app.infrastructure.external_services.jquants.types.responses import JQuantsListedInfoResponse
 
 logger = get_logger(__name__)
 
@@ -23,7 +24,7 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
         self,
         code: Optional[str] = None,
         date: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JQuantsListedInfoResponse]:
         """上場銘柄情報を取得
 
         Args:
@@ -31,7 +32,7 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
             date: 基準日（YYYYMMDD または YYYY-MM-DD 形式）
 
         Returns:
-            List[Dict[str, Any]]: 上場銘柄情報のリスト
+            List[JQuantsListedInfoResponse]: 上場銘柄情報のリスト
 
         Raises:
             NetworkError: ネットワークエラーが発生した場合
@@ -49,9 +50,12 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
         try:
             response = await self._client.get("/listed/info", params=params)
             info_list = response.get("info", [])
+            
+            # 型安全性のためにキャスト
+            typed_info_list = cast(List[JQuantsListedInfoResponse], info_list)
 
-            logger.info(f"Successfully fetched {len(info_list)} listed info records")
-            return info_list
+            logger.info(f"Successfully fetched {len(typed_info_list)} listed info records")
+            return typed_info_list
 
         except Exception as e:
             logger.error(f"Failed to fetch listed info: {str(e)}")
@@ -59,14 +63,14 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
 
     async def get_all_listed_info(
         self, date: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JQuantsListedInfoResponse]:
         """全銘柄の上場情報を取得（ページネーション対応）
 
         Args:
             date: 基準日（YYYYMMDD または YYYY-MM-DD 形式）
 
         Returns:
-            List[Dict[str, Any]]: 全上場銘柄情報のリスト
+            List[JQuantsListedInfoResponse]: 全上場銘柄情報のリスト
 
         Raises:
             NetworkError: ネットワークエラーが発生した場合
@@ -79,7 +83,7 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
 
         logger.info(f"Fetching all listed info for date: {date}")
 
-        all_info = []
+        all_info: List[JQuantsListedInfoResponse] = []
         pagination_key = None
 
         while True:
@@ -88,14 +92,17 @@ class JQuantsListedInfoClient(ListedInfoClientInterface):
 
             response = await self._client.get("/listed/info", params=params)
             info_list = response.get("info", [])
-            all_info.extend(info_list)
+            
+            # 型安全性のためにキャスト
+            typed_info_list = cast(List[JQuantsListedInfoResponse], info_list)
+            all_info.extend(typed_info_list)
 
             # ページネーションキーがない場合は終了
             pagination_key = response.get("pagination_key")
             if not pagination_key:
                 break
 
-            logger.debug(f"Fetched {len(info_list)} records, continuing with pagination")
+            logger.debug(f"Fetched {len(typed_info_list)} records, continuing with pagination")
 
         logger.info(f"Successfully fetched total {len(all_info)} listed info records")
         return all_info

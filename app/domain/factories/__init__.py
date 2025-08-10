@@ -1,0 +1,1 @@
+"""Domain factories for creating entities from external data."""

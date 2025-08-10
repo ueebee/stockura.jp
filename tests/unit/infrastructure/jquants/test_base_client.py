@@ -13,7 +13,7 @@ from app.domain.exceptions.jquants_exceptions import (
     RateLimitError,
     ValidationError,
 )
-from app.infrastructure.jquants.base_client import JQuantsBaseClient
+from app.infrastructure.external_services.jquants.base_client import JQuantsBaseClient
 
 
 @pytest.fixture

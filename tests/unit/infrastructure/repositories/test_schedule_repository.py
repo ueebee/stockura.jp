@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Result
 
-from app.infrastructure.repositories.database.schedule_repository import ScheduleRepository
+from app.infrastructure.repositories.database.schedule_repository import ScheduleRepositoryImpl as ScheduleRepository
 from app.infrastructure.database.models.schedule import CeleryBeatSchedule
 from app.domain.entities.schedule import Schedule
 from tests.factories.schedule_factory import ScheduleFactory
