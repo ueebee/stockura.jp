@@ -115,6 +115,9 @@ class DatabaseSchedulerAsyncPG(Scheduler):
     """Custom scheduler that reads schedules from database using asyncpg."""
 
     Entry = DatabaseScheduleEntry
+    # Set max_interval to 60 seconds (1 minute) for database-backed scheduler
+    # This balances performance with reasonable schedule check frequency
+    max_interval = 60
     
     def __init__(self, *args, **kwargs):
         """Initialize database scheduler."""
