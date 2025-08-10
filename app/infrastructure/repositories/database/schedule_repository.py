@@ -13,7 +13,7 @@ from app.domain.repositories.schedule_repository_interface import (
 from app.infrastructure.database.models.schedule import CeleryBeatSchedule
 
 
-class ScheduleRepository(ScheduleRepositoryInterface):
+class ScheduleRepositoryImpl(ScheduleRepositoryInterface):
     """Schedule repository implementation."""
 
     def __init__(self, session: AsyncSession):

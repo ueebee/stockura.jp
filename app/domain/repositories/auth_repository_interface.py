@@ -4,7 +4,7 @@ from typing import Optional
 from app.domain.entities.auth import IdToken, JQuantsCredentials, RefreshToken
 
 
-class AuthRepository(ABC):
+class AuthRepositoryInterface(ABC):
     """J-Quants 認証リポジトリのインターフェース"""
 
     @abstractmethod

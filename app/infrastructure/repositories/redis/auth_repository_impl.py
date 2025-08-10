@@ -15,10 +15,10 @@ from app.domain.exceptions.jquants_exceptions import (
     StorageError,
     TokenRefreshError,
 )
-from app.domain.repositories.auth_repository import AuthRepository
+from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
 
 
-class RedisAuthRepository(AuthRepository):
+class RedisAuthRepository(AuthRepositoryInterface):
     """Redis を使用した J-Quants API 認証リポジトリの実装"""
 
     BASE_URL = "https://api.jquants.com/v1"

@@ -7,7 +7,7 @@ from app.domain.entities.listed_info import ListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
-class ListedInfoRepository(ABC):
+class ListedInfoRepositoryInterface(ABC):
     """上場銘柄情報リポジトリのインターフェース"""
 
     @abstractmethod

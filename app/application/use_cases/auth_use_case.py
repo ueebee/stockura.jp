@@ -5,13 +5,13 @@ from app.domain.exceptions.jquants_exceptions import (
     AuthenticationError,
     TokenRefreshError,
 )
-from app.domain.repositories.auth_repository import AuthRepository
+from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
 
 
 class AuthUseCase:
     """J-Quants 認証に関するユースケース"""
 
-    def __init__(self, auth_repository: AuthRepository) -> None:
+    def __init__(self, auth_repository: AuthRepositoryInterface) -> None:
         self._auth_repository = auth_repository
 
     async def authenticate(self, email: str, password: str) -> JQuantsCredentials:

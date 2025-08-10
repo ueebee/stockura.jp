@@ -33,41 +33,6 @@ class ListedInfo:
         if not isinstance(self.date, date):
             raise ValueError("日付は date 型である必要があります")
 
-    @classmethod
-    def from_dict(cls, data: dict) -> ListedInfo:
-        """辞書から ListedInfo エンティティを作成
-
-        Args:
-            data: J-Quants API のレスポンスデータ
-
-        Returns:
-            ListedInfo instance
-        """
-        from datetime import datetime
-
-        # 日付の解析
-        date_str = data["Date"]
-        if len(date_str) == 8:  # YYYYMMDD 形式
-            listing_date = datetime.strptime(date_str, "%Y%m%d").date()
-        else:  # YYYY-MM-DD 形式
-            listing_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-        return cls(
-            date=listing_date,
-            code=StockCode(data["Code"]),
-            company_name=data["CompanyName"],
-            company_name_english=data.get("CompanyNameEnglish"),
-            sector_17_code=data.get("Sector17Code"),
-            sector_17_code_name=data.get("Sector17CodeName"),
-            sector_33_code=data.get("Sector33Code"),
-            sector_33_code_name=data.get("Sector33CodeName"),
-            scale_category=data.get("ScaleCategory"),
-            market_code=data.get("MarketCode"),
-            market_code_name=data.get("MarketCodeName"),
-            margin_code=data.get("MarginCode"),
-            margin_code_name=data.get("MarginCodeName"),
-        )
-
     def is_same_listing(self, other: ListedInfo) -> bool:
         """同じ上場情報かどうかを判定
 
@@ -78,3 +43,53 @@ class ListedInfo:
             同じ上場情報の場合 True
         """
         return self.date == other.date and self.code == other.code
+
+    def is_prime_market(self) -> bool:
+        """プライム市場銘柄かどうか"""
+        return self.market_code == "0111"
+
+    def is_standard_market(self) -> bool:
+        """スタンダード市場銘柄かどうか"""
+        return self.market_code == "0112"
+
+    def is_growth_market(self) -> bool:
+        """グロース市場銘柄かどうか"""
+        return self.market_code == "0113"
+
+    def belongs_to_sector_17(self, sector_code: str) -> bool:
+        """指定された 17 業種に属するか
+
+        Args:
+            sector_code: 17 業種コード
+
+        Returns:
+            該当する場合 True
+        """
+        return self.sector_17_code == sector_code
+
+    def belongs_to_sector_33(self, sector_code: str) -> bool:
+        """指定された 33 業種に属するか
+
+        Args:
+            sector_code: 33 業種コード
+
+        Returns:
+            該当する場合 True
+        """
+        return self.sector_33_code == sector_code
+
+    def is_marginable(self) -> bool:
+        """信用取引が可能かどうか"""
+        return self.margin_code == "1"
+
+    def is_large_cap(self) -> bool:
+        """大型株かどうか（TOPIX Large70）"""
+        return self.scale_category == "TOPIX Large70"
+
+    def is_mid_cap(self) -> bool:
+        """中型株かどうか（TOPIX Mid400）"""
+        return self.scale_category == "TOPIX Mid400"
+
+    def is_small_cap(self) -> bool:
+        """小型株かどうか（TOPIX Small）"""
+        return self.scale_category == "TOPIX Small"

@@ -12,7 +12,7 @@ from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoStorageError,
 )
 from app.application.interfaces.external.listed_info_client import ListedInfoClientInterface
-from app.domain.repositories.listed_info_repository import ListedInfoRepository
+from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
 
 
 class FetchListedInfoUseCase:
@@ -21,7 +21,7 @@ class FetchListedInfoUseCase:
     def __init__(
         self,
         jquants_client: ListedInfoClientInterface,
-        listed_info_repository: ListedInfoRepository,
+        listed_info_repository: ListedInfoRepositoryInterface,
         logger: Logger,
     ):
         """Initialize use case.

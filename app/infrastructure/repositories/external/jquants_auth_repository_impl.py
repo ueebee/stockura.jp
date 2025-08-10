@@ -13,10 +13,10 @@ from app.domain.exceptions.jquants_exceptions import (
     StorageError,
     TokenRefreshError,
 )
-from app.domain.repositories.auth_repository import AuthRepository
+from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
 
 
-class JQuantsAuthRepository(AuthRepository):
+class JQuantsAuthRepository(AuthRepositoryInterface):
     """J-Quants API 認証リポジトリの実装"""
 
     BASE_URL = "https://api.jquants.com/v1"
