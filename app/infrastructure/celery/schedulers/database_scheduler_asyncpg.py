@@ -102,11 +102,7 @@ class DatabaseScheduleEntry(ScheduleEntry):
     
     def __next__(self):
         """Return a new instance of the same entry."""
-        # Create new instance
-        new_entry = self.__class__(self.model, app=self.app)
-        # Preserve the last_run_at timestamp
-        new_entry.last_run_at = self.last_run_at
-        return new_entry
+        return self.__class__(self.model, app=self.app)
     
     next = __next__  # Python 2/3 compatibility
 
@@ -119,12 +115,6 @@ class DatabaseSchedulerAsyncPG(Scheduler):
     """Custom scheduler that reads schedules from database using asyncpg."""
 
     Entry = DatabaseScheduleEntry
-    # Set max_interval to 5 seconds for database-backed scheduler
-    # This ensures more frequent checks for schedule changes
-    max_interval = 5
-    # Even more frequent checks can be configured if needed
-    # but this will increase CPU usage
-    # max_interval = 1  # Check every second
     
     def __init__(self, *args, **kwargs):
         """Initialize database scheduler."""
@@ -278,18 +268,11 @@ class DatabaseSchedulerAsyncPG(Scheduler):
                 # Reset the event loop to None to avoid interference
                 asyncio.set_event_loop(None)
             
-            # Update schedule - preserve last_run_at for existing entries
-            old_schedule = dict(self.schedule)
+            # Update schedule
             self.schedule.clear()
             
             for schedule in schedules:
                 entry = self.Entry(schedule, app=self.app)
-                # Preserve last_run_at from old entry if it exists
-                if schedule.name in old_schedule:
-                    old_entry = old_schedule[schedule.name]
-                    if hasattr(old_entry, 'last_run_at'):
-                        entry.last_run_at = old_entry.last_run_at
-                        logger.debug(f"Preserved last_run_at for {schedule.name}: {entry.last_run_at}")
                 self.schedule[schedule.name] = entry
                 
             logger.info(f"Updated scheduler with {len(schedules)} schedules")
@@ -358,12 +341,6 @@ class DatabaseSchedulerAsyncPG(Scheduler):
             # Call parent class apply_entry to send the task
             result = super().apply_entry(entry, producer)
             logger.info(f"Task {entry.name} sent successfully")
-            
-            # Update the entry's last_run_at after successful sending
-            # This ensures the entry knows it has been executed
-            entry.last_run_at = self._maybe_make_aware(datetime.utcnow())
-            logger.debug(f"Updated last_run_at for {entry.name} to {entry.last_run_at}")
-            
             return result
         except Exception as e:
             logger.error(f"Failed to send task {entry.name}: {e}", exc_info=True)
