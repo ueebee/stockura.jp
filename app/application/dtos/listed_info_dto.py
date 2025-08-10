@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
+from app.application.factories.listed_info_factory import ListedInfoFactory
 from app.domain.entities.listed_info import ListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
@@ -57,27 +58,23 @@ class ListedInfoDTO:
         Returns:
             ListedInfo entity
         """
-        # 日付の解析
-        if len(self.date) == 8:  # YYYYMMDD 形式
-            listing_date = datetime.strptime(self.date, "%Y%m%d").date()
-        else:  # YYYY-MM-DD 形式
-            listing_date = datetime.strptime(self.date, "%Y-%m-%d").date()
-
-        return ListedInfo(
-            date=listing_date,
-            code=StockCode(self.code),
-            company_name=self.company_name,
-            company_name_english=self.company_name_english,
-            sector_17_code=self.sector_17_code,
-            sector_17_code_name=self.sector_17_code_name,
-            sector_33_code=self.sector_33_code,
-            sector_33_code_name=self.sector_33_code_name,
-            scale_category=self.scale_category,
-            market_code=self.market_code,
-            market_code_name=self.market_code_name,
-            margin_code=self.margin_code,
-            margin_code_name=self.margin_code_name,
-        )
+        # ListedInfoFactory を使用してエンティティを作成
+        api_data = {
+            "Date": self.date,
+            "Code": self.code,
+            "CompanyName": self.company_name,
+            "CompanyNameEnglish": self.company_name_english,
+            "Sector17Code": self.sector_17_code,
+            "Sector17CodeName": self.sector_17_code_name,
+            "Sector33Code": self.sector_33_code,
+            "Sector33CodeName": self.sector_33_code_name,
+            "ScaleCategory": self.scale_category,
+            "MarketCode": self.market_code,
+            "MarketCodeName": self.market_code_name,
+            "MarginCode": self.margin_code,
+            "MarginCodeName": self.margin_code_name,
+        }
+        return ListedInfoFactory.from_jquants_response(api_data)
 
     @classmethod
     def from_entity(cls, entity: ListedInfo) -> "ListedInfoDTO":

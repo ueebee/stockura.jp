@@ -24,7 +24,7 @@ from app.application.use_cases.manage_schedule import ManageScheduleUseCase
 from app.infrastructure.database.connection import get_session
 from app.infrastructure.di.providers import get_schedule_event_publisher
 from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
-from app.infrastructure.repositories.database.schedule_repository import ScheduleRepository
+from app.infrastructure.repositories.database.schedule_repository import ScheduleRepositoryImpl
 from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
@@ -35,7 +35,7 @@ async def get_manage_schedule_use_case(
     event_publisher: Optional[ScheduleEventPublisher] = Depends(get_schedule_event_publisher),
 ) -> ManageScheduleUseCase:
     """Get manage schedule use case."""
-    repository = ScheduleRepository(session)
+    repository = ScheduleRepositoryImpl(session)
     return ManageScheduleUseCase(repository, event_publisher=event_publisher)
 
 

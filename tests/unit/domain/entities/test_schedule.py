@@ -104,108 +104,171 @@ class TestSchedule:
         assert schedule.args == existing_args
         assert schedule.kwargs == existing_kwargs
 
-    def test_to_dict_minimal(self):
-        """最小パラメータでの辞書変換テスト"""
-        # Arrange
-        schedule_id = uuid4()
-        schedule = Schedule(
-            id=schedule_id,
+    def test_can_execute(self):
+        """can_execute メソッドのテスト"""
+        # 有効かつ実行ポリシーが allow のスケジュール
+        enabled_schedule = Schedule(
+            id=uuid4(),
+            name="enabled",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            enabled=True,
+            execution_policy="allow"
+        )
+        assert enabled_schedule.can_execute() is True
+        
+        # 無効なスケジュール
+        disabled_schedule = Schedule(
+            id=uuid4(),
+            name="disabled",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            enabled=False
+        )
+        assert disabled_schedule.can_execute() is False
+        
+        # 実行ポリシーが skip のスケジュール
+        skip_schedule = Schedule(
+            id=uuid4(),
+            name="skip",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            enabled=True,
+            execution_policy="skip"
+        )
+        assert skip_schedule.can_execute() is False
+
+    def test_category_methods(self):
+        """カテゴリ関連メソッドのテスト"""
+        # カテゴリを持つスケジュール
+        schedule_with_category = Schedule(
+            id=uuid4(),
             name="test",
             task_name="test_task",
-            cron_expression="0 0 * * *"
+            cron_expression="0 0 * * *",
+            category="data_fetch"
         )
         
-        # Act
-        result = schedule.to_dict()
+        assert schedule_with_category.has_category("data_fetch") is True
+        assert schedule_with_category.has_category("analysis") is False
         
-        # Assert
-        assert result == {
-            "id": str(schedule_id),
-            "name": "test",
-            "task_name": "test_task",
-            "cron_expression": "0 0 * * *",
-            "enabled": True,
-            "args": [],
-            "kwargs": {},
-            "description": None,
-            "category": None,
-            "tags": [],
-            "execution_policy": "allow",
-            "auto_generated_name": False,
-            "created_at": None,
-            "updated_at": None
-        }
-
-    def test_to_dict_with_all_fields(self):
-        """全フィールドでの辞書変換テスト"""
-        # Arrange
-        schedule_id = uuid4()
-        now = datetime.now()
-        schedule = Schedule(
-            id=schedule_id,
-            name="full_schedule",
-            task_name="fetch_listed_info",
-            cron_expression="0 9 * * *",
-            enabled=False,
-            args=["arg1", 123],
-            kwargs={"key1": "value1", "key2": 456},
-            description="Test description",
-            category="data_fetch",
-            tags=["jquants", "daily"],
-            execution_policy="skip",
-            auto_generated_name=True,
-            created_at=now,
-            updated_at=now
+        # カテゴリを持たないスケジュール
+        schedule_without_category = Schedule(
+            id=uuid4(),
+            name="test",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            category=None
         )
         
-        # Act
-        result = schedule.to_dict()
-        
-        # Assert
-        assert result == {
-            "id": str(schedule_id),
-            "name": "full_schedule",
-            "task_name": "fetch_listed_info",
-            "cron_expression": "0 9 * * *",
-            "enabled": False,
-            "args": ["arg1", 123],
-            "kwargs": {"key1": "value1", "key2": 456},
-            "description": "Test description",
-            "category": "data_fetch",
-            "tags": ["jquants", "daily"],
-            "execution_policy": "skip",
-            "auto_generated_name": True,
-            "created_at": now.isoformat(),
-            "updated_at": now.isoformat()
-        }
+        assert schedule_without_category.has_category("data_fetch") is False
 
-    def test_to_dict_preserves_complex_kwargs(self):
-        """複雑な kwargs の辞書変換テスト"""
-        # Arrange
-        complex_kwargs = {
-            "codes": ["1301", "1305", "7203"],
-            "from_date": "2024-01-01",
-            "to_date": "2024-12-31",
-            "nested": {
-                "level1": {
-                    "level2": ["value1", "value2"]
-                }
-            }
-        }
-        
+    def test_tag_methods(self):
+        """タグ関連メソッドのテスト"""
+        # 複数のタグを持つスケジュール
         schedule = Schedule(
             id=uuid4(),
             name="test",
-            task_name="complex_task",
+            task_name="test_task",
             cron_expression="0 0 * * *",
-            kwargs=complex_kwargs
+            tags=["jquants", "daily", "listed_info"]
         )
         
-        # Act
-        result = schedule.to_dict()
+        # has_tag
+        assert schedule.has_tag("jquants") is True
+        assert schedule.has_tag("weekly") is False
         
-        # Assert
-        assert result["kwargs"] == complex_kwargs
+        # has_any_tag
+        assert schedule.has_any_tag(["weekly", "monthly"]) is False
+        assert schedule.has_any_tag(["weekly", "daily"]) is True
+        assert schedule.has_any_tag(["jquants", "daily"]) is True
+        
+        # has_all_tags
+        assert schedule.has_all_tags(["jquants", "daily"]) is True
+        assert schedule.has_all_tags(["jquants", "daily", "listed_info"]) is True
+        assert schedule.has_all_tags(["jquants", "weekly"]) is False
+        assert schedule.has_all_tags([]) is True  # 空リストは常に True
+
+    def test_is_auto_generated(self):
+        """is_auto_generated メソッドのテスト"""
+        # 自動生成されたスケジュール
+        auto_schedule = Schedule(
+            id=uuid4(),
+            name="auto_generated",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            auto_generated_name=True
+        )
+        assert auto_schedule.is_auto_generated() is True
+        
+        # 手動作成されたスケジュール
+        manual_schedule = Schedule(
+            id=uuid4(),
+            name="manual",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            auto_generated_name=False
+        )
+        assert manual_schedule.is_auto_generated() is False
+
+    def test_is_task(self):
+        """is_task メソッドのテスト"""
+        schedule = Schedule(
+            id=uuid4(),
+            name="test",
+            task_name="fetch_listed_info",
+            cron_expression="0 0 * * *"
+        )
+        
+        assert schedule.is_task("fetch_listed_info") is True
+        assert schedule.is_task("fetch_stock_prices") is False
+
+    def test_matches_filter(self):
+        """matches_filter メソッドのテスト"""
+        schedule = Schedule(
+            id=uuid4(),
+            name="test",
+            task_name="fetch_listed_info",
+            cron_expression="0 0 * * *",
+            enabled=True,
+            category="data_fetch",
+            tags=["jquants", "daily"]
+        )
+        
+        # カテゴリフィルタ
+        assert schedule.matches_filter(category="data_fetch") is True
+        assert schedule.matches_filter(category="analysis") is False
+        
+        # タグフィルタ
+        assert schedule.matches_filter(tags=["daily"]) is True
+        assert schedule.matches_filter(tags=["weekly", "daily"]) is True
+        assert schedule.matches_filter(tags=["weekly", "monthly"]) is False
+        
+        # タスク名フィルタ
+        assert schedule.matches_filter(task_name="fetch_listed_info") is True
+        assert schedule.matches_filter(task_name="other_task") is False
+        
+        # 有効フィルタ
+        assert schedule.matches_filter(enabled_only=True) is True
+        
+        # 複合フィルタ
+        assert schedule.matches_filter(
+            category="data_fetch",
+            tags=["daily"],
+            task_name="fetch_listed_info",
+            enabled_only=True
+        ) is True
+        
+        # 無効なスケジュールでのテスト
+        disabled_schedule = Schedule(
+            id=uuid4(),
+            name="disabled",
+            task_name="test_task",
+            cron_expression="0 0 * * *",
+            enabled=False
+        )
+        assert disabled_schedule.matches_filter(enabled_only=True) is False
+        assert disabled_schedule.matches_filter(enabled_only=False) is True
 
     def test_equality(self):
         """等価性テスト"""

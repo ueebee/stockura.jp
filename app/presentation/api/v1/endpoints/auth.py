@@ -7,7 +7,7 @@ from app.domain.exceptions.jquants_exceptions import (
     AuthenticationError,
     TokenRefreshError,
 )
-from app.domain.repositories.auth_repository import AuthRepository
+from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
 from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
 from app.infrastructure.redis.redis_client import get_redis_client
 
@@ -35,14 +35,14 @@ class RefreshTokenResponse(BaseModel):
     message: str
 
 
-async def get_auth_repository() -> AuthRepository:
+async def get_auth_repository() -> AuthRepositoryInterface:
     """認証リポジトリの依存性注入"""
     redis_client = await get_redis_client()
     return RedisAuthRepository(redis_client)
 
 
 def get_auth_use_case(
-    auth_repository: AuthRepository = Depends(get_auth_repository),
+    auth_repository: AuthRepositoryInterface = Depends(get_auth_repository),
 ) -> AuthUseCase:
     """認証ユースケースの依存性注入"""
     return AuthUseCase(auth_repository)
@@ -187,7 +187,7 @@ class LogoutRequest(BaseModel):
 @router.post("/logout")
 async def logout(
     request: LogoutRequest,
-    auth_repository: AuthRepository = Depends(get_auth_repository),
+    auth_repository: AuthRepositoryInterface = Depends(get_auth_repository),
 ) -> dict:
     """
     ログアウト（認証情報を削除）

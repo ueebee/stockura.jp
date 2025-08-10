@@ -9,13 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logger import get_logger
 from app.domain.entities.listed_info import ListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.domain.repositories.listed_info_repository import ListedInfoRepository
+from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
 from app.infrastructure.database.models.listed_info import ListedInfoModel
 
 logger = get_logger(__name__)
 
 
-class ListedInfoRepositoryImpl(ListedInfoRepository):
+class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
     """Listed info repository implementation using SQLAlchemy."""
 
     def __init__(self, session: AsyncSession) -> None:

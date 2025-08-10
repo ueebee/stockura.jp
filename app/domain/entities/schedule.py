@@ -33,21 +33,97 @@ class Schedule:
         if self.tags is None:
             self.tags = []
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "task_name": self.task_name,
-            "cron_expression": self.cron_expression,
-            "enabled": self.enabled,
-            "args": self.args,
-            "kwargs": self.kwargs,
-            "description": self.description,
-            "category": self.category,
-            "tags": self.tags,
-            "execution_policy": self.execution_policy,
-            "auto_generated_name": self.auto_generated_name,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
+    def can_execute(self) -> bool:
+        """実行可能かどうかを判定"""
+        return self.enabled and self.execution_policy == "allow"
+
+    def has_category(self, category: str) -> bool:
+        """指定されたカテゴリに属するか
+
+        Args:
+            category: カテゴリ名
+
+        Returns:
+            該当する場合 True
+        """
+        return self.category == category
+
+    def has_tag(self, tag: str) -> bool:
+        """指定されたタグを持つか
+
+        Args:
+            tag: タグ名
+
+        Returns:
+            該当する場合 True
+        """
+        return tag in self.tags
+
+    def has_any_tag(self, tags: List[str]) -> bool:
+        """指定されたタグのいずれかを持つか
+
+        Args:
+            tags: タグ名のリスト
+
+        Returns:
+            いずれかのタグを持つ場合 True
+        """
+        return any(tag in self.tags for tag in tags)
+
+    def has_all_tags(self, tags: List[str]) -> bool:
+        """指定されたタグをすべて持つか
+
+        Args:
+            tags: タグ名のリスト
+
+        Returns:
+            すべてのタグを持つ場合 True
+        """
+        return all(tag in self.tags for tag in tags)
+
+    def is_auto_generated(self) -> bool:
+        """自動生成されたスケジュールかどうか"""
+        return self.auto_generated_name
+
+    def is_task(self, task_name: str) -> bool:
+        """指定されたタスク名と一致するか
+
+        Args:
+            task_name: タスク名
+
+        Returns:
+            一致する場合 True
+        """
+        return self.task_name == task_name
+
+    def matches_filter(
+        self,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        task_name: Optional[str] = None,
+        enabled_only: bool = False,
+    ) -> bool:
+        """フィルタ条件に一致するかどうかを判定
+
+        Args:
+            category: カテゴリフィルタ
+            tags: タグフィルタ（いずれかのタグを持つ場合に一致）
+            task_name: タスク名フィルタ
+            enabled_only: 有効なスケジュールのみ
+
+        Returns:
+            フィルタ条件に一致する場合 True
+        """
+        if enabled_only and not self.enabled:
+            return False
+        
+        if category and not self.has_category(category):
+            return False
+        
+        if tags and not self.has_any_tag(tags):
+            return False
+        
+        if task_name and not self.is_task(task_name):
+            return False
+        
+        return True

@@ -10,7 +10,7 @@ from app.domain.exceptions.schedule_exceptions import (
     ScheduleNotFoundException,
     ScheduleValidationException
 )
-from app.domain.repositories.schedule_repository import ScheduleRepository
+from app.domain.repositories.schedule_repository_interface import ScheduleRepositoryInterface
 from app.domain.validators.cron_validator import validate_cron_expression, get_next_run_time
 from app.domain.helpers.schedule_presets import get_preset_cron_expression
 from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
@@ -23,7 +23,7 @@ class ManageListedInfoScheduleUseCase:
     
     def __init__(
         self,
-        schedule_repository: ScheduleRepository,
+        schedule_repository: ScheduleRepositoryInterface,
         event_publisher: Optional[ScheduleEventPublisher] = None
     ):
         """
