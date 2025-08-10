@@ -468,7 +468,7 @@ class TestScheduleEndpoints:
         mock_session = AsyncMock()
         
         # Act
-        with patch('app.presentation.api.v1.endpoints.schedules.ScheduleRepository') as mock_repo_class:
+        with patch('app.presentation.api.v1.endpoints.schedules.ScheduleRepositoryImpl') as mock_repo_class:
             mock_repo_class.return_value = MagicMock()
             use_case = await get_manage_schedule_use_case(mock_session)
         
