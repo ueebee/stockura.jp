@@ -1,0 +1,54 @@
+{
+  "environment_vars": {
+    "CELERY_BEAT_REDIS_SYNC_ENABLED": {
+      "value": "true",
+      "is_set": true
+    },
+    "CELERY_BEAT_MIN_SYNC_INTERVAL": {
+      "value": "5",
+      "is_set": true
+    },
+    "CELERY_BEAT_REDIS_CHANNEL": {
+      "value": "celery_beat_schedule_updates",
+      "is_set": true
+    },
+    "REDIS_URL": {
+      "value": "redis://redis:6379/0",
+      "is_set": true
+    },
+    "CELERY_BROKER_URL": {
+      "value": "redis://redis:6379/1",
+      "is_set": true
+    },
+    "from_settings": {
+      "celery_beat_redis_sync_enabled": true,
+      "celery_beat_min_sync_interval": 5,
+      "celery_beat_redis_channel": "celery_beat_schedule_updates"
+    }
+  },
+  "redis_connection": {
+    "REDIS_URL": {
+      "status": "connected",
+      "ping": true,
+      "version": "7.4.5",
+      "connected_clients": 42
+    },
+    "CELERY_BROKER_URL": {
+      "status": "connected",
+      "ping": true,
+      "version": "7.4.5",
+      "connected_clients": 42
+    }
+  },
+  "pubsub_test": {
+    "status": "success",
+    "channel": "celery_beat_schedule_updates",
+    "message_received": true
+  },
+  "celery_beat_config": {
+    "beat_scheduler": "app.infrastructure.celery.schedulers.database_scheduler_asyncpg:DatabaseSchedulerAsyncPG",
+    "beat_sync_every": "NOT SET",
+    "timezone": "Asia/Tokyo"
+  },
+  "recommendations": []
+}

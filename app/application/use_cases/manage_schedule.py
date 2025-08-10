@@ -12,14 +12,20 @@ from app.domain.entities.schedule import Schedule
 from app.domain.repositories.schedule_repository_interface import (
     ScheduleRepositoryInterface,
 )
+from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
 
 
 class ManageScheduleUseCase:
     """Use case for managing schedules."""
 
-    def __init__(self, schedule_repository: ScheduleRepositoryInterface):
+    def __init__(
+        self,
+        schedule_repository: ScheduleRepositoryInterface,
+        event_publisher: Optional[ScheduleEventPublisher] = None
+    ):
         """Initialize use case."""
         self._schedule_repository = schedule_repository
+        self._event_publisher = event_publisher
 
     async def create_schedule(self, dto: ScheduleCreateDto) -> ScheduleDto:
         """Create a new schedule."""
@@ -60,6 +66,10 @@ class ManageScheduleUseCase:
         
         # Save to repository
         created_schedule = await self._schedule_repository.create(schedule)
+        
+        # Publish event
+        if self._event_publisher:
+            await self._event_publisher.publish_schedule_created(str(created_schedule.id))
         
         # Convert to DTO
         return ScheduleDto.from_entity(created_schedule)
@@ -123,11 +133,22 @@ class ManageScheduleUseCase:
             
         # Save updates
         updated_schedule = await self._schedule_repository.update(schedule)
+        
+        # Publish event
+        if self._event_publisher:
+            await self._event_publisher.publish_schedule_updated(str(updated_schedule.id))
+        
         return ScheduleDto.from_entity(updated_schedule)
 
     async def delete_schedule(self, schedule_id: UUID) -> bool:
         """Delete schedule."""
-        return await self._schedule_repository.delete(schedule_id)
+        result = await self._schedule_repository.delete(schedule_id)
+        
+        # Publish event
+        if result and self._event_publisher:
+            await self._event_publisher.publish_schedule_deleted(str(schedule_id))
+        
+        return result
 
     async def enable_schedule(self, schedule_id: UUID) -> bool:
         """Enable schedule."""

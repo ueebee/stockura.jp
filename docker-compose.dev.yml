@@ -24,6 +24,8 @@ services:
       - ./tests:/app/tests
     environment:
       - LOG_LEVEL=DEBUG
+      - CELERY_TIMEZONE=${CELERY_TIMEZONE:-UTC}
+      - CELERY_ENABLE_UTC=${CELERY_ENABLE_UTC:-true}
     command: celery -A app.infrastructure.celery.app worker --loglevel=debug
 
   celery-beat:
@@ -34,6 +36,11 @@ services:
       - ./app:/app/app
     environment:
       - LOG_LEVEL=DEBUG
+      - CELERY_TIMEZONE=${CELERY_TIMEZONE:-UTC}
+      - CELERY_ENABLE_UTC=${CELERY_ENABLE_UTC:-true}
+      - CELERY_BEAT_REDIS_SYNC_ENABLED=${CELERY_BEAT_REDIS_SYNC_ENABLED:-true}
+      - CELERY_BEAT_MIN_SYNC_INTERVAL=${CELERY_BEAT_MIN_SYNC_INTERVAL:-5}
+      - CELERY_BEAT_REDIS_CHANNEL=${CELERY_BEAT_REDIS_CHANNEL:-celery_beat_schedule_updates}
     command: celery -A app.infrastructure.celery.app beat --loglevel=debug
 
   postgres:
