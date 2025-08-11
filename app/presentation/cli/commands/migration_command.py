@@ -4,16 +4,7 @@ import asyncio
 import click
 
 from app.core.logger import get_logger
-from app.infrastructure.database.migration import (
-    check_pending_migrations,
-    create_revision,
-    downgrade_database,
-    get_current_revision,
-    init_database,
-    reset_database,
-    show_history,
-    upgrade_database,
-)
+from app.presentation.dependencies.migration import get_migration_service
 
 logger = get_logger(__name__)
 
@@ -29,7 +20,8 @@ def db_group():
 def upgrade(revision: str):
     """Upgrade database to a revision."""
     try:
-        asyncio.run(upgrade_database(revision))
+        service = get_migration_service()
+        asyncio.run(service.upgrade_database(revision))
         click.echo(f"✅ Database upgraded to revision: {revision}")
     except Exception as e:
         click.echo(f"❌ Failed to upgrade database: {e}", err=True)
@@ -41,7 +33,8 @@ def upgrade(revision: str):
 def downgrade(revision: str):
     """Downgrade database to a revision."""
     try:
-        asyncio.run(downgrade_database(revision))
+        service = get_migration_service()
+        asyncio.run(service.downgrade_database(revision))
         click.echo(f"✅ Database downgraded to revision: {revision}")
     except Exception as e:
         click.echo(f"❌ Failed to downgrade database: {e}", err=True)
@@ -54,7 +47,8 @@ def downgrade(revision: str):
 def revision(message: str, autogenerate: bool):
     """Create a new migration revision."""
     try:
-        asyncio.run(create_revision(message, autogenerate))
+        service = get_migration_service()
+        asyncio.run(service.create_revision(message, autogenerate))
         click.echo(f"✅ Created new revision: {message}")
     except Exception as e:
         click.echo(f"❌ Failed to create revision: {e}", err=True)
@@ -65,7 +59,8 @@ def revision(message: str, autogenerate: bool):
 def current():
     """Show current revision."""
     try:
-        current_rev = get_current_revision()
+        service = get_migration_service()
+        current_rev = service.get_current_revision()
         if current_rev:
             click.echo(f"Current revision: {current_rev}")
         else:
@@ -79,7 +74,8 @@ def current():
 def history():
     """Show migration history."""
     try:
-        show_history()
+        service = get_migration_service()
+        service.show_history()
     except Exception as e:
         click.echo(f"❌ Failed to show history: {e}", err=True)
         raise click.Abort()
@@ -89,7 +85,8 @@ def history():
 def check():
     """Check for pending migrations."""
     try:
-        has_pending = asyncio.run(check_pending_migrations())
+        service = get_migration_service()
+        has_pending = asyncio.run(service.check_pending_migrations())
         if has_pending:
             click.echo("⚠️  There are pending migrations. Run 'db upgrade' to apply them.")
         else:
@@ -106,7 +103,8 @@ def init(yes: bool):
     if not yes:
         click.confirm("This will initialize the database. Continue?", abort=True)
     try:
-        asyncio.run(init_database())
+        service = get_migration_service()
+        asyncio.run(service.init_database())
         click.echo("✅ Database initialized successfully")
     except Exception as e:
         click.echo(f"❌ Failed to initialize database: {e}", err=True)
@@ -125,7 +123,8 @@ def reset():
         abort=True
     )
     try:
-        asyncio.run(reset_database())
+        service = get_migration_service()
+        asyncio.run(service.reset_database())
         click.echo("✅ Database reset successfully")
     except Exception as e:
         click.echo(f"❌ Failed to reset database: {e}", err=True)

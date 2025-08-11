@@ -15,15 +15,53 @@ from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoAPIError,
     ListedInfoDataError,
 )
-from app.infrastructure.database.connection import get_async_session_context
-from app.infrastructure.repositories.database.listed_info_repository_impl import (
-    ListedInfoRepositoryImpl,
+from app.presentation.dependencies.cli import (
+    get_cli_session,
+    get_cli_auth_repository,
+    get_cli_listed_info_repository,
+    get_cli_jquants_client,
 )
-from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
-from app.infrastructure.external_services.jquants.base_client import JQuantsBaseClient
-from app.infrastructure.external_services.jquants.listed_info_client import JQuantsListedInfoClient
 
 logger = get_logger(__name__)
+
+
+async def authenticate_jquants(email: str, password: str) -> JQuantsCredentials:
+    """J-Quants API の認証を行う
+    
+    Args:
+        email: J-Quants アカウントのメールアドレス
+        password: J-Quants アカウントのパスワード
+        
+    Returns:
+        JQuantsCredentials: 認証情報
+        
+    Raises:
+        click.ClickException: 認証に失敗した場合
+    """
+    auth_repo = await get_cli_auth_repository()
+    
+    # リフレッシュトークンを取得
+    refresh_token = await auth_repo.get_refresh_token(email, password)
+    if not refresh_token:
+        raise click.ClickException("J-Quants API の認証に失敗しました。")
+    
+    # ID トークンを取得
+    id_token = await auth_repo.get_id_token(refresh_token)
+    if not id_token:
+        raise click.ClickException("ID トークンの取得に失敗しました。")
+    
+    # 認証情報を作成
+    credentials = JQuantsCredentials(
+        email=email,
+        password=password,
+        refresh_token=refresh_token,
+        id_token=id_token
+    )
+    
+    # 認証情報を保存（オプション）
+    await auth_repo.save_credentials(credentials)
+    
+    return credentials
 
 
 @click.command()
@@ -100,40 +138,15 @@ async def _fetch_listed_info_async(
 
         click.echo("J-Quants API に接続中...")
 
-        # 認証
-        auth_repo = JQuantsAuthRepository()
-        
-        # リフレッシュトークンを取得
-        refresh_token = await auth_repo.get_refresh_token(jquants_email, jquants_password)
-        if not refresh_token:
-            click.echo("エラー: J-Quants API の認証に失敗しました。", err=True)
-            sys.exit(1)
-        
-        # ID トークンを取得
-        id_token = await auth_repo.get_id_token(refresh_token)
-        if not id_token:
-            click.echo("エラー: ID トークンの取得に失敗しました。", err=True)
-            sys.exit(1)
-        
-        # 認証情報を作成
-        credentials = JQuantsCredentials(
-            email=jquants_email,
-            password=jquants_password,
-            refresh_token=refresh_token,
-            id_token=id_token
-        )
-        
-        # 認証情報を保存（オプション）
-        await auth_repo.save_credentials(credentials)
-
+        # 認証処理
+        credentials = await authenticate_jquants(jquants_email, jquants_password)
         click.echo("認証成功")
 
         # データベースセッションとリポジトリの初期化
-        async with get_async_session_context() as session:
+        async for session in get_cli_session():
             # クライアントとリポジトリの初期化
-            base_client = JQuantsBaseClient(credentials)
-            jquants_client = JQuantsListedInfoClient(base_client)
-            repository = ListedInfoRepositoryImpl(session)
+            jquants_client = await get_cli_jquants_client(credentials)
+            repository = await get_cli_listed_info_repository(session)
 
             # ユースケースの実行
             use_case = FetchListedInfoUseCase(
@@ -167,6 +180,9 @@ async def _fetch_listed_info_async(
             # セッションのコミット
             await session.commit()
 
+    except click.ClickException:
+        # Click 例外はそのまま再発生
+        raise
     except KeyboardInterrupt:
         click.echo("\n 処理を中断しました。", err=True)
         sys.exit(130)
