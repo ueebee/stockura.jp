@@ -1,7 +1,9 @@
 """スケジュール関連の例外定義"""
 
+from app.domain.exceptions.base import DomainException
 
-class ScheduleException(Exception):
+
+class ScheduleException(DomainException):
     """スケジュール関連の基底例外クラス"""
     pass
 

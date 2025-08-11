@@ -1,7 +1,9 @@
 """Listed info related exceptions."""
 
+from app.domain.exceptions.base import DomainException
 
-class ListedInfoError(Exception):
+
+class ListedInfoError(DomainException):
     """上場銘柄情報関連の基底例外"""
 
     pass

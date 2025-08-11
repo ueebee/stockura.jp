@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from typing import Dict, Any
 
 from app.application.use_cases.auth_use_case import AuthUseCase
+from app.presentation.schemas import SuccessResponse
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.exceptions.jquants_exceptions import (
     AuthenticationError,
@@ -38,11 +40,11 @@ class RefreshTokenResponse(BaseModel):
 # get_auth_repository と get_auth_use_case 関数は削除（dependencies モジュールのものを使用）
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=SuccessResponse[LoginResponse])
 async def login(
     request: LoginRequest,
     auth_use_case: AuthUseCase = Depends(get_auth_use_case),
-) -> LoginResponse:
+) -> SuccessResponse[LoginResponse]:
     """
     J-Quants アカウントでログイン
     
@@ -61,17 +63,17 @@ async def login(
             password=request.password
         )
         
-        return LoginResponse(
+        login_response = LoginResponse(
             email=credentials.email,
             has_valid_token=credentials.has_valid_id_token(),
             message="ログインに成功しました"
         )
         
+        return SuccessResponse(data=login_response)
+        
     except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        from app.presentation.exceptions import UnauthorizedError
+        raise UnauthorizedError(str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -79,11 +81,11 @@ async def login(
         )
 
 
-@router.post("/refresh", response_model=RefreshTokenResponse)
+@router.post("/refresh", response_model=SuccessResponse[RefreshTokenResponse])
 async def refresh_token(
     request: RefreshTokenRequest,
     auth_use_case: AuthUseCase = Depends(get_auth_use_case),
-) -> RefreshTokenResponse:
+) -> SuccessResponse[RefreshTokenResponse]:
     """
     ID トークンを更新
     
@@ -100,30 +102,28 @@ async def refresh_token(
         # 保存された認証情報を取得
         existing_credentials = await auth_use_case.get_valid_credentials(request.email)
         if not existing_credentials:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="認証情報が見つかりません。先にログインしてください。"
-            )
+            from app.presentation.exceptions import UnauthorizedError
+            raise UnauthorizedError("認証情報が見つかりません。先にログインしてください。")
         
         # トークンを更新
         updated_credentials = await auth_use_case.ensure_valid_token(existing_credentials)
         
-        return RefreshTokenResponse(
+        refresh_response = RefreshTokenResponse(
             email=updated_credentials.email,
             has_valid_token=updated_credentials.has_valid_id_token(),
             message="トークンの更新に成功しました"
         )
         
+        return SuccessResponse(data=refresh_response)
+        
     except TokenRefreshError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        from app.presentation.exceptions import UnauthorizedError
+        raise UnauthorizedError(str(e))
     except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        from app.presentation.exceptions import UnauthorizedError
+        raise UnauthorizedError(str(e))
+    except UnauthorizedError:
+        raise  # そのまま再発生
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -131,11 +131,11 @@ async def refresh_token(
         )
 
 
-@router.get("/status/{email}", response_model=dict)
+@router.get("/status/{email}", response_model=SuccessResponse[Dict[str, Any]])
 async def check_auth_status(
     email: str,
     auth_use_case: AuthUseCase = Depends(get_auth_use_case),
-) -> dict:
+) -> SuccessResponse[Dict[str, Any]]:
     """
     認証状態を確認
     
@@ -149,19 +149,21 @@ async def check_auth_status(
         credentials = await auth_use_case.get_valid_credentials(email)
         
         if credentials:
-            return {
+            status_data = {
                 "email": email,
                 "authenticated": True,
                 "has_valid_token": credentials.has_valid_id_token(),
                 "needs_refresh": credentials.needs_refresh()
             }
         else:
-            return {
+            status_data = {
                 "email": email,
                 "authenticated": False,
                 "has_valid_token": False,
                 "needs_refresh": True
             }
+        
+        return SuccessResponse(data=status_data)
             
     except Exception as e:
         raise HTTPException(
@@ -174,11 +176,11 @@ class LogoutRequest(BaseModel):
     email: str = Field(..., description="J-Quants アカウントのメールアドレス")
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=SuccessResponse[Dict[str, str]])
 async def logout(
     request: LogoutRequest,
     auth_repository: AuthRepositoryInterface = Depends(get_auth_repository),
-) -> dict:
+) -> SuccessResponse[Dict[str, str]]:
     """
     ログアウト（認証情報を削除）
     
@@ -193,10 +195,12 @@ async def logout(
         if hasattr(auth_repository, 'delete_credentials'):
             await auth_repository.delete_credentials(request.email)
         
-        return {
+        logout_data = {
             "email": request.email,
             "message": "ログアウトしました"
         }
+        
+        return SuccessResponse(data=logout_data)
         
     except Exception as e:
         raise HTTPException(

@@ -105,7 +105,7 @@ async def _fetch_listed_info_async(
         
         task_log = TaskExecutionLog(
             id=log_id,
-            schedule_id=UUID(str(schedule_id)) if schedule_id else None,
+            schedule_id=UUID(schedule_id) if schedule_id else None,
             task_name="fetch_listed_info_task",
             task_id=task_id,
             started_at=datetime.utcnow(),
@@ -113,6 +113,7 @@ async def _fetch_listed_info_async(
         )
         
         await task_log_repo.create(task_log)
+        await session.commit()  # 明示的にコミットして、タスクログを確実に保存
         
         try:
             # Calculate date range based on period_type
@@ -182,6 +183,7 @@ async def _fetch_listed_info_async(
                 result=result_data,
                 error_message="\n".join(errors) if errors else None,
             )
+            await session.commit()  # 更新後も明示的にコミット
             
             logger.info(
                 f"Task completed - status: {status}, "
@@ -203,6 +205,7 @@ async def _fetch_listed_info_async(
                 finished_at=datetime.utcnow(),
                 error_message=str(e),
             )
+            await session.commit()  # エラー時も確実にコミット
             
             # エラー時も base_client をクローズ
             if 'base_client' in locals():
