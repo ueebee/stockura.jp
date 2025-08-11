@@ -48,9 +48,10 @@ class TestLoginEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["email"] == "test@example.com"
-            assert data["has_valid_token"] is True
-            assert data["message"] == "ログインに成功しました"
+            assert data["success"] is True
+            assert data["data"]["email"] == "test@example.com"
+            assert data["data"]["has_valid_token"] is True
+            assert data["data"]["message"] == "ログインに成功しました"
 
     def test_login_invalid_credentials(self, client):
         """無効な認証情報でのログインテスト"""
@@ -68,7 +69,9 @@ class TestLoginEndpoint:
             )
 
             assert response.status_code == 401
-            assert "認証に失敗しました" in response.json()["detail"]
+            data = response.json()
+            assert data["success"] is False
+            assert "認証に失敗しました" in data["error"]["message"]
 
     def test_login_invalid_email_format(self, client):
         """無効なメールフォーマットのテスト"""
@@ -80,12 +83,14 @@ class TestLoginEndpoint:
         # メールフォーマットのバリデーションが API レベルで行われていない場合
         # 401 エラー（認証失敗）になる可能性がある
         assert response.status_code in [401, 422]
+        data = response.json()
         if response.status_code == 422:
             assert "validation error" in response.json()["detail"][0]["msg"]
         else:
             # 401 エラーの場合、具体的なエラーメッセージが返る
-            detail = response.json()["detail"]
-            assert "メールアドレスまたはパスワード" in detail or "認証に失敗しました" in detail
+            assert data["success"] is False
+            message = data["error"]["message"]
+            assert "メールアドレスまたはパスワード" in message or "認証に失敗しました" in message
 
     def test_login_missing_fields(self, client):
         """必須フィールド不足のテスト"""
@@ -113,7 +118,9 @@ class TestLoginEndpoint:
             )
 
             assert response.status_code == 500
-            assert "ログイン処理中にエラーが発生しました" in response.json()["detail"]
+            data = response.json()
+            assert data["success"] is False
+            assert "ログイン処理中にエラーが発生しました" in data["error"]["message"]
 
 
 class TestRefreshTokenEndpoint:
@@ -140,9 +147,10 @@ class TestRefreshTokenEndpoint:
 
                 assert response.status_code == 200
                 data = response.json()
-                assert data["email"] == "test@example.com"
-                assert data["has_valid_token"] is True
-                assert data["message"] == "トークンの更新に成功しました"
+                assert data["success"] is True
+                assert data["data"]["email"] == "test@example.com"
+                assert data["data"]["has_valid_token"] is True
+                assert data["data"]["message"] == "トークンの更新に成功しました"
 
     def test_refresh_token_not_found(self, client):
         """認証情報が見つからない場合のテスト"""
@@ -159,12 +167,14 @@ class TestRefreshTokenEndpoint:
 
             # エンドポイントの実装によっては 500 エラーになる可能性がある
             assert response.status_code in [401, 500]
+            data = response.json()
+            assert data["success"] is False
             if response.status_code == 401:
-                assert "認証情報が見つかりません" in response.json()["detail"]
+                assert "認証情報が見つかりません" in data["error"]["message"]
             else:
                 # 500 エラーの場合はエラーメッセージが返る
-                detail = response.json()["detail"]
-                assert "エラーが発生しました" in detail or "認証情報が見つかりません" in detail
+                message = data["error"]["message"]
+                assert "エラーが発生しました" in message or "認証情報が見つかりません" in message
 
     def test_refresh_token_error(self, client, mock_credentials):
         """トークンリフレッシュエラーのテスト"""
@@ -188,7 +198,9 @@ class TestRefreshTokenEndpoint:
                 )
 
                 assert response.status_code == 401
-                assert "リフレッシュトークンが無効です" in response.json()["detail"]
+                data = response.json()
+                assert data["success"] is False
+                assert "リフレッシュトークンが無効です" in data["error"]["message"]
 
 
 class TestAuthStatusEndpoint:
@@ -206,10 +218,11 @@ class TestAuthStatusEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["email"] == "test@example.com"
-            assert data["authenticated"] is True
-            assert data["has_valid_token"] is True
-            assert data["needs_refresh"] is False
+            assert data["success"] is True
+            assert data["data"]["email"] == "test@example.com"
+            assert data["data"]["authenticated"] is True
+            assert data["data"]["has_valid_token"] is True
+            assert data["data"]["needs_refresh"] is False
 
     def test_check_auth_status_not_authenticated(self, client):
         """未認証状態の確認テスト"""
@@ -223,10 +236,11 @@ class TestAuthStatusEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["email"] == "notfound@example.com"
-            assert data["authenticated"] is False
-            assert data["has_valid_token"] is False
-            assert data["needs_refresh"] is True
+            assert data["success"] is True
+            assert data["data"]["email"] == "notfound@example.com"
+            assert data["data"]["authenticated"] is False
+            assert data["data"]["has_valid_token"] is False
+            assert data["data"]["needs_refresh"] is True
 
     def test_check_auth_status_expired_token(self, client):
         """期限切れトークンの状態確認テスト"""
@@ -250,9 +264,10 @@ class TestAuthStatusEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["authenticated"] is True
-            assert data["has_valid_token"] is False
-            assert data["needs_refresh"] is True
+            assert data["success"] is True
+            assert data["data"]["authenticated"] is True
+            assert data["data"]["has_valid_token"] is False
+            assert data["data"]["needs_refresh"] is True
 
     def test_check_auth_status_server_error(self, client):
         """サーバーエラーのテスト"""
@@ -265,4 +280,6 @@ class TestAuthStatusEndpoint:
             response = client.get("/api/v1/auth/status/test@example.com")
 
             assert response.status_code == 500
-            assert "認証状態の確認中にエラーが発生しました" in response.json()["detail"]
+            data = response.json()
+            assert data["success"] is False
+            assert "認証状態の確認中にエラーが発生しました" in data["error"]["message"]

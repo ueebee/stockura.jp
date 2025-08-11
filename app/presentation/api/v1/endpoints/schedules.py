@@ -1,6 +1,6 @@
 """Schedule management endpoints."""
 import json
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -14,6 +14,7 @@ from app.presentation.api.v1.schemas.schedule import (
     ScheduleFilter,
     TaskParams,
 )
+from app.presentation.schemas import SuccessResponse, PaginatedResponse
 from app.application.dtos.schedule_dto import (
     ScheduleCreateDto,
     ScheduleUpdateDto,
@@ -22,6 +23,7 @@ from app.application.dtos.schedule_dto import (
 from app.application.use_cases.manage_schedule import ManageScheduleUseCase
 from app.presentation.dependencies.use_cases import get_manage_schedule_use_case
 from app.presentation.dependencies.repositories import get_task_log_repository
+from app.presentation.validators.decorators import validate_query_params
 from app.domain.repositories.task_log_repository_interface import TaskLogRepositoryInterface
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
@@ -42,13 +44,13 @@ from app.presentation.api.v1.mappers.schedule_mapper import (
 # get_manage_schedule_use_case 関数は削除（dependencies モジュールのものを使用）
 
 
-@router.post("/", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=SuccessResponse[ScheduleResponse], status_code=status.HTTP_201_CREATED)
 async def create_schedule(
     schedule_data: ScheduleCreate,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
     mapper: ScheduleCreateMapper = Depends(get_schedule_create_mapper),
     response_mapper: ScheduleResponseMapper = Depends(get_schedule_response_mapper),
-) -> ScheduleResponse:
+) -> SuccessResponse[ScheduleResponse]:
     """Create a new schedule."""
     # Convert API schema to DTO using mapper
     dto = mapper.schema_to_dto(schedule_data)
@@ -57,18 +59,22 @@ async def create_schedule(
     result = await use_case.create_schedule(dto)
     
     # Convert DTO to API response using mapper
-    return response_mapper.dto_to_schema(result)
+    schedule_response = response_mapper.dto_to_schema(result)
+    
+    return SuccessResponse(data=schedule_response)
 
 
-@router.get("/", response_model=ScheduleListResponse)
+@router.get("/", response_model=PaginatedResponse[ScheduleResponse])
 async def list_schedules(
     enabled_only: bool = False,
     category: Optional[str] = None,
     tags: Optional[List[str]] = Query(None),
     task_name: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
     list_mapper: ScheduleListResponseMapper = Depends(get_schedule_list_response_mapper),
-) -> ScheduleListResponse:
+) -> PaginatedResponse[ScheduleResponse]:
     """List all schedules with optional filters."""
     # If any filter is provided, use filtered search
     if category or tags or task_name:
@@ -84,36 +90,48 @@ async def list_schedules(
     # Convert DTOs to API response using mapper
     items = list_mapper.dto_list_to_schema_list(schedules)
     
-    return ScheduleListResponse(items=items, total=len(items))
+    # ページネーション処理（簡易版）
+    # TODO: 実際のページネーションは UseCase 層で実装する必要がある
+    total = len(items)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_items = items[start:end]
+    
+    return PaginatedResponse.from_data(
+        data=paginated_items,
+        page=page,
+        per_page=per_page,
+        total=total
+    )
 
 
-@router.get("/{schedule_id}", response_model=ScheduleResponse)
+@router.get("/{schedule_id}", response_model=SuccessResponse[ScheduleResponse])
 async def get_schedule(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
     response_mapper: ScheduleResponseMapper = Depends(get_schedule_response_mapper),
-) -> ScheduleResponse:
+) -> SuccessResponse[ScheduleResponse]:
     """Get schedule by ID."""
     schedule = await use_case.get_schedule(schedule_id)
     
     if not schedule:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
     
     # Convert DTO to API response using mapper
-    return response_mapper.dto_to_schema(schedule)
+    schedule_response = response_mapper.dto_to_schema(schedule)
+    
+    return SuccessResponse(data=schedule_response)
 
 
-@router.put("/{schedule_id}", response_model=ScheduleResponse)
+@router.put("/{schedule_id}", response_model=SuccessResponse[ScheduleResponse])
 async def update_schedule(
     schedule_id: UUID,
     schedule_data: ScheduleUpdate,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
     mapper: ScheduleUpdateMapper = Depends(get_schedule_update_mapper),
     response_mapper: ScheduleResponseMapper = Depends(get_schedule_response_mapper),
-) -> ScheduleResponse:
+) -> SuccessResponse[ScheduleResponse]:
     """Update schedule."""
     # Convert API schema to DTO using mapper
     dto = mapper.schema_to_dto(schedule_data)
@@ -122,78 +140,78 @@ async def update_schedule(
     result = await use_case.update_schedule(schedule_id, dto)
     
     if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
     
     # Convert DTO to API response using mapper
-    return response_mapper.dto_to_schema(result)
+    schedule_response = response_mapper.dto_to_schema(result)
+    
+    return SuccessResponse(data=schedule_response)
 
 
-@router.delete("/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{schedule_id}", response_model=SuccessResponse[Dict[str, str]])
 async def delete_schedule(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
-) -> None:
+) -> SuccessResponse[Dict[str, str]]:
     """Delete schedule."""
     success = await use_case.delete_schedule(schedule_id)
     
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
+    
+    return SuccessResponse(data={"message": f"Schedule {schedule_id} deleted successfully"})
 
 
-@router.post("/{schedule_id}/enable", response_model=ScheduleEnableResponse)
+@router.post("/{schedule_id}/enable", response_model=SuccessResponse[ScheduleEnableResponse])
 async def enable_schedule(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
-) -> ScheduleEnableResponse:
+) -> SuccessResponse[ScheduleEnableResponse]:
     """Enable schedule."""
     success = await use_case.enable_schedule(schedule_id)
     
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
     
-    return ScheduleEnableResponse(
+    enable_response = ScheduleEnableResponse(
         id=schedule_id,
         enabled=True,
         message=f"Schedule {schedule_id} enabled successfully",
     )
+    
+    return SuccessResponse(data=enable_response)
 
 
-@router.post("/{schedule_id}/disable", response_model=ScheduleEnableResponse)
+@router.post("/{schedule_id}/disable", response_model=SuccessResponse[ScheduleEnableResponse])
 async def disable_schedule(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
-) -> ScheduleEnableResponse:
+) -> SuccessResponse[ScheduleEnableResponse]:
     """Disable schedule."""
     success = await use_case.disable_schedule(schedule_id)
     
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
     
-    return ScheduleEnableResponse(
+    enable_response = ScheduleEnableResponse(
         id=schedule_id,
         enabled=False,
         message=f"Schedule {schedule_id} disabled successfully",
     )
+    
+    return SuccessResponse(data=enable_response)
 
 
-@router.post("/trigger/listed-info", response_model=dict)
+@router.post("/trigger/listed-info", response_model=SuccessResponse[Dict[str, Any]])
 async def trigger_listed_info_task(
     period_type: str = "yesterday",
     codes: Optional[List[str]] = None,
     market: Optional[str] = None,
-) -> dict:
+) -> SuccessResponse[Dict[str, Any]]:
     """Manually trigger listed_info task for testing.
     
     Args:
@@ -220,7 +238,7 @@ async def trigger_listed_info_task(
             period_type=period_type,
         )
         
-        return {
+        task_info = {
             "task_id": result.id,
             "status": "PENDING",
             "message": "Task submitted successfully",
@@ -231,6 +249,8 @@ async def trigger_listed_info_task(
             },
             "submitted_at": datetime.now().isoformat(),
         }
+        
+        return SuccessResponse(data=task_info)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -238,8 +258,8 @@ async def trigger_listed_info_task(
         )
 
 
-@router.get("/tasks/{task_id}/status", response_model=dict)
-async def get_task_status(task_id: str) -> dict:
+@router.get("/tasks/{task_id}/status", response_model=SuccessResponse[Dict[str, Any]])
+async def get_task_status(task_id: str) -> SuccessResponse[Dict[str, Any]]:
     """Get status of a Celery task.
     
     Args:
@@ -254,7 +274,7 @@ async def get_task_status(task_id: str) -> dict:
     try:
         result = AsyncResult(task_id, app=celery_app)
         
-        response = {
+        task_status = {
             "task_id": task_id,
             "status": result.status,
             "ready": result.ready(),
@@ -262,11 +282,11 @@ async def get_task_status(task_id: str) -> dict:
         
         if result.ready():
             if result.successful():
-                response["result"] = result.result
+                task_status["result"] = result.result
             else:
-                response["error"] = str(result.info)
+                task_status["error"] = str(result.info)
                 
-        return response
+        return SuccessResponse(data=task_status)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -274,13 +294,13 @@ async def get_task_status(task_id: str) -> dict:
         )
 
 
-@router.post("/trigger/listed-info-direct", response_model=dict)
+@router.post("/trigger/listed-info-direct", response_model=SuccessResponse[Dict[str, Any]])
 async def trigger_listed_info_direct(
     period_type: str = "yesterday",
     codes: Optional[List[str]] = None,
     market: Optional[str] = None,
     schedule_id: Optional[UUID] = None,
-) -> dict:
+) -> SuccessResponse[Dict[str, Any]]:
     """Directly execute listed_info task without Celery (for testing).
     
     Args:
@@ -311,7 +331,7 @@ async def trigger_listed_info_direct(
             period_type=period_type,
         )
         
-        return {
+        task_result = {
             "task_id": task_id,
             "status": "SUCCESS",
             "message": "Task executed directly (without Celery)",
@@ -323,6 +343,8 @@ async def trigger_listed_info_direct(
             "result": result,
             "executed_at": datetime.now().isoformat(),
         }
+        
+        return SuccessResponse(data=task_result)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -330,12 +352,12 @@ async def trigger_listed_info_direct(
         )
 
 
-@router.get("/{schedule_id}/history", response_model=dict)
+@router.get("/{schedule_id}/history", response_model=SuccessResponse[Dict[str, Any]])
 async def get_schedule_history(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
     task_log_repo: TaskLogRepositoryInterface = Depends(get_task_log_repository),
-) -> dict:
+) -> SuccessResponse[Dict[str, Any]]:
     """Get execution history for a schedule.
     
     Args:
@@ -348,10 +370,8 @@ async def get_schedule_history(
     schedule = await use_case.get_schedule(schedule_id)
     
     if not schedule:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule {schedule_id} not found",
-        )
+        from app.presentation.exceptions import ResourceNotFoundError
+        raise ResourceNotFoundError("Schedule", str(schedule_id))
     
     # Get task execution logs
     logs = await task_log_repo.get_by_schedule_id(schedule_id, limit=100)
@@ -367,6 +387,8 @@ async def get_schedule_history(
         }
         history.append(history_item)
     
-    return {
+    history_data = {
         "history": history,
     }
+    
+    return SuccessResponse(data=history_data)

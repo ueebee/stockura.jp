@@ -8,6 +8,7 @@ import click
 
 from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
 from app.core.config import settings
+from app.presentation.cli.error_handler import handle_cli_errors
 from app.core.logger import get_logger
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.value_objects.stock_code import StockCode
@@ -36,19 +37,21 @@ async def authenticate_jquants(email: str, password: str) -> JQuantsCredentials:
         JQuantsCredentials: 認証情報
         
     Raises:
-        click.ClickException: 認証に失敗した場合
+        UnauthorizedError: 認証に失敗した場合
     """
     auth_repo = await get_cli_auth_repository()
     
     # リフレッシュトークンを取得
     refresh_token = await auth_repo.get_refresh_token(email, password)
     if not refresh_token:
-        raise click.ClickException("J-Quants API の認証に失敗しました。")
+        from app.presentation.exceptions import UnauthorizedError
+        raise UnauthorizedError("J-Quants API の認証に失敗しました。")
     
     # ID トークンを取得
     id_token = await auth_repo.get_id_token(refresh_token)
     if not id_token:
-        raise click.ClickException("ID トークンの取得に失敗しました。")
+        from app.presentation.exceptions import UnauthorizedError
+        raise UnauthorizedError("ID トークンの取得に失敗しました。")
     
     # 認証情報を作成
     credentials = JQuantsCredentials(
@@ -89,6 +92,7 @@ async def authenticate_jquants(email: str, password: str) -> JQuantsCredentials:
     default=None,
     help="J-Quants API のパスワード",
 )
+@handle_cli_errors
 def fetch_listed_info(
     code: Optional[str],
     date: Optional[str],
@@ -113,83 +117,71 @@ async def _fetch_listed_info_async(
     password: Optional[str],
 ) -> None:
     """非同期で上場銘柄情報を取得"""
-    try:
-        # 日付のパース
-        target_date = None
-        if date:
-            try:
-                target_date = datetime.strptime(date, "%Y%m%d").date()
-            except ValueError:
-                click.echo(f"エラー: 無効な日付形式です: {date}", err=True)
-                sys.exit(1)
+    # 日付のパース
+    target_date = None
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y%m%d").date()
+        except ValueError:
+            from app.presentation.exceptions import ValidationError
+            raise ValidationError(f"無効な日付形式です: {date}")
 
-        # 認証情報の取得
-        jquants_email = email or settings.jquants_email
-        jquants_password = password or settings.jquants_password
+    # 認証情報の取得
+    jquants_email = email or settings.jquants_email
+    jquants_password = password or settings.jquants_password
 
-        if not jquants_email or not jquants_password:
+    if not jquants_email or not jquants_password:
+        from app.presentation.exceptions import ValidationError
+        raise ValidationError(
+            "J-Quants API の認証情報が設定されていません。\n"
+            "--email と --password オプションを指定するか、"
+            "環境変数 JQUANTS_EMAIL と JQUANTS_PASSWORD を設定してください。"
+        )
+
+    click.echo("J-Quants API に接続中...")
+
+    # 認証処理
+    credentials = await authenticate_jquants(jquants_email, jquants_password)
+    click.echo("認証成功")
+
+    # データベースセッションとリポジトリの初期化
+    async for session in get_cli_session():
+        # クライアントとリポジトリの初期化
+        jquants_client = await get_cli_jquants_client(credentials)
+        repository = await get_cli_listed_info_repository(session)
+
+        # ユースケースの実行
+        use_case = FetchListedInfoUseCase(
+            jquants_client=jquants_client,
+            listed_info_repository=repository,
+            logger=logger,
+        )
+
+        click.echo(f"データ取得中... (code: {code or '全銘柄'}, date: {date or '最新'})")
+
+        # 実行
+        result = await use_case.execute(code=code, target_date=target_date)
+
+        # 結果の表示
+        if result.success:
             click.echo(
-                "エラー: J-Quants API の認証情報が設定されていません。\n"
-                "--email と --password オプションを指定するか、"
-                "環境変数 JQUANTS_EMAIL と JQUANTS_PASSWORD を設定してください。",
-                err=True,
+                f"\n✅ 処理完了:\n"
+                f"  - 取得件数: {result.fetched_count}件\n"
+                f"  - 保存件数: {result.saved_count}件"
             )
-            sys.exit(1)
-
-        click.echo("J-Quants API に接続中...")
-
-        # 認証処理
-        credentials = await authenticate_jquants(jquants_email, jquants_password)
-        click.echo("認証成功")
-
-        # データベースセッションとリポジトリの初期化
-        async for session in get_cli_session():
-            # クライアントとリポジトリの初期化
-            jquants_client = await get_cli_jquants_client(credentials)
-            repository = await get_cli_listed_info_repository(session)
-
-            # ユースケースの実行
-            use_case = FetchListedInfoUseCase(
-                jquants_client=jquants_client,
-                listed_info_repository=repository,
-                logger=logger,
+        else:
+            from app.presentation.exceptions import PresentationError
+            raise PresentationError(
+                f"処理失敗: {result.error_message}",
+                error_code="FETCH_FAILED",
+                details={
+                    "fetched_count": result.fetched_count,
+                    "saved_count": result.saved_count
+                }
             )
 
-            click.echo(f"データ取得中... (code: {code or '全銘柄'}, date: {date or '最新'})")
-
-            # 実行
-            result = await use_case.execute(code=code, target_date=target_date)
-
-            # 結果の表示
-            if result.success:
-                click.echo(
-                    f"\n✅ 処理完了:\n"
-                    f"  - 取得件数: {result.fetched_count}件\n"
-                    f"  - 保存件数: {result.saved_count}件"
-                )
-            else:
-                click.echo(
-                    f"\n❌ 処理失敗:\n"
-                    f"  - エラー: {result.error_message}\n"
-                    f"  - 取得件数: {result.fetched_count}件\n"
-                    f"  - 保存件数: {result.saved_count}件",
-                    err=True,
-                )
-                sys.exit(1)
-
-            # セッションのコミット
-            await session.commit()
-
-    except click.ClickException:
-        # Click 例外はそのまま再発生
-        raise
-    except KeyboardInterrupt:
-        click.echo("\n 処理を中断しました。", err=True)
-        sys.exit(130)
-    except Exception as e:
-        click.echo(f"\n 予期しないエラーが発生しました: {str(e)}", err=True)
-        logger.exception("Unexpected error in fetch_listed_info command")
-        sys.exit(1)
+        # セッションのコミット
+        await session.commit()
 
 
 if __name__ == "__main__":

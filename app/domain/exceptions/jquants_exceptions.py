@@ -1,7 +1,9 @@
 """J-Quants API 関連の例外定義"""
 
+from app.domain.exceptions.base import DomainException
 
-class JQuantsException(Exception):
+
+class JQuantsException(DomainException):
     """J-Quants API 関連の基底例外クラス"""
 
     pass

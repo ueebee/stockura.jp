@@ -28,11 +28,13 @@ def test_create_schedule_without_name(client: TestClient):
     )
     assert response.status_code == 201
     data = response.json()
-    assert data["auto_generated_name"] is True
-    assert "fetch_listed_info_task" in data["name"]
-    assert data["category"] == "data_fetch"
-    assert data["tags"] == ["jquants", "daily"]
-    assert data["execution_policy"] == "skip"
+    assert data["success"] is True
+    schedule_data = data["data"]
+    assert schedule_data["auto_generated_name"] is True
+    assert "fetch_listed_info_task" in schedule_data["name"]
+    assert schedule_data["category"] == "data_fetch"
+    assert schedule_data["tags"] == ["jquants", "daily"]
+    assert schedule_data["execution_policy"] == "skip"
 
 
 def test_create_multiple_schedules_same_task(client: TestClient):
@@ -138,6 +140,7 @@ def test_execution_policy_validation(client: TestClient):
         }
     )
     assert response.status_code == 201
+    assert response.json()["success"] is True
     
     # Invalid execution policy
     response = client.post(

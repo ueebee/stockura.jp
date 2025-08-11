@@ -92,11 +92,17 @@ class ScheduledListedInfoApiTester:
             response.raise_for_status()
             result = response.json()
             
-            # クリーンアップ用に ID を保存
-            self.created_schedule_ids.append(result["id"])
+            # 統一レスポンス構造に対応
+            if "data" in result:
+                schedule_data = result["data"]
+            else:
+                schedule_data = result
             
-            logger.info(f"スケジュール作成成功 (ID: {result['id']})")
-            return result
+            # クリーンアップ用に ID を保存
+            self.created_schedule_ids.append(schedule_data["id"])
+            
+            logger.info(f"スケジュール作成成功 (ID: {schedule_data['id']})")
+            return schedule_data
         except requests.exceptions.RequestException as e:
             logger.error(f"スケジュール作成エラー: {e}")
             if hasattr(e, 'response') and e.response is not None:
@@ -117,7 +123,13 @@ class ScheduledListedInfoApiTester:
         try:
             response = requests.get(url, timeout=10)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            
+            # 統一レスポンス構造に対応
+            if "data" in result:
+                return result["data"]
+            else:
+                return result
         except requests.exceptions.RequestException as e:
             logger.error(f"スケジュール詳細取得エラー: {e}")
             raise
@@ -181,7 +193,13 @@ class ScheduledListedInfoApiTester:
             try:
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()
-                history_data = response.json()
+                result = response.json()
+                
+                # 統一レスポンス構造に対応
+                if "data" in result:
+                    history_data = result["data"]
+                else:
+                    history_data = result
                 
                 history_list = history_data.get("history", [])
                 current_count = len(history_list)
