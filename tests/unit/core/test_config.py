@@ -13,7 +13,7 @@ class TestSettings:
     def test_default_settings(self):
         """デフォルト設定の確認テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert - Application Settings
         assert settings.app_name == "Stockura"
@@ -37,7 +37,7 @@ class TestSettings:
     def test_redis_settings_defaults(self):
         """Redis 設定のデフォルト値テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.redis_url == "redis://localhost:6379/0"
@@ -48,7 +48,7 @@ class TestSettings:
     def test_celery_settings_defaults(self):
         """Celery 設定のデフォルト値テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.celery_broker_url == "redis://localhost:6379/1"
@@ -59,10 +59,11 @@ class TestSettings:
         assert settings.celery_timezone == "Asia/Tokyo"
         assert settings.celery_enable_utc is True
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_jquants_settings_defaults(self):
         """J-Quants 設定のデフォルト値テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.jquants_api_key == ""
@@ -75,7 +76,7 @@ class TestSettings:
     def test_security_settings_defaults(self):
         """セキュリティ設定のデフォルト値テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.secret_key == "your-secret-key-here-change-in-production"
@@ -85,7 +86,7 @@ class TestSettings:
     def test_cors_settings_defaults(self):
         """CORS 設定のデフォルト値テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.cors_origins == ["http://localhost:3000", "http://localhost:8000"]
@@ -96,16 +97,17 @@ class TestSettings:
     def test_rate_limiting_settings(self):
         """レート制限設定のテスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.rate_limit_per_minute == 60
         assert settings.rate_limit_per_hour == 1000
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_monitoring_settings(self):
         """モニタリング設定のテスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.sentry_dsn is None
@@ -234,7 +236,7 @@ class TestSettings:
     def test_numeric_settings_types(self):
         """数値設定の型確認テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert isinstance(settings.database_pool_size, int)
@@ -252,7 +254,7 @@ class TestSettings:
     def test_boolean_settings_types(self):
         """ブール設定の型確認テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert isinstance(settings.debug, bool)
@@ -263,7 +265,7 @@ class TestSettings:
     def test_list_settings_types(self):
         """リスト設定の型確認テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert isinstance(settings.celery_accept_content, list)
@@ -271,10 +273,11 @@ class TestSettings:
         assert isinstance(settings.cors_allow_methods, list)
         assert isinstance(settings.cors_allow_headers, list)
 
+    @patch.dict(os.environ, {}, clear=True)
     def test_optional_settings(self):
         """オプショナル設定のテスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.sentry_dsn is None
@@ -332,7 +335,7 @@ class TestGetSettings:
     def test_settings_field_descriptions(self):
         """設定フィールドの説明文テスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert - いくつかのフィールドの説明文を確認
         field_info = settings.model_fields
@@ -346,7 +349,7 @@ class TestGetSettings:
     def test_env_file_configuration(self):
         """環境ファイル設定のテスト"""
         # Act
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Assert
         assert settings.model_config["env_file"] == ".env"

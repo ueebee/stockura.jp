@@ -20,8 +20,8 @@ from app.infrastructure.repositories.database.listed_info_repository_impl import
     ListedInfoRepositoryImpl,
 )
 from app.infrastructure.repositories.external.jquants_auth_repository_impl import JQuantsAuthRepository
-from app.infrastructure.jquants.base_client import JQuantsBaseClient
-from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
+from app.infrastructure.external_services.jquants.base_client import JQuantsBaseClient
+from app.infrastructure.external_services.jquants.listed_info_client import JQuantsListedInfoClient
 
 logger = get_logger(__name__)
 

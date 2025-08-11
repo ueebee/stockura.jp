@@ -11,6 +11,7 @@ from app.domain.entities.listed_info import ListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
 from app.infrastructure.database.models.listed_info import ListedInfoModel
+from app.infrastructure.database.mappers.listed_info_mapper import ListedInfoMapper
 
 logger = get_logger(__name__)
 
@@ -18,21 +19,23 @@ logger = get_logger(__name__)
 class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
     """Listed info repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, mapper: Optional[ListedInfoMapper] = None) -> None:
         """Initialize repository.
 
         Args:
             session: AsyncSession instance
+            mapper: Optional mapper instance for entity-model conversion
         """
         self._session = session
+        self._mapper = mapper or ListedInfoMapper()
 
     async def save_all(self, listed_infos: List[ListedInfo]) -> None:
         """複数の上場銘柄情報を保存（UPSERT）"""
         if not listed_infos:
             return
 
-        # エンティティをモデルに変換
-        models = [self._to_model(info) for info in listed_infos]
+        # エンティティをモデルに変換（Mapper を使用）
+        models = self._mapper.to_models(listed_infos)
 
         # バルク UPSERT 用のデータ準備
         values = [
@@ -92,7 +95,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
         model = result.scalar_one_or_none()
 
         if model:
-            return self._to_entity(model)
+            return self._mapper.to_entity(model)
         return None
 
     async def find_all_by_date(self, target_date: date) -> List[ListedInfo]:
@@ -104,7 +107,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
         )
         models = result.scalars().all()
 
-        return [self._to_entity(model) for model in models]
+        return self._mapper.to_entities(models)
 
     async def find_latest_by_code(self, code: StockCode) -> Optional[ListedInfo]:
         """銘柄コードで最新の情報を検索"""
@@ -117,7 +120,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
         model = result.scalar_one_or_none()
 
         if model:
-            return self._to_entity(model)
+            return self._mapper.to_entity(model)
         return None
 
     async def delete_by_date(self, target_date: date) -> int:
@@ -131,52 +134,3 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
         logger.info(f"Deleted {deleted_count} records for date {target_date}")
         return deleted_count
 
-    def _to_entity(self, model: ListedInfoModel) -> ListedInfo:
-        """Convert model to entity.
-
-        Args:
-            model: ListedInfo model
-
-        Returns:
-            ListedInfo entity
-        """
-        return ListedInfo(
-            date=model.date,
-            code=StockCode(model.code),
-            company_name=model.company_name,
-            company_name_english=model.company_name_english,
-            sector_17_code=model.sector_17_code,
-            sector_17_code_name=model.sector_17_code_name,
-            sector_33_code=model.sector_33_code,
-            sector_33_code_name=model.sector_33_code_name,
-            scale_category=model.scale_category,
-            market_code=model.market_code,
-            market_code_name=model.market_code_name,
-            margin_code=model.margin_code,
-            margin_code_name=model.margin_code_name,
-        )
-
-    def _to_model(self, entity: ListedInfo) -> ListedInfoModel:
-        """Convert entity to model.
-
-        Args:
-            entity: ListedInfo entity
-
-        Returns:
-            ListedInfo model
-        """
-        return ListedInfoModel(
-            date=entity.date,
-            code=entity.code.value,
-            company_name=entity.company_name,
-            company_name_english=entity.company_name_english,
-            sector_17_code=entity.sector_17_code,
-            sector_17_code_name=entity.sector_17_code_name,
-            sector_33_code=entity.sector_33_code,
-            sector_33_code_name=entity.sector_33_code_name,
-            scale_category=entity.scale_category,
-            market_code=entity.market_code,
-            market_code_name=entity.market_code_name,
-            margin_code=entity.margin_code,
-            margin_code_name=entity.margin_code_name,
-        )

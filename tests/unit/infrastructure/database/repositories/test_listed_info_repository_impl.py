@@ -10,6 +10,7 @@ from app.infrastructure.database.models.listed_info import ListedInfoModel
 from app.infrastructure.repositories.database.listed_info_repository_impl import (
     ListedInfoRepositoryImpl,
 )
+from app.infrastructure.database.mappers.listed_info_mapper import ListedInfoMapper
 
 
 class TestListedInfoRepositoryImpl:
@@ -18,7 +19,8 @@ class TestListedInfoRepositoryImpl:
     def setup_method(self):
         """テストのセットアップ"""
         self.session = AsyncMock(spec=AsyncSession)
-        self.repository = ListedInfoRepositoryImpl(self.session)
+        self.mapper = ListedInfoMapper()
+        self.repository = ListedInfoRepositoryImpl(self.session, self.mapper)
 
     def _create_test_entity(
         self, date_value: date = date(2024, 1, 4), code: str = "7203"
@@ -258,50 +260,20 @@ class TestListedInfoRepositoryImpl:
         self.session.execute.assert_called_once()
         self.session.flush.assert_called_once()
 
-    def test_to_entity_conversion(self):
-        """モデルからエンティティへの変換が正しく行われることを確認"""
+    def test_mapper_integration(self):
+        """Mapper が正しく統合されていることを確認"""
         # テストデータ
         model = self._create_test_model()
-
-        # 実行
-        entity = self.repository._to_entity(model)
-
-        # 検証
-        assert isinstance(entity, ListedInfo)
-        assert entity.date == model.date
-        assert entity.code.value == model.code
-        assert entity.company_name == model.company_name
-        assert entity.company_name_english == model.company_name_english
-        assert entity.sector_17_code == model.sector_17_code
-        assert entity.sector_17_code_name == model.sector_17_code_name
-        assert entity.sector_33_code == model.sector_33_code
-        assert entity.sector_33_code_name == model.sector_33_code_name
-        assert entity.scale_category == model.scale_category
-        assert entity.market_code == model.market_code
-        assert entity.market_code_name == model.market_code_name
-        assert entity.margin_code == model.margin_code
-        assert entity.margin_code_name == model.margin_code_name
-
-    def test_to_model_conversion(self):
-        """エンティティからモデルへの変換が正しく行われることを確認"""
-        # テストデータ
         entity = self._create_test_entity()
 
-        # 実行
-        model = self.repository._to_model(entity)
+        # モデルからエンティティへの変換
+        converted_entity = self.repository._mapper.to_entity(model)
+        assert isinstance(converted_entity, ListedInfo)
+        assert converted_entity.date == model.date
+        assert converted_entity.code.value == model.code
 
-        # 検証
-        assert isinstance(model, ListedInfoModel)
-        assert model.date == entity.date
-        assert model.code == entity.code.value
-        assert model.company_name == entity.company_name
-        assert model.company_name_english == entity.company_name_english
-        assert model.sector_17_code == entity.sector_17_code
-        assert model.sector_17_code_name == entity.sector_17_code_name
-        assert model.sector_33_code == entity.sector_33_code
-        assert model.sector_33_code_name == entity.sector_33_code_name
-        assert model.scale_category == entity.scale_category
-        assert model.market_code == entity.market_code
-        assert model.market_code_name == entity.market_code_name
-        assert model.margin_code == entity.margin_code
-        assert model.margin_code_name == entity.margin_code_name
+        # エンティティからモデルへの変換
+        converted_model = self.repository._mapper.to_model(entity)
+        assert isinstance(converted_model, ListedInfoModel)
+        assert converted_model.date == entity.date
+        assert converted_model.code == entity.code.value

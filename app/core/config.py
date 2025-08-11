@@ -69,7 +69,7 @@ class Settings(BaseSettings):
         default=["json"], description="Celery accept content"
     )
     celery_timezone: str = Field(
-        default="UTC", description="Celery timezone"
+        default="Asia/Tokyo", description="Celery timezone"
     )
     celery_enable_utc: bool = Field(default=True, description="Celery enable UTC")
 

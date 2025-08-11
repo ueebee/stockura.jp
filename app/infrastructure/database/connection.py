@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import declarative_base
 
-from app.core.config import settings
 from app.core.logger import get_logger
+from app.infrastructure.config.settings import get_infrastructure_settings
 
 logger = get_logger(__name__)
 
@@ -39,12 +39,13 @@ def get_engine() -> AsyncEngine:
         asyncio.set_event_loop(loop)
     
     if loop not in _engines:
+        infra_settings = get_infrastructure_settings()
         _engines[loop] = create_async_engine(
-            settings.database_url,
-            echo=settings.database_echo,
-            pool_size=settings.database_pool_size,
-            max_overflow=settings.database_max_overflow,
-            pool_timeout=settings.database_pool_timeout,
+            infra_settings.database.url,
+            echo=infra_settings.database.echo,
+            pool_size=infra_settings.database.pool_size,
+            max_overflow=infra_settings.database.max_overflow,
+            pool_timeout=infra_settings.database.pool_timeout,
             pool_pre_ping=True,  # Enable connection health checks
         )
         logger.info(f"Database engine created for event loop {id(loop)}")

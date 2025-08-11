@@ -89,9 +89,9 @@ class TestGetRefreshToken:
         """認証失敗のテスト"""
         mock_response = create_mock_response(status=400)
 
-        with patch("app.infrastructure.redis.auth_repository_impl.ClientSession") as mock_session_class:
+        with patch("app.infrastructure.repositories.redis.auth_repository_impl.ClientSession") as mock_session_class:
             mock_session = create_mock_session_context(mock_response)
-            mock_session_class.return_value.__aenter__.return_value = mock_session
+            mock_session_class.return_value = mock_session
 
             with pytest.raises(AuthenticationError) as exc_info:
                 await auth_repository.get_refresh_token(

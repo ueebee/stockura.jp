@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 from typing import Dict, Any, List
 
-from app.infrastructure.jquants.listed_info_client import JQuantsListedInfoClient
-from app.infrastructure.jquants.base_client import JQuantsBaseClient
+from app.infrastructure.external_services.jquants.listed_info_client import JQuantsListedInfoClient
+from app.infrastructure.external_services.jquants.base_client import JQuantsBaseClient
 from app.domain.exceptions.jquants_exceptions import (
     NetworkError,
     RateLimitError,
