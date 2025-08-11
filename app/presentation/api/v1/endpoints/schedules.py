@@ -4,7 +4,6 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.presentation.api.v1.schemas.schedule import (
     ScheduleCreate,
@@ -21,22 +20,14 @@ from app.application.dtos.schedule_dto import (
     TaskParamsDto,
 )
 from app.application.use_cases.manage_schedule import ManageScheduleUseCase
-from app.infrastructure.database.connection import get_session
-from app.infrastructure.di.providers import get_schedule_event_publisher
-from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
-from app.infrastructure.repositories.database.schedule_repository import ScheduleRepositoryImpl
-from app.infrastructure.repositories.database.task_log_repository import TaskLogRepository
+from app.presentation.dependencies.use_cases import get_manage_schedule_use_case
+from app.presentation.dependencies.repositories import get_task_log_repository
+from app.domain.repositories.task_log_repository_interface import TaskLogRepositoryInterface
 
 router = APIRouter(prefix="/schedules", tags=["schedules"])
 
 
-async def get_manage_schedule_use_case(
-    session: AsyncSession = Depends(get_session),
-    event_publisher: Optional[ScheduleEventPublisher] = Depends(get_schedule_event_publisher),
-) -> ManageScheduleUseCase:
-    """Get manage schedule use case."""
-    repository = ScheduleRepositoryImpl(session)
-    return ManageScheduleUseCase(repository, event_publisher=event_publisher)
+# get_manage_schedule_use_case 関数は削除（dependencies モジュールのものを使用）
 
 
 @router.post("/", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
@@ -319,10 +310,12 @@ async def trigger_listed_info_task(
     Returns:
         Task execution information
     """
-    from app.infrastructure.celery.tasks.listed_info_task import fetch_listed_info_task
     from datetime import datetime
     
     try:
+        # 動的インポートで Celery タスクを取得
+        from app.infrastructure.celery.tasks.listed_info_task import fetch_listed_info_task
+        
         # タスクを非同期で実行
         result = fetch_listed_info_task.delay(
             schedule_id=None,  # 手動実行なので None
@@ -447,7 +440,7 @@ async def trigger_listed_info_direct(
 async def get_schedule_history(
     schedule_id: UUID,
     use_case: ManageScheduleUseCase = Depends(get_manage_schedule_use_case),
-    session: AsyncSession = Depends(get_session),
+    task_log_repo: TaskLogRepositoryInterface = Depends(get_task_log_repository),
 ) -> dict:
     """Get execution history for a schedule.
     
@@ -467,7 +460,6 @@ async def get_schedule_history(
         )
     
     # Get task execution logs
-    task_log_repo = TaskLogRepository(session)
     logs = await task_log_repo.get_by_schedule_id(schedule_id, limit=100)
     
     # Convert logs to history format expected by test script

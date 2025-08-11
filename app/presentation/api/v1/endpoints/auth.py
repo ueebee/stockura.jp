@@ -8,8 +8,8 @@ from app.domain.exceptions.jquants_exceptions import (
     TokenRefreshError,
 )
 from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
-from app.infrastructure.repositories.redis.auth_repository_impl import RedisAuthRepository
-from app.infrastructure.redis.redis_client import get_redis_client
+from app.presentation.dependencies.use_cases import get_auth_use_case
+from app.presentation.dependencies.repositories import get_auth_repository
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -35,17 +35,7 @@ class RefreshTokenResponse(BaseModel):
     message: str
 
 
-async def get_auth_repository() -> AuthRepositoryInterface:
-    """認証リポジトリの依存性注入"""
-    redis_client = await get_redis_client()
-    return RedisAuthRepository(redis_client)
-
-
-def get_auth_use_case(
-    auth_repository: AuthRepositoryInterface = Depends(get_auth_repository),
-) -> AuthUseCase:
-    """認証ユースケースの依存性注入"""
-    return AuthUseCase(auth_repository)
+# get_auth_repository と get_auth_use_case 関数は削除（dependencies モジュールのものを使用）
 
 
 @router.post("/login", response_model=LoginResponse)

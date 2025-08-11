@@ -4,7 +4,6 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.dtos.listed_info_schedule_dto import (
     CreateListedInfoScheduleDTO,
@@ -22,20 +21,14 @@ from app.domain.exceptions.schedule_exceptions import (
     ScheduleNotFoundException,
     ScheduleValidationException,
 )
-from app.infrastructure.database.connection import get_db_session as get_db
-from app.infrastructure.repositories.database.schedule_repository_impl import (
-    ScheduleRepositoryImpl,
-)
+from app.presentation.dependencies.use_cases import get_manage_listed_info_schedule_use_case
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/schedules/listed-info", tags=["listed_info_schedules"])
 
 
-def get_use_case(db: AsyncSession = Depends(get_db)) -> ManageListedInfoScheduleUseCase:
-    """ユースケースの依存性注入"""
-    schedule_repository = ScheduleRepositoryImpl(db)
-    return ManageListedInfoScheduleUseCase(schedule_repository)
+# get_use_case 関数は削除（dependencies モジュールのものを使用）
 
 
 def schedule_to_dto(schedule: Schedule) -> ListedInfoScheduleDTO:
@@ -66,7 +59,7 @@ def schedule_to_dto(schedule: Schedule) -> ListedInfoScheduleDTO:
 )
 async def create_listed_info_schedule(
     request: CreateListedInfoScheduleDTO,
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ListedInfoScheduleDTO:
     """
     listed_info スケジュールを作成する
@@ -118,7 +111,7 @@ async def list_listed_info_schedules(
     enabled_only: bool = Query(False, description="有効なスケジュールのみ取得"),
     limit: int = Query(100, ge=1, le=1000, description="取得件数上限"),
     offset: int = Query(0, ge=0, description="オフセット"),
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ListedInfoScheduleListDTO:
     """
     listed_info スケジュール一覧を取得する
@@ -160,7 +153,7 @@ async def list_listed_info_schedules(
 )
 async def get_listed_info_schedule(
     schedule_id: UUID,
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ListedInfoScheduleDTO:
     """
     指定された ID の listed_info スケジュールを取得する
@@ -190,7 +183,7 @@ async def get_listed_info_schedule(
 async def update_listed_info_schedule(
     schedule_id: UUID,
     request: UpdateListedInfoScheduleDTO,
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ListedInfoScheduleDTO:
     """
     listed_info スケジュールを更新する
@@ -240,7 +233,7 @@ async def update_listed_info_schedule(
 )
 async def delete_listed_info_schedule(
     schedule_id: UUID,
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> None:
     """
     listed_info スケジュールを削除する
@@ -268,7 +261,7 @@ async def delete_listed_info_schedule(
 )
 async def toggle_listed_info_schedule(
     schedule_id: UUID,
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ListedInfoScheduleDTO:
     """
     listed_info スケジュールの有効/無効を切り替える
@@ -299,7 +292,7 @@ async def get_listed_info_schedule_history(
     schedule_id: UUID,
     limit: int = Query(100, ge=1, le=1000, description="取得件数上限"),
     offset: int = Query(0, ge=0, description="オフセット"),
-    use_case: ManageListedInfoScheduleUseCase = Depends(get_use_case),
+    use_case: ManageListedInfoScheduleUseCase = Depends(get_manage_listed_info_schedule_use_case),
 ) -> ScheduleHistoryDTO:
     """
     listed_info スケジュールの実行履歴を取得する
