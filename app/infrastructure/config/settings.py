@@ -94,6 +94,39 @@ class JQuantsSettings(BaseSettings):
     max_retries: int = Field(default=3, description="Max retry attempts")
 
 
+class RateLimitSettings(BaseSettings):
+    """Rate limiting configuration for external APIs."""
+    
+    model_config = SettingsConfigDict(
+        env_prefix="RATE_LIMIT_",
+        case_sensitive=False,
+    )
+    
+    # J-Quants rate limiting
+    jquants_max_requests: int = Field(
+        default=100,
+        description="Maximum requests per window for J-Quants API",
+        env="JQUANTS_RATE_LIMIT_REQUESTS"
+    )
+    jquants_window_seconds: int = Field(
+        default=60,
+        description="Time window in seconds for J-Quants rate limiting",
+        env="JQUANTS_RATE_LIMIT_WINDOW"
+    )
+    
+    # yfinance rate limiting
+    yfinance_max_requests: int = Field(
+        default=2000,
+        description="Maximum requests per window for yfinance API",
+        env="YFINANCE_RATE_LIMIT_REQUESTS"
+    )
+    yfinance_window_seconds: int = Field(
+        default=3600,
+        description="Time window in seconds for yfinance rate limiting",
+        env="YFINANCE_RATE_LIMIT_WINDOW"
+    )
+
+
 class InfrastructureSettings(BaseSettings):
     """Combined infrastructure settings."""
     
@@ -108,6 +141,7 @@ class InfrastructureSettings(BaseSettings):
     redis: RedisSettings = Field(default_factory=RedisSettings)
     celery: CelerySettings = Field(default_factory=CelerySettings)
     jquants: JQuantsSettings = Field(default_factory=JQuantsSettings)
+    rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
     
     def __init__(self, **kwargs):
         """Initialize settings with environment variables."""
@@ -140,6 +174,16 @@ class InfrastructureSettings(BaseSettings):
             self.celery.broker_url = broker_url
         if result_backend := os.getenv("CELERY_RESULT_BACKEND"):
             self.celery.result_backend = result_backend
+            
+        # Rate limit settings
+        if jquants_max_requests := os.getenv("JQUANTS_RATE_LIMIT_REQUESTS"):
+            self.rate_limit.jquants_max_requests = int(jquants_max_requests)
+        if jquants_window := os.getenv("JQUANTS_RATE_LIMIT_WINDOW"):
+            self.rate_limit.jquants_window_seconds = int(jquants_window)
+        if yfinance_max_requests := os.getenv("YFINANCE_RATE_LIMIT_REQUESTS"):
+            self.rate_limit.yfinance_max_requests = int(yfinance_max_requests)
+        if yfinance_window := os.getenv("YFINANCE_RATE_LIMIT_WINDOW"):
+            self.rate_limit.yfinance_window_seconds = int(yfinance_window)
 
 
 _infrastructure_settings: Optional[InfrastructureSettings] = None

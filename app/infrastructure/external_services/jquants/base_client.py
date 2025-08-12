@@ -12,6 +12,8 @@ from app.domain.exceptions.jquants_exceptions import (
     RateLimitError,
     ValidationError,
 )
+from app.infrastructure.config.settings import get_infrastructure_settings
+from app.infrastructure.rate_limiter import RateLimiter, with_rate_limit
 
 T = TypeVar("T")
 
@@ -31,6 +33,14 @@ class JQuantsBaseClient:
         """
         self._credentials = credentials
         self._session: Optional[ClientSession] = None
+        
+        # レートリミッターの初期化
+        settings = get_infrastructure_settings()
+        self._rate_limiter = RateLimiter(
+            max_requests=settings.rate_limit.jquants_max_requests,
+            window_seconds=settings.rate_limit.jquants_window_seconds,
+            name="J-Quants API"
+        )
 
     async def __aenter__(self) -> "JQuantsBaseClient":
         """非同期コンテキストマネージャーの開始"""
@@ -111,6 +121,7 @@ class JQuantsBaseClient:
 
         return data
 
+    @with_rate_limit(lambda self: self._rate_limiter)
     async def _request_with_retry(
         self,
         method: str,
@@ -119,7 +130,7 @@ class JQuantsBaseClient:
         json_data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """リトライ機能付き HTTP リクエスト"""
+        """リトライ機能付き HTTP リクエスト（レート制限適用）"""
         await self._ensure_session()
         
         url = f"{self.BASE_URL}{endpoint}"

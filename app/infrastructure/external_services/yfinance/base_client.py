@@ -7,6 +7,8 @@ any authentication and directly fetches data from Yahoo Finance.
 from typing import Optional, Any, Dict
 import yfinance as yf
 from app.core.logger import get_logger
+from app.infrastructure.config.settings import get_infrastructure_settings
+from app.infrastructure.rate_limiter import RateLimiter, with_rate_limit
 
 logger = get_logger(__name__)
 
@@ -25,6 +27,14 @@ class YfinanceBaseClient:
         Note: yfinance doesn't require authentication.
         """
         logger.info("Initializing yfinance base client")
+        
+        # レートリミッターの初期化
+        settings = get_infrastructure_settings()
+        self._rate_limiter = RateLimiter(
+            max_requests=settings.rate_limit.yfinance_max_requests,
+            window_seconds=settings.rate_limit.yfinance_window_seconds,
+            name="yfinance API"
+        )
     
     async def __aenter__(self) -> "YfinanceBaseClient":
         """Async context manager entry.
@@ -41,6 +51,7 @@ class YfinanceBaseClient:
         """
         pass
     
+    @with_rate_limit(lambda self: self._rate_limiter)
     def get_ticker(self, symbol: str) -> yf.Ticker:
         """Get a ticker object for the given symbol.
         
@@ -53,6 +64,7 @@ class YfinanceBaseClient:
         logger.debug(f"Creating ticker object for symbol: {symbol}")
         return yf.Ticker(symbol)
     
+    @with_rate_limit(lambda self: self._rate_limiter)
     def download_data(
         self,
         tickers: str | list[str],
