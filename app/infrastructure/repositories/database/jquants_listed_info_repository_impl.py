@@ -10,7 +10,7 @@ from app.core.logger import get_logger
 from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
-from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
+from app.infrastructure.database.models.jquants_listed_info import JQuantsListedInfoModel
 from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
 
 logger = get_logger(__name__)
@@ -58,7 +58,7 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
         ]
 
         # PostgreSQL の ON CONFLICT を使用した UPSERT
-        stmt = insert(ListedInfoModel).values(values)
+        stmt = insert(JQuantsListedInfoModel).values(values)
         stmt = stmt.on_conflict_do_update(
             index_elements=["date", "code"],
             set_={
@@ -87,9 +87,9 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     ) -> Optional[JQuantsListedInfo]:
         """銘柄コードと日付で検索"""
         result = await self._session.execute(
-            select(ListedInfoModel).where(
-                ListedInfoModel.code == code.value,
-                ListedInfoModel.date == target_date,
+            select(JQuantsListedInfoModel).where(
+                JQuantsListedInfoModel.code == code.value,
+                JQuantsListedInfoModel.date == target_date,
             )
         )
         model = result.scalar_one_or_none()
@@ -101,9 +101,9 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     async def find_all_by_date(self, target_date: date) -> List[JQuantsListedInfo]:
         """日付で全銘柄を検索"""
         result = await self._session.execute(
-            select(ListedInfoModel)
-            .where(ListedInfoModel.date == target_date)
-            .order_by(ListedInfoModel.code)
+            select(JQuantsListedInfoModel)
+            .where(JQuantsListedInfoModel.date == target_date)
+            .order_by(JQuantsListedInfoModel.code)
         )
         models = result.scalars().all()
 
@@ -112,9 +112,9 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     async def find_latest_by_code(self, code: StockCode) -> Optional[JQuantsListedInfo]:
         """銘柄コードで最新の情報を検索"""
         result = await self._session.execute(
-            select(ListedInfoModel)
-            .where(ListedInfoModel.code == code.value)
-            .order_by(ListedInfoModel.date.desc())
+            select(JQuantsListedInfoModel)
+            .where(JQuantsListedInfoModel.code == code.value)
+            .order_by(JQuantsListedInfoModel.date.desc())
             .limit(1)
         )
         model = result.scalar_one_or_none()
@@ -126,7 +126,7 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     async def delete_by_date(self, target_date: date) -> int:
         """指定日付のデータを削除"""
         result = await self._session.execute(
-            delete(ListedInfoModel).where(ListedInfoModel.date == target_date)
+            delete(JQuantsListedInfoModel).where(JQuantsListedInfoModel.date == target_date)
         )
         await self._session.flush()
 

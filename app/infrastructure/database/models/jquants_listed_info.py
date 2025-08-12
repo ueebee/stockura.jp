@@ -6,7 +6,7 @@ from sqlalchemy import Column, Date, DateTime, Index, PrimaryKeyConstraint, Stri
 from app.infrastructure.database.connection import Base
 
 
-class ListedInfoModel(Base):
+class JQuantsListedInfoModel(Base):
     """J-Quants listed info SQLAlchemy model for J-Quants listed company information."""
 
     __tablename__ = "jquants_listed_info"
@@ -34,4 +34,4 @@ class ListedInfoModel(Base):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ListedInfoModel(date='{self.date}', code='{self.code}', company_name='{self.company_name}')>"
+        return f"<JQuantsListedInfoModel(date='{self.date}', code='{self.code}', company_name='{self.company_name}')>"
