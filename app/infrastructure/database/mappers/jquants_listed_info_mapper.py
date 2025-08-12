@@ -2,10 +2,10 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.infrastructure.database.mappers.base_mapper import BaseMapper
-from app.infrastructure.database.models.listed_info import ListedInfoModel
+from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
 
 
 class ListedInfoMapper(BaseMapper[JQuantsListedInfo, ListedInfoModel]):

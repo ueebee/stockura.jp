@@ -2,8 +2,8 @@
 import pytest
 from datetime import date
 
-from app.domain.entities.listed_info import JQuantsListedInfo
-from app.domain.services.listed_info_service import ListedInfoService
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
+from app.domain.services.jquants_listed_info_service import ListedInfoService
 from app.domain.value_objects.stock_code import StockCode
 
 

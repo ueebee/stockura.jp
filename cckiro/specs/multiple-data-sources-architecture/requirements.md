@@ -37,6 +37,17 @@
 - データソース固有のクライアント、マッパーの命名
 - テーブル名にもデータソースを反映（例：`jquants_listed_info`、`yfinance_stock_info`）
 
+### 2-1. ファイル名の命名規則統一（拡張要件）
+- データソース固有のファイル名にもデータソース名を反映
+- 例：
+  - `listed_info.py` → `jquants_listed_info.py`
+  - `listed_info_repository_interface.py` → `jquants_listed_info_repository_interface.py`
+  - `listed_info_dto.py` → `jquants_listed_info_dto.py`
+- 利点：
+  - ファイル名からデータソースが即座に識別可能
+  - 複数データソースのファイルが同一ディレクトリに存在しても混乱しない
+  - IDEでのファイル検索時にデータソース別にフィルタリングが容易
+
 ### 3. データ保管の設計
 - データソースごとに独立したテーブル
 - 共通フィールドと固有フィールドの識別

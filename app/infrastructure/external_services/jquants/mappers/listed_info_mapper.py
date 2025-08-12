@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from app.application.dtos.listed_info_dto import ListedInfoDTO
+from app.application.dtos.jquants_listed_info_dto import JQuantsListedInfoDTO
 from app.infrastructure.external_services.jquants.types.responses import JQuantsListedInfoResponse
 
 
@@ -10,19 +10,19 @@ class JQuantsListedInfoMapper:
     """Maps J-Quants API responses to application DTOs."""
     
     @staticmethod
-    def to_dto(response: JQuantsListedInfoResponse) -> ListedInfoDTO:
-        """Convert J-Quants response to ListedInfoDTO.
+    def to_dto(response: JQuantsListedInfoResponse) -> JQuantsListedInfoDTO:
+        """Convert J-Quants response to JQuantsListedInfoDTO.
         
         Args:
             response: J-Quants listed info response
             
         Returns:
-            ListedInfoDTO instance
+            JQuantsListedInfoDTO instance
         """
         # 日付フォーマットの変換 (YYYY-MM-DD to YYYYMMDD)
         date_str = response["Date"].replace("-", "")
         
-        return ListedInfoDTO(
+        return JQuantsListedInfoDTO(
             date=date_str,
             code=response["Code"],
             company_name=response["CompanyName"],
@@ -39,14 +39,14 @@ class JQuantsListedInfoMapper:
         )
     
     @staticmethod
-    def to_dtos(responses: List[JQuantsListedInfoResponse]) -> List[ListedInfoDTO]:
-        """Convert list of J-Quants responses to ListedInfoDTOs.
+    def to_dtos(responses: List[JQuantsListedInfoResponse]) -> List[JQuantsListedInfoDTO]:
+        """Convert list of J-Quants responses to JQuantsListedInfoDTOs.
         
         Args:
             responses: List of J-Quants listed info responses
             
         Returns:
-            List of ListedInfoDTO instances
+            List of JQuantsListedInfoDTO instances
         """
         return [JQuantsListedInfoMapper.to_dto(response) for response in responses]
     

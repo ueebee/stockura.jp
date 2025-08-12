@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Dict, List, Optional, Set
 
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 

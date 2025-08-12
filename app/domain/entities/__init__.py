@@ -1,6 +1,6 @@
 """ドメインエンティティ"""
 from .auth import RefreshToken
-from .listed_info import JQuantsListedInfo
+from .jquants_listed_info import JQuantsListedInfo
 from .schedule import Schedule
 from .task_log import TaskExecutionLog
 

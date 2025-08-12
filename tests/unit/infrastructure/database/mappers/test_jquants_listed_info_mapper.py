@@ -2,10 +2,10 @@
 import pytest
 from datetime import date, datetime
 
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.infrastructure.database.mappers.listed_info_mapper import ListedInfoMapper
-from app.infrastructure.database.models.listed_info import ListedInfoModel
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
+from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
 
 
 class TestListedInfoMapper:

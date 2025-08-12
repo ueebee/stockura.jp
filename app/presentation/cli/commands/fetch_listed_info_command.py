@@ -6,15 +6,15 @@ from typing import Optional
 
 import click
 
-from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
+from app.application.use_cases.fetch_jquants_listed_info import FetchJQuantsListedInfoUseCase
 from app.core.config import settings
 from app.presentation.cli.error_handler import handle_cli_errors
 from app.core.logger import get_logger
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.value_objects.stock_code import StockCode
-from app.domain.exceptions.listed_info_exceptions import (
-    ListedInfoAPIError,
-    ListedInfoDataError,
+from app.domain.exceptions.jquants_listed_info_exceptions import (
+    JQuantsListedInfoAPIError,
+    JQuantsListedInfoDataError,
 )
 from app.presentation.dependencies.cli import (
     get_cli_session,
@@ -151,7 +151,7 @@ async def _fetch_listed_info_async(
         repository = await get_cli_listed_info_repository(session)
 
         # ユースケースの実行
-        use_case = FetchListedInfoUseCase(
+        use_case = FetchJQuantsListedInfoUseCase(
             jquants_client=jquants_client,
             listed_info_repository=repository,
             logger=logger,

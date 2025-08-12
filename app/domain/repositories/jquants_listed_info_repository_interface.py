@@ -3,11 +3,11 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import List, Optional
 
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
-class ListedInfoRepositoryInterface(ABC):
+class JQuantsListedInfoRepositoryInterface(ABC):
     """上場銘柄情報リポジトリのインターフェース"""
 
     @abstractmethod

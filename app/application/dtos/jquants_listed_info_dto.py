@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
-from app.domain.factories.listed_info_factory import ListedInfoFactory
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.factories.jquants_listed_info_factory import ListedInfoFactory
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
 @dataclass(frozen=True)
-class ListedInfoDTO:
+class JQuantsListedInfoDTO:
     """上場銘柄情報の DTO"""
 
     date: str
@@ -27,14 +27,14 @@ class ListedInfoDTO:
     margin_code_name: Optional[str]
 
     @classmethod
-    def from_api_response(cls, data: Dict[str, Any]) -> "ListedInfoDTO":
+    def from_api_response(cls, data: Dict[str, Any]) -> "JQuantsListedInfoDTO":
         """API レスポンスから DTO を作成
 
         Args:
             data: J-Quants API のレスポンスデータ
 
         Returns:
-            ListedInfoDTO instance
+            JQuantsListedInfoDTO instance
         """
         return cls(
             date=data["Date"],
@@ -77,14 +77,14 @@ class ListedInfoDTO:
         return ListedInfoFactory.from_jquants_response(api_data)
 
     @classmethod
-    def from_entity(cls, entity: JQuantsListedInfo) -> "ListedInfoDTO":
+    def from_entity(cls, entity: JQuantsListedInfo) -> "JQuantsListedInfoDTO":
         """エンティティから DTO を作成
 
         Args:
             entity: JQuantsListedInfo entity
 
         Returns:
-            ListedInfoDTO instance
+            JQuantsListedInfoDTO instance
         """
         return cls(
             date=entity.date.strftime("%Y-%m-%d"),
@@ -104,7 +104,7 @@ class ListedInfoDTO:
 
 
 @dataclass(frozen=True)
-class FetchListedInfoResult:
+class FetchJQuantsListedInfoResult:
     """上場銘柄情報取得結果の DTO"""
 
     success: bool
@@ -116,7 +116,7 @@ class FetchListedInfoResult:
 
 
 @dataclass(frozen=True)
-class ListedInfoSearchCriteria:
+class JQuantsListedInfoSearchCriteria:
     """上場銘柄情報検索条件の DTO"""
 
     date: Optional[date] = None

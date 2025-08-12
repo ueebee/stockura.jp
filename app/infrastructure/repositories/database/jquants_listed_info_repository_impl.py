@@ -7,16 +7,16 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
-from app.infrastructure.database.models.listed_info import ListedInfoModel
-from app.infrastructure.database.mappers.listed_info_mapper import ListedInfoMapper
+from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
+from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
 
 logger = get_logger(__name__)
 
 
-class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
+class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     """Listed info repository implementation using SQLAlchemy."""
 
     def __init__(self, session: AsyncSession, mapper: Optional[ListedInfoMapper] = None) -> None:

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.auth import JQuantsCredentials
 from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
-from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
+from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
 
 
 async def get_cli_session() -> AsyncGenerator[AsyncSession, None]:
@@ -27,13 +27,13 @@ async def get_cli_auth_repository() -> AuthRepositoryInterface:
 
 async def get_cli_listed_info_repository(
     session: AsyncSession,
-) -> ListedInfoRepositoryInterface:
+) -> JQuantsListedInfoRepositoryInterface:
     """Get listed info repository for CLI commands."""
-    from app.infrastructure.repositories.database.listed_info_repository_impl import (
-        ListedInfoRepositoryImpl,
+    from app.infrastructure.repositories.database.jquants_listed_info_repository_impl import (
+        JQuantsListedInfoRepositoryImpl,
     )
 
-    return ListedInfoRepositoryImpl(session)
+    return JQuantsListedInfoRepositoryImpl(session)
 
 
 async def get_cli_jquants_client(credentials: JQuantsCredentials):

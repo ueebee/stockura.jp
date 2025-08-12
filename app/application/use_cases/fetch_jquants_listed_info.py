@@ -4,15 +4,15 @@ from datetime import date
 from logging import Logger
 from typing import List, Optional
 
-from app.application.dtos.listed_info_dto import FetchListedInfoResult, ListedInfoDTO
-from app.domain.entities.listed_info import JQuantsListedInfo
-from app.domain.exceptions.listed_info_exceptions import (
-    ListedInfoAPIError,
-    ListedInfoDataError,
-    ListedInfoStorageError,
+from app.application.dtos.jquants_listed_info_dto import FetchListedInfoResult, JQuantsListedInfoDTO
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
+from app.domain.exceptions.jquants_listed_info_exceptions import (
+    JQuantsListedInfoAPIError,
+    JQuantsListedInfoDataError,
+    JQuantsListedInfoStorageError,
 )
 from app.application.interfaces.external.listed_info_client import ListedInfoClientInterface
-from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
+from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
 
 
 class FetchListedInfoUseCase:
@@ -21,7 +21,7 @@ class FetchListedInfoUseCase:
     def __init__(
         self,
         jquants_client: ListedInfoClientInterface,
-        listed_info_repository: ListedInfoRepositoryInterface,
+        listed_info_repository: JQuantsListedInfoRepositoryInterface,
         logger: Logger,
     ):
         """Initialize use case.
@@ -91,7 +91,7 @@ class FetchListedInfoUseCase:
                 )
 
             # DTO に変換
-            dtos = [ListedInfoDTO.from_api_response(data) for data in api_data]
+            dtos = [JQuantsListedInfoDTO.from_api_response(data) for data in api_data]
 
             # エンティティに変換
             entities = [dto.to_entity() for dto in dtos]
@@ -118,7 +118,7 @@ class FetchListedInfoUseCase:
                 code=code,
             )
 
-        except ListedInfoAPIError as e:
+        except JQuantsListedInfoAPIError as e:
             self._logger.error(f"API error occurred: {str(e)}")
             return FetchListedInfoResult(
                 success=False,
@@ -129,7 +129,7 @@ class FetchListedInfoUseCase:
                 code=code,
             )
 
-        except ListedInfoDataError as e:
+        except JQuantsListedInfoDataError as e:
             self._logger.error(f"Data error occurred: {str(e)}")
             return FetchListedInfoResult(
                 success=False,
@@ -140,7 +140,7 @@ class FetchListedInfoUseCase:
                 code=code,
             )
 
-        except ListedInfoStorageError as e:
+        except JQuantsListedInfoStorageError as e:
             self._logger.error(f"Storage error occurred: {str(e)}")
             return FetchListedInfoResult(
                 success=False,

@@ -2,17 +2,17 @@
 import pytest
 from datetime import date
 
-from app.application.dtos.listed_info_dto import (
-    FetchListedInfoResult,
-    ListedInfoDTO,
-    ListedInfoSearchCriteria,
+from app.application.dtos.jquants_listed_info_dto import (
+    FetchJQuantsListedInfoResult,
+    JQuantsListedInfoDTO,
+    JQuantsListedInfoSearchCriteria,
 )
-from app.domain.entities.listed_info import JQuantsListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
-class TestListedInfoDTO:
-    """ListedInfoDTO tests."""
+class TestJQuantsListedInfoDTO:
+    """JQuantsListedInfoDTO tests."""
 
     def test_from_api_response(self):
         """API レスポンスから DTO が正しく作成されることを確認"""
@@ -32,7 +32,7 @@ class TestListedInfoDTO:
             "MarginCodeName": "信用",
         }
 
-        dto = ListedInfoDTO.from_api_response(api_response)
+        dto = JQuantsListedInfoDTO.from_api_response(api_response)
 
         assert dto.date == "20240104"
         assert dto.code == "7203"
@@ -56,7 +56,7 @@ class TestListedInfoDTO:
             "CompanyName": "トヨタ自動車",
         }
 
-        dto = ListedInfoDTO.from_api_response(api_response)
+        dto = JQuantsListedInfoDTO.from_api_response(api_response)
 
         assert dto.date == "20240104"
         assert dto.code == "7203"
@@ -67,7 +67,7 @@ class TestListedInfoDTO:
 
     def test_to_entity_yyyymmdd_format(self):
         """DTO からエンティティへの変換（YYYYMMDD 形式）が正しく動作することを確認"""
-        dto = ListedInfoDTO(
+        dto = JQuantsListedInfoDTO(
             date="20240104",
             code="7203",
             company_name="トヨタ自動車",
@@ -93,7 +93,7 @@ class TestListedInfoDTO:
 
     def test_to_entity_yyyy_mm_dd_format(self):
         """DTO からエンティティへの変換（YYYY-MM-DD 形式）が正しく動作することを確認"""
-        dto = ListedInfoDTO(
+        dto = JQuantsListedInfoDTO(
             date="2024-01-04",
             code="7203",
             company_name="トヨタ自動車",
@@ -134,7 +134,7 @@ class TestListedInfoDTO:
             margin_code_name="信用",
         )
 
-        dto = ListedInfoDTO.from_entity(entity)
+        dto = JQuantsListedInfoDTO.from_entity(entity)
 
         assert dto.date == "2024-01-04"
         assert dto.code == "7203"
@@ -144,8 +144,8 @@ class TestListedInfoDTO:
         assert dto.margin_code == "1"
 
     def test_dto_is_frozen(self):
-        """ListedInfoDTO が不変（frozen）であることを確認"""
-        dto = ListedInfoDTO(
+        """JQuantsListedInfoDTO が不変（frozen）であることを確認"""
+        dto = JQuantsListedInfoDTO(
             date="20240104",
             code="7203",
             company_name="トヨタ自動車",
@@ -165,12 +165,12 @@ class TestListedInfoDTO:
             dto.company_name = "新しい会社名"  # type: ignore
 
 
-class TestFetchListedInfoResult:
-    """FetchListedInfoResult DTO tests."""
+class TestFetchJQuantsListedInfoResult:
+    """FetchJQuantsListedInfoResult DTO tests."""
 
     def test_success_result(self):
         """成功結果の DTO が正しく作成されることを確認"""
-        result = FetchListedInfoResult(
+        result = FetchJQuantsListedInfoResult(
             success=True,
             fetched_count=100,
             saved_count=100,
@@ -188,7 +188,7 @@ class TestFetchListedInfoResult:
 
     def test_failure_result(self):
         """失敗結果の DTO が正しく作成されることを確認"""
-        result = FetchListedInfoResult(
+        result = FetchJQuantsListedInfoResult(
             success=False,
             fetched_count=0,
             saved_count=0,
@@ -206,7 +206,7 @@ class TestFetchListedInfoResult:
 
     def test_partial_success_result(self):
         """部分的な成功結果の DTO が正しく作成されることを確認"""
-        result = FetchListedInfoResult(
+        result = FetchJQuantsListedInfoResult(
             success=False,
             fetched_count=100,
             saved_count=50,
@@ -221,8 +221,8 @@ class TestFetchListedInfoResult:
         assert result.error_message == "Database error occurred during save"
 
     def test_result_is_frozen(self):
-        """FetchListedInfoResult が不変（frozen）であることを確認"""
-        result = FetchListedInfoResult(
+        """FetchJQuantsListedInfoResult が不変（frozen）であることを確認"""
+        result = FetchJQuantsListedInfoResult(
             success=True,
             fetched_count=100,
             saved_count=100,
@@ -232,12 +232,12 @@ class TestFetchListedInfoResult:
             result.success = False  # type: ignore
 
 
-class TestListedInfoSearchCriteria:
-    """ListedInfoSearchCriteria DTO tests."""
+class TestJQuantsListedInfoSearchCriteria:
+    """JQuantsListedInfoSearchCriteria DTO tests."""
 
     def test_empty_criteria(self):
         """空の検索条件が作成できることを確認"""
-        criteria = ListedInfoSearchCriteria()
+        criteria = JQuantsListedInfoSearchCriteria()
 
         assert criteria.date is None
         assert criteria.code is None
@@ -247,7 +247,7 @@ class TestListedInfoSearchCriteria:
 
     def test_full_criteria(self):
         """全ての検索条件を指定した DTO が作成できることを確認"""
-        criteria = ListedInfoSearchCriteria(
+        criteria = JQuantsListedInfoSearchCriteria(
             date=date(2024, 1, 4),
             code="7203",
             market_code="0111",
@@ -263,7 +263,7 @@ class TestListedInfoSearchCriteria:
 
     def test_partial_criteria(self):
         """一部の検索条件を指定した DTO が作成できることを確認"""
-        criteria = ListedInfoSearchCriteria(
+        criteria = JQuantsListedInfoSearchCriteria(
             date=date(2024, 1, 4),
             market_code="0111",
         )
@@ -275,8 +275,8 @@ class TestListedInfoSearchCriteria:
         assert criteria.sector_33_code is None
 
     def test_criteria_is_frozen(self):
-        """ListedInfoSearchCriteria が不変（frozen）であることを確認"""
-        criteria = ListedInfoSearchCriteria(
+        """JQuantsListedInfoSearchCriteria が不変（frozen）であることを確認"""
+        criteria = JQuantsListedInfoSearchCriteria(
             date=date(2024, 1, 4),
             code="7203",
         )
