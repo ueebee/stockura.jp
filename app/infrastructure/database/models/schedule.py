@@ -42,6 +42,7 @@ class CeleryBeatSchedule(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    last_run_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     def __repr__(self) -> str:
         """String representation."""

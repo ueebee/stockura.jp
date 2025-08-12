@@ -10,7 +10,7 @@ from celery import schedules
 from celery.beat import ScheduleEntry, Scheduler
 from celery.utils.log import get_logger
 from croniter import croniter
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.infrastructure.database.connection import get_async_session_context
@@ -67,9 +67,8 @@ class DatabaseScheduleEntry(ScheduleEntry):
             app=app,
         )
         
-        # Initialize last_run_at to None to ensure the task runs
-        if not hasattr(self, 'last_run_at'):
-            self.last_run_at = None
+        # Initialize last_run_at from database
+        self.last_run_at = schedule_model.last_run_at
 
     def _cron_to_schedule(self, cron_expression: str) -> schedules.crontab:
         """Convert cron expression to celery crontab schedule."""
@@ -344,11 +343,49 @@ class DatabaseSchedulerAsyncPG(Scheduler):
             # Call parent class apply_entry to send the task
             result = super().apply_entry(entry, producer)
             logger.info(f"Task {entry.name} sent successfully")
+            
+            # Update last_run_at in database
+            self._update_last_run_at(entry)
+            
             return result
         except Exception as e:
             logger.error(f"Failed to send task {entry.name}: {e}", exc_info=True)
             raise
     
+    def _update_last_run_at(self, entry):
+        """Update last_run_at in database."""
+        try:
+            # Create a new event loop for this operation
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                loop.run_until_complete(self._update_last_run_at_async(entry))
+            finally:
+                loop.close()
+                asyncio.set_event_loop(None)
+                
+        except Exception as e:
+            logger.error(f"Failed to update last_run_at for {entry.name}: {e}", exc_info=True)
+    
+    async def _update_last_run_at_async(self, entry):
+        """Update last_run_at in database asynchronously."""
+        async with get_async_session_context() as session:
+            try:
+                # Update the last_run_at field
+                stmt = (
+                    update(CeleryBeatSchedule)
+                    .where(CeleryBeatSchedule.name == entry.name)
+                    .values(last_run_at=entry.last_run_at)
+                )
+                await session.execute(stmt)
+                await session.commit()
+                logger.debug(f"Updated last_run_at for {entry.name} to {entry.last_run_at}")
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Database error updating last_run_at: {e}", exc_info=True)
+                raise
+
     def _should_reload_schedules(self) -> bool:
         """Check if schedules should be reloaded."""
         if self._last_updated is None:
