@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Dict, List, Optional, Set
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
@@ -14,9 +14,9 @@ class ListedInfoService:
     
     @staticmethod
     def filter_by_market(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         market_code: str
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """市場コードで上場銘柄をフィルタリング
         
         Args:
@@ -29,7 +29,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.market_code == market_code]
     
     @staticmethod
-    def filter_prime_market(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_prime_market(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """プライム市場の銘柄をフィルタリング
         
         Args:
@@ -41,7 +41,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.is_prime_market()]
     
     @staticmethod
-    def filter_standard_market(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_standard_market(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """スタンダード市場の銘柄をフィルタリング
         
         Args:
@@ -53,7 +53,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.is_standard_market()]
     
     @staticmethod
-    def filter_growth_market(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_growth_market(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """グロース市場の銘柄をフィルタリング
         
         Args:
@@ -66,9 +66,9 @@ class ListedInfoService:
     
     @staticmethod
     def filter_by_sector_17(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         sector_code: str
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """17 業種コードで銘柄をフィルタリング
         
         Args:
@@ -82,9 +82,9 @@ class ListedInfoService:
     
     @staticmethod
     def filter_by_sector_33(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         sector_code: str
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """33 業種コードで銘柄をフィルタリング
         
         Args:
@@ -97,7 +97,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.belongs_to_sector_33(sector_code)]
     
     @staticmethod
-    def filter_marginable(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_marginable(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """信用取引可能な銘柄をフィルタリング
         
         Args:
@@ -110,9 +110,9 @@ class ListedInfoService:
     
     @staticmethod
     def filter_by_scale(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         scale_category: str
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """規模カテゴリで銘柄をフィルタリング
         
         Args:
@@ -125,7 +125,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.scale_category == scale_category]
     
     @staticmethod
-    def filter_large_cap(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_large_cap(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """大型株をフィルタリング
         
         Args:
@@ -137,7 +137,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.is_large_cap()]
     
     @staticmethod
-    def filter_mid_cap(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_mid_cap(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """中型株をフィルタリング
         
         Args:
@@ -149,7 +149,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.is_mid_cap()]
     
     @staticmethod
-    def filter_small_cap(listed_infos: List[ListedInfo]) -> List[ListedInfo]:
+    def filter_small_cap(listed_infos: List[JQuantsListedInfo]) -> List[JQuantsListedInfo]:
         """小型株をフィルタリング
         
         Args:
@@ -162,9 +162,9 @@ class ListedInfoService:
     
     @staticmethod
     def find_by_code(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         code: StockCode
-    ) -> Optional[ListedInfo]:
+    ) -> Optional[JQuantsListedInfo]:
         """銘柄コードで銘柄を検索
         
         Args:
@@ -181,9 +181,9 @@ class ListedInfoService:
     
     @staticmethod
     def find_by_codes(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         codes: List[StockCode]
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """複数の銘柄コードで銘柄を検索
         
         Args:
@@ -197,7 +197,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.code in code_set]
     
     @staticmethod
-    def group_by_market(listed_infos: List[ListedInfo]) -> Dict[Optional[str], List[ListedInfo]]:
+    def group_by_market(listed_infos: List[JQuantsListedInfo]) -> Dict[Optional[str], List[JQuantsListedInfo]]:
         """市場別に銘柄をグループ化
         
         Args:
@@ -206,7 +206,7 @@ class ListedInfoService:
         Returns:
             市場コードをキーとした上場銘柄の辞書
         """
-        grouped: Dict[Optional[str], List[ListedInfo]] = {}
+        grouped: Dict[Optional[str], List[JQuantsListedInfo]] = {}
         for info in listed_infos:
             market = info.market_code
             if market not in grouped:
@@ -215,7 +215,7 @@ class ListedInfoService:
         return grouped
     
     @staticmethod
-    def group_by_sector_17(listed_infos: List[ListedInfo]) -> Dict[Optional[str], List[ListedInfo]]:
+    def group_by_sector_17(listed_infos: List[JQuantsListedInfo]) -> Dict[Optional[str], List[JQuantsListedInfo]]:
         """17 業種別に銘柄をグループ化
         
         Args:
@@ -224,7 +224,7 @@ class ListedInfoService:
         Returns:
             17 業種コードをキーとした上場銘柄の辞書
         """
-        grouped: Dict[Optional[str], List[ListedInfo]] = {}
+        grouped: Dict[Optional[str], List[JQuantsListedInfo]] = {}
         for info in listed_infos:
             sector = info.sector_17_code
             if sector not in grouped:
@@ -233,7 +233,7 @@ class ListedInfoService:
         return grouped
     
     @staticmethod
-    def group_by_sector_33(listed_infos: List[ListedInfo]) -> Dict[Optional[str], List[ListedInfo]]:
+    def group_by_sector_33(listed_infos: List[JQuantsListedInfo]) -> Dict[Optional[str], List[JQuantsListedInfo]]:
         """33 業種別に銘柄をグループ化
         
         Args:
@@ -242,7 +242,7 @@ class ListedInfoService:
         Returns:
             33 業種コードをキーとした上場銘柄の辞書
         """
-        grouped: Dict[Optional[str], List[ListedInfo]] = {}
+        grouped: Dict[Optional[str], List[JQuantsListedInfo]] = {}
         for info in listed_infos:
             sector = info.sector_33_code
             if sector not in grouped:
@@ -251,7 +251,7 @@ class ListedInfoService:
         return grouped
     
     @staticmethod
-    def extract_codes(listed_infos: List[ListedInfo]) -> List[StockCode]:
+    def extract_codes(listed_infos: List[JQuantsListedInfo]) -> List[StockCode]:
         """銘柄コードのリストを抽出
         
         Args:
@@ -263,7 +263,7 @@ class ListedInfoService:
         return [info.code for info in listed_infos]
     
     @staticmethod
-    def extract_unique_codes(listed_infos: List[ListedInfo]) -> Set[StockCode]:
+    def extract_unique_codes(listed_infos: List[JQuantsListedInfo]) -> Set[StockCode]:
         """重複のない銘柄コードのセットを抽出
         
         Args:
@@ -276,9 +276,9 @@ class ListedInfoService:
     
     @staticmethod
     def find_changes(
-        old_infos: List[ListedInfo],
-        new_infos: List[ListedInfo]
-    ) -> Dict[str, List[ListedInfo]]:
+        old_infos: List[JQuantsListedInfo],
+        new_infos: List[JQuantsListedInfo]
+    ) -> Dict[str, List[JQuantsListedInfo]]:
         """2 つの上場銘柄リストの差分を検出
         
         Args:
@@ -315,9 +315,9 @@ class ListedInfoService:
     
     @staticmethod
     def filter_by_date(
-        listed_infos: List[ListedInfo],
+        listed_infos: List[JQuantsListedInfo],
         target_date: date
-    ) -> List[ListedInfo]:
+    ) -> List[JQuantsListedInfo]:
         """特定の日付の上場銘柄をフィルタリング
         
         Args:
@@ -330,7 +330,7 @@ class ListedInfoService:
         return [info for info in listed_infos if info.date == target_date]
     
     @staticmethod
-    def get_latest_by_code(listed_infos: List[ListedInfo]) -> Dict[StockCode, ListedInfo]:
+    def get_latest_by_code(listed_infos: List[JQuantsListedInfo]) -> Dict[StockCode, JQuantsListedInfo]:
         """各銘柄コードの最新の情報を取得
         
         Args:
@@ -339,7 +339,7 @@ class ListedInfoService:
         Returns:
             銘柄コードをキーとした最新の上場銘柄情報の辞書
         """
-        latest: Dict[StockCode, ListedInfo] = {}
+        latest: Dict[StockCode, JQuantsListedInfo] = {}
         for info in listed_infos:
             if info.code not in latest or info.date > latest[info.code].date:
                 latest[info.code] = info

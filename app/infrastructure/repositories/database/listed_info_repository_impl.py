@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
 from app.infrastructure.database.models.listed_info import ListedInfoModel
@@ -29,7 +29,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
         self._session = session
         self._mapper = mapper or ListedInfoMapper()
 
-    async def save_all(self, listed_infos: List[ListedInfo]) -> None:
+    async def save_all(self, listed_infos: List[JQuantsListedInfo]) -> None:
         """複数の上場銘柄情報を保存（UPSERT）"""
         if not listed_infos:
             return
@@ -84,7 +84,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
 
     async def find_by_code_and_date(
         self, code: StockCode, target_date: date
-    ) -> Optional[ListedInfo]:
+    ) -> Optional[JQuantsListedInfo]:
         """銘柄コードと日付で検索"""
         result = await self._session.execute(
             select(ListedInfoModel).where(
@@ -98,7 +98,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
             return self._mapper.to_entity(model)
         return None
 
-    async def find_all_by_date(self, target_date: date) -> List[ListedInfo]:
+    async def find_all_by_date(self, target_date: date) -> List[JQuantsListedInfo]:
         """日付で全銘柄を検索"""
         result = await self._session.execute(
             select(ListedInfoModel)
@@ -109,7 +109,7 @@ class ListedInfoRepositoryImpl(ListedInfoRepositoryInterface):
 
         return self._mapper.to_entities(models)
 
-    async def find_latest_by_code(self, code: StockCode) -> Optional[ListedInfo]:
+    async def find_latest_by_code(self, code: StockCode) -> Optional[JQuantsListedInfo]:
         """銘柄コードで最新の情報を検索"""
         result = await self._session.execute(
             select(ListedInfoModel)

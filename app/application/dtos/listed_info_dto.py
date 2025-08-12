@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from app.domain.factories.listed_info_factory import ListedInfoFactory
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
@@ -52,11 +52,11 @@ class ListedInfoDTO:
             margin_code_name=data.get("MarginCodeName"),
         )
 
-    def to_entity(self) -> ListedInfo:
+    def to_entity(self) -> JQuantsListedInfo:
         """エンティティに変換
 
         Returns:
-            ListedInfo entity
+            JQuantsListedInfo entity
         """
         # ListedInfoFactory を使用してエンティティを作成
         api_data = {
@@ -77,11 +77,11 @@ class ListedInfoDTO:
         return ListedInfoFactory.from_jquants_response(api_data)
 
     @classmethod
-    def from_entity(cls, entity: ListedInfo) -> "ListedInfoDTO":
+    def from_entity(cls, entity: JQuantsListedInfo) -> "ListedInfoDTO":
         """エンティティから DTO を作成
 
         Args:
-            entity: ListedInfo entity
+            entity: JQuantsListedInfo entity
 
         Returns:
             ListedInfoDTO instance

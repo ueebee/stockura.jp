@@ -5,7 +5,7 @@ from logging import Logger
 from typing import List, Optional
 
 from app.application.dtos.listed_info_dto import FetchListedInfoResult, ListedInfoDTO
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoAPIError,
     ListedInfoDataError,

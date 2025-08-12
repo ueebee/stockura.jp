@@ -1,26 +1,26 @@
-"""Mapper for ListedInfo entity and ListedInfoModel."""
+"""Mapper for JQuantsListedInfo entity and ListedInfoModel."""
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.infrastructure.database.mappers.base_mapper import BaseMapper
 from app.infrastructure.database.models.listed_info import ListedInfoModel
 
 
-class ListedInfoMapper(BaseMapper[ListedInfo, ListedInfoModel]):
-    """Mapper for converting between ListedInfo entities and database models."""
+class ListedInfoMapper(BaseMapper[JQuantsListedInfo, ListedInfoModel]):
+    """Mapper for converting between JQuantsListedInfo entities and database models."""
     
-    def to_entity(self, model: ListedInfoModel) -> ListedInfo:
-        """Convert ListedInfoModel to ListedInfo entity.
+    def to_entity(self, model: ListedInfoModel) -> JQuantsListedInfo:
+        """Convert ListedInfoModel to JQuantsListedInfo entity.
         
         Args:
             model: Database model instance
             
         Returns:
-            ListedInfo domain entity
+            JQuantsListedInfo domain entity
         """
-        return ListedInfo(
+        return JQuantsListedInfo(
             date=model.date,
             code=StockCode(model.code),
             company_name=model.company_name,
@@ -36,8 +36,8 @@ class ListedInfoMapper(BaseMapper[ListedInfo, ListedInfoModel]):
             margin_code_name=model.margin_code_name,
         )
     
-    def to_model(self, entity: ListedInfo) -> ListedInfoModel:
-        """Convert ListedInfo entity to database model.
+    def to_model(self, entity: JQuantsListedInfo) -> ListedInfoModel:
+        """Convert JQuantsListedInfo entity to database model.
         
         Args:
             entity: Domain entity instance

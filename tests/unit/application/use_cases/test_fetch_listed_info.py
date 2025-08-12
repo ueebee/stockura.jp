@@ -6,7 +6,7 @@ from typing import List
 
 from app.application.dtos.listed_info_dto import FetchListedInfoResult
 from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.domain.exceptions.listed_info_exceptions import (
     ListedInfoAPIError,

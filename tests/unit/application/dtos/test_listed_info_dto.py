@@ -7,7 +7,7 @@ from app.application.dtos.listed_info_dto import (
     ListedInfoDTO,
     ListedInfoSearchCriteria,
 )
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
@@ -85,7 +85,7 @@ class TestListedInfoDTO:
 
         entity = dto.to_entity()
 
-        assert isinstance(entity, ListedInfo)
+        assert isinstance(entity, JQuantsListedInfo)
         assert entity.date == date(2024, 1, 4)
         assert entity.code.value == "7203"
         assert entity.company_name == "トヨタ自動車"
@@ -111,14 +111,14 @@ class TestListedInfoDTO:
 
         entity = dto.to_entity()
 
-        assert isinstance(entity, ListedInfo)
+        assert isinstance(entity, JQuantsListedInfo)
         assert entity.date == date(2024, 1, 4)
         assert entity.code.value == "7203"
         assert entity.company_name == "トヨタ自動車"
 
     def test_from_entity(self):
         """エンティティから DTO への変換が正しく動作することを確認"""
-        entity = ListedInfo(
+        entity = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",

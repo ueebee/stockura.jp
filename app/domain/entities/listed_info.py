@@ -9,7 +9,7 @@ from app.domain.value_objects.stock_code import StockCode
 
 
 @dataclass(frozen=True)
-class ListedInfo:
+class JQuantsListedInfo:
     """上場銘柄情報エンティティ"""
 
     date: date
@@ -33,11 +33,11 @@ class ListedInfo:
         if not isinstance(self.date, date):
             raise ValueError("日付は date 型である必要があります")
 
-    def is_same_listing(self, other: ListedInfo) -> bool:
+    def is_same_listing(self, other: JQuantsListedInfo) -> bool:
         """同じ上場情報かどうかを判定
 
         Args:
-            other: 比較対象の ListedInfo
+            other: 比較対象の JQuantsListedInfo
 
         Returns:
             同じ上場情報の場合 True

@@ -2,16 +2,16 @@
 import pytest
 from datetime import date
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
-class TestListedInfo:
-    """ListedInfo entity tests."""
+class TestJQuantsListedInfo:
+    """JQuantsListedInfo entity tests."""
 
     def test_create_valid_listed_info(self):
-        """正常な ListedInfo エンティティが作成できることを確認"""
-        listed_info = ListedInfo(
+        """正常な JQuantsListedInfo エンティティが作成できることを確認"""
+        listed_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -42,8 +42,8 @@ class TestListedInfo:
         assert listed_info.margin_code_name == "信用"
 
     def test_create_minimal_listed_info(self):
-        """必須項目のみで ListedInfo エンティティが作成できることを確認"""
-        listed_info = ListedInfo(
+        """必須項目のみで JQuantsListedInfo エンティティが作成できることを確認"""
+        listed_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -67,7 +67,7 @@ class TestListedInfo:
     def test_company_name_required(self):
         """会社名が必須であることを確認"""
         with pytest.raises(ValueError, match="会社名は必須です"):
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("7203"),
                 company_name="",
@@ -86,7 +86,7 @@ class TestListedInfo:
     def test_date_must_be_date_type(self):
         """日付が date 型である必要があることを確認"""
         with pytest.raises(ValueError, match="日付は date 型である必要があります"):
-            ListedInfo(
+            JQuantsListedInfo(
                 date="2024-01-04",  # type: ignore
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -104,7 +104,7 @@ class TestListedInfo:
 
     def test_is_prime_market(self):
         """is_prime_market メソッドが正しく動作することを確認"""
-        prime_market_info = ListedInfo(
+        prime_market_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -120,7 +120,7 @@ class TestListedInfo:
             margin_code_name=None,
         )
         
-        non_prime_market_info = ListedInfo(
+        non_prime_market_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("1234"),
             company_name="テスト企業",
@@ -141,7 +141,7 @@ class TestListedInfo:
 
     def test_market_methods(self):
         """市場判定メソッドが正しく動作することを確認"""
-        standard_market_info = ListedInfo(
+        standard_market_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("1234"),
             company_name="スタンダード企業",
@@ -157,7 +157,7 @@ class TestListedInfo:
             margin_code_name=None,
         )
         
-        growth_market_info = ListedInfo(
+        growth_market_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("5678"),
             company_name="グロース企業",
@@ -180,7 +180,7 @@ class TestListedInfo:
 
     def test_sector_methods(self):
         """業種判定メソッドが正しく動作することを確認"""
-        listed_info = ListedInfo(
+        listed_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -203,7 +203,7 @@ class TestListedInfo:
 
     def test_margin_and_scale_methods(self):
         """信用取引可能判定と規模判定メソッドが正しく動作することを確認"""
-        large_cap_info = ListedInfo(
+        large_cap_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="大型株企業",
@@ -219,7 +219,7 @@ class TestListedInfo:
             margin_code_name="信用",
         )
         
-        mid_cap_info = ListedInfo(
+        mid_cap_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("1234"),
             company_name="中型株企業",
@@ -244,7 +244,7 @@ class TestListedInfo:
 
     def test_is_same_listing(self):
         """is_same_listing メソッドが正しく動作することを確認"""
-        listed_info1 = ListedInfo(
+        listed_info1 = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -260,7 +260,7 @@ class TestListedInfo:
             margin_code_name=None,
         )
 
-        listed_info2 = ListedInfo(
+        listed_info2 = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="TOYOTA",  # 異なる会社名
@@ -276,7 +276,7 @@ class TestListedInfo:
             margin_code_name=None,
         )
 
-        listed_info3 = ListedInfo(
+        listed_info3 = JQuantsListedInfo(
             date=date(2024, 1, 5),  # 異なる日付
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -298,8 +298,8 @@ class TestListedInfo:
         assert listed_info1.is_same_listing(listed_info3) is False
 
     def test_frozen_dataclass(self):
-        """ListedInfo が不変（frozen）であることを確認"""
-        listed_info = ListedInfo(
+        """JQuantsListedInfo が不変（frozen）であることを確認"""
+        listed_info = JQuantsListedInfo(
             date=date(2024, 1, 4),
             code=StockCode("7203"),
             company_name="トヨタ自動車",

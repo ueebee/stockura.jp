@@ -4,7 +4,7 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.infrastructure.database.models.listed_info import ListedInfoModel
 from app.infrastructure.repositories.database.listed_info_repository_impl import (
@@ -24,9 +24,9 @@ class TestListedInfoRepositoryImpl:
 
     def _create_test_entity(
         self, date_value: date = date(2024, 1, 4), code: str = "7203"
-    ) -> ListedInfo:
+    ) -> JQuantsListedInfo:
         """テスト用エンティティを作成"""
-        return ListedInfo(
+        return JQuantsListedInfo(
             date=date_value,
             code=StockCode(code),
             company_name="トヨタ自動車",
@@ -172,7 +172,7 @@ class TestListedInfoRepositoryImpl:
 
         # 検証
         assert len(results) == 3
-        assert all(isinstance(r, ListedInfo) for r in results)
+        assert all(isinstance(r, JQuantsListedInfo) for r in results)
         assert results[0].code.value == "7203"
         assert results[1].code.value == "9984"
         assert results[2].code.value == "6758"
@@ -268,7 +268,7 @@ class TestListedInfoRepositoryImpl:
 
         # モデルからエンティティへの変換
         converted_entity = self.repository._mapper.to_entity(model)
-        assert isinstance(converted_entity, ListedInfo)
+        assert isinstance(converted_entity, JQuantsListedInfo)
         assert converted_entity.date == model.date
         assert converted_entity.code.value == model.code
 
