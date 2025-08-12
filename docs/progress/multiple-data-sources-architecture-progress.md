@@ -33,8 +33,8 @@
 1. **ファイル名の変更**
    - ドメイン層: 6 ファイル
    - アプリケーション層: 3 ファイル
-   - インフラストラクチャ層: 3 ファイル
-   - テストファイル: 9 ファイル
+   - インフラストラクチャ層: 4 ファイル（Celery タスク含む）
+   - テストファイル: 10 ファイル
 
 2. **インポート文の更新**
    - 全ての関連ファイルでインポートパスを更新
@@ -47,6 +47,11 @@
 4. **テストクラス名の更新**
    - `TestListedInfoSearchCriteria` → `TestJQuantsListedInfoSearchCriteria`
    - テストファイル内のコメントも更新
+
+5. **追加修正（エラー対応）**
+   - モデルクラス名: `ListedInfoModel` → `JQuantsListedInfoModel`
+   - Celery タスクファイル: `listed_info_task.py` → `jquants_listed_info_task.py`
+   - 全ての参照箇所を更新
 
 ## 次のステップ
 
@@ -65,5 +70,5 @@
 - [ ] ファクトリーパターンによるデータソース切り替え
 
 ## 注意事項
-- データベースマイグレーションは`python scripts/db_migrate.py upgrade`で実行する必要があります
-- 現在は接続エラーのため、マイグレーション実行は保留中です
+- データベースマイグレーションは`python scripts/db_migrate.py upgrade`で実行済み
+- テーブル名変更が正常に完了: `listed_info` → `jquants_listed_info`
