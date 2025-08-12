@@ -4,7 +4,7 @@ from datetime import date
 from logging import Logger
 from typing import List, Optional
 
-from app.application.dtos.jquants_listed_info_dto import FetchListedInfoResult, JQuantsListedInfoDTO
+from app.application.dtos.jquants_listed_info_dto import FetchJQuantsListedInfoResult, JQuantsListedInfoDTO
 from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.exceptions.jquants_listed_info_exceptions import (
     JQuantsListedInfoAPIError,
@@ -39,7 +39,7 @@ class FetchListedInfoUseCase:
         self,
         code: Optional[str] = None,
         target_date: Optional[date] = None,
-    ) -> FetchListedInfoResult:
+    ) -> FetchJQuantsListedInfoResult:
         """上場銘柄情報を取得して保存
 
         Args:
@@ -47,7 +47,7 @@ class FetchListedInfoUseCase:
             target_date: 基準日（指定しない場合は最新）
 
         Returns:
-            FetchListedInfoResult: 処理結果
+            FetchJQuantsListedInfoResult: 処理結果
         """
         fetched_count = 0
         saved_count = 0
@@ -82,7 +82,7 @@ class FetchListedInfoUseCase:
                 self._logger.debug(f"First API response: {api_data[0]}")
 
             if fetched_count == 0:
-                return FetchListedInfoResult(
+                return FetchJQuantsListedInfoResult(
                     success=True,
                     fetched_count=0,
                     saved_count=0,
@@ -110,7 +110,7 @@ class FetchListedInfoUseCase:
                 f"Successfully saved {saved_count} listed info records"
             )
 
-            return FetchListedInfoResult(
+            return FetchJQuantsListedInfoResult(
                 success=True,
                 fetched_count=fetched_count,
                 saved_count=saved_count,
@@ -120,7 +120,7 @@ class FetchListedInfoUseCase:
 
         except JQuantsListedInfoAPIError as e:
             self._logger.error(f"API error occurred: {str(e)}")
-            return FetchListedInfoResult(
+            return FetchJQuantsListedInfoResult(
                 success=False,
                 fetched_count=fetched_count,
                 saved_count=saved_count,
@@ -131,7 +131,7 @@ class FetchListedInfoUseCase:
 
         except JQuantsListedInfoDataError as e:
             self._logger.error(f"Data error occurred: {str(e)}")
-            return FetchListedInfoResult(
+            return FetchJQuantsListedInfoResult(
                 success=False,
                 fetched_count=fetched_count,
                 saved_count=saved_count,
@@ -142,7 +142,7 @@ class FetchListedInfoUseCase:
 
         except JQuantsListedInfoStorageError as e:
             self._logger.error(f"Storage error occurred: {str(e)}")
-            return FetchListedInfoResult(
+            return FetchJQuantsListedInfoResult(
                 success=False,
                 fetched_count=fetched_count,
                 saved_count=saved_count,
@@ -153,7 +153,7 @@ class FetchListedInfoUseCase:
 
         except Exception as e:
             self._logger.error(f"Unexpected error occurred: {str(e)}")
-            return FetchListedInfoResult(
+            return FetchJQuantsListedInfoResult(
                 success=False,
                 fetched_count=fetched_count,
                 saved_count=saved_count,
@@ -162,18 +162,18 @@ class FetchListedInfoUseCase:
                 code=code,
             )
 
-    async def fetch_and_update_all(self, target_date: Optional[date] = None) -> FetchListedInfoResult:
+    async def fetch_and_update_all(self, target_date: Optional[date] = None) -> FetchJQuantsListedInfoResult:
         """全銘柄の上場情報を取得して更新
 
         Args:
             target_date: 基準日（指定しない場合は最新）
 
         Returns:
-            FetchListedInfoResult: 処理結果
+            FetchJQuantsListedInfoResult: 処理結果
         """
         return await self.execute(code=None, target_date=target_date)
 
-    async def fetch_by_code(self, code: str, target_date: Optional[date] = None) -> FetchListedInfoResult:
+    async def fetch_by_code(self, code: str, target_date: Optional[date] = None) -> FetchJQuantsListedInfoResult:
         """特定銘柄の上場情報を取得
 
         Args:
@@ -181,6 +181,6 @@ class FetchListedInfoUseCase:
             target_date: 基準日（指定しない場合は最新）
 
         Returns:
-            FetchListedInfoResult: 処理結果
+            FetchJQuantsListedInfoResult: 処理結果
         """
         return await self.execute(code=code, target_date=target_date)
