@@ -68,7 +68,13 @@ class DatabaseScheduleEntry(ScheduleEntry):
         )
         
         # Initialize last_run_at from database
-        self.last_run_at = schedule_model.last_run_at
+        # If last_run_at is None (new schedule), don't set it
+        # This allows Celery to determine the initial execution time
+        if schedule_model.last_run_at is not None:
+            self.last_run_at = schedule_model.last_run_at
+        else:
+            # For new schedules, let parent class handle initialization
+            logger.debug(f"New schedule '{schedule_model.name}' - last_run_at not set")
 
     def _cron_to_schedule(self, cron_expression: str) -> schedules.crontab:
         """Convert cron expression to celery crontab schedule."""
@@ -317,6 +323,9 @@ class DatabaseSchedulerAsyncPG(Scheduler):
         
         # Calculate minimum interval until next run
         min_interval = self.max_interval
+        
+        # Log current schedules
+        logger.debug(f"Processing {len(self.schedule)} schedules in tick")
         
         # Process each schedule entry
         for entry in self.schedule.values():
