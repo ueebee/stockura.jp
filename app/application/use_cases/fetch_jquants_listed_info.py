@@ -15,7 +15,7 @@ from app.application.interfaces.external.listed_info_client import ListedInfoCli
 from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
 
 
-class FetchListedInfoUseCase:
+class FetchJQuantsListedInfoUseCase:
     """上場銘柄情報を取得して保存するユースケース"""
 
     def __init__(

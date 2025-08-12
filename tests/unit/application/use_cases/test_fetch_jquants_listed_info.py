@@ -1,4 +1,4 @@
-"""Tests for FetchListedInfoUseCase."""
+"""Tests for FetchJQuantsListedInfoUseCase."""
 import pytest
 from datetime import date
 from unittest.mock import AsyncMock, Mock
@@ -15,8 +15,8 @@ from app.domain.exceptions.jquants_listed_info_exceptions import (
 )
 
 
-class TestFetchListedInfoUseCase:
-    """FetchListedInfoUseCase tests."""
+class TestFetchJQuantsListedInfoUseCase:
+    """FetchJQuantsListedInfoUseCase tests."""
 
     def setup_method(self):
         """テストのセットアップ"""
