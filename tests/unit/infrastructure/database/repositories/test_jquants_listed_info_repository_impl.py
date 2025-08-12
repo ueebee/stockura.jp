@@ -1,4 +1,4 @@
-"""Tests for ListedInfoRepositoryImpl."""
+"""Tests for JQuantsListedInfoRepositoryImpl."""
 import pytest
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,19 +8,19 @@ from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
 from app.infrastructure.repositories.database.jquants_listed_info_repository_impl import (
-    ListedInfoRepositoryImpl,
+    JQuantsListedInfoRepositoryImpl,
 )
-from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import JQuantsListedInfoMapper
 
 
-class TestListedInfoRepositoryImpl:
-    """ListedInfoRepositoryImpl tests."""
+class TestJQuantsListedInfoRepositoryImpl:
+    """JQuantsListedInfoRepositoryImpl tests."""
 
     def setup_method(self):
         """テストのセットアップ"""
         self.session = AsyncMock(spec=AsyncSession)
-        self.mapper = ListedInfoMapper()
-        self.repository = ListedInfoRepositoryImpl(self.session, self.mapper)
+        self.mapper = JQuantsListedInfoMapper()
+        self.repository = JQuantsListedInfoRepositoryImpl(self.session, self.mapper)
 
     def _create_test_entity(
         self, date_value: date = date(2024, 1, 4), code: str = "7203"

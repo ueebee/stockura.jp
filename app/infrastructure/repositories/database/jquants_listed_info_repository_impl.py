@@ -11,15 +11,15 @@ from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
 from app.infrastructure.database.models.jquants_listed_info import JQuantsListedInfoModel
-from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import JQuantsListedInfoMapper
 
 logger = get_logger(__name__)
 
 
-class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
+class JQuantsListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
     """Listed info repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession, mapper: Optional[ListedInfoMapper] = None) -> None:
+    def __init__(self, session: AsyncSession, mapper: Optional[JQuantsListedInfoMapper] = None) -> None:
         """Initialize repository.
 
         Args:
@@ -27,7 +27,7 @@ class ListedInfoRepositoryImpl(JQuantsListedInfoRepositoryInterface):
             mapper: Optional mapper instance for entity-model conversion
         """
         self._session = session
-        self._mapper = mapper or ListedInfoMapper()
+        self._mapper = mapper or JQuantsListedInfoMapper()
 
     async def save_all(self, listed_infos: List[JQuantsListedInfo]) -> None:
         """複数の上場銘柄情報を保存（UPSERT）"""

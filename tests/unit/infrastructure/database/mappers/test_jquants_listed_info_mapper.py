@@ -1,20 +1,20 @@
-"""Tests for ListedInfoMapper."""
+"""Tests for JQuantsListedInfoMapper."""
 import pytest
 from datetime import date, datetime
 
 from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.infrastructure.database.mappers.jquants_listed_info_mapper import ListedInfoMapper
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import JQuantsListedInfoMapper
 from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
 
 
-class TestListedInfoMapper:
-    """Test cases for ListedInfoMapper."""
+class TestJQuantsListedInfoMapper:
+    """Test cases for JQuantsListedInfoMapper."""
     
     @pytest.fixture
     def mapper(self):
         """Create mapper instance."""
-        return ListedInfoMapper()
+        return JQuantsListedInfoMapper()
     
     @pytest.fixture
     def sample_entity(self):

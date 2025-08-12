@@ -8,7 +8,7 @@ from app.infrastructure.database.mappers.base_mapper import BaseMapper
 from app.infrastructure.database.models.jquants_listed_info import JQuantsListedInfoModel
 
 
-class ListedInfoMapper(BaseMapper[JQuantsListedInfo, JQuantsListedInfoModel]):
+class JQuantsListedInfoMapper(BaseMapper[JQuantsListedInfo, JQuantsListedInfoModel]):
     """Mapper for converting between JQuantsListedInfo entities and database models."""
     
     def to_entity(self, model: JQuantsListedInfoModel) -> JQuantsListedInfo:
