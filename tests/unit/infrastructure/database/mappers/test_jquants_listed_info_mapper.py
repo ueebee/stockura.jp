@@ -1,25 +1,25 @@
-"""Tests for ListedInfoMapper."""
+"""Tests for JQuantsListedInfoMapper."""
 import pytest
 from datetime import date, datetime
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.infrastructure.database.mappers.listed_info_mapper import ListedInfoMapper
-from app.infrastructure.database.models.listed_info import ListedInfoModel
+from app.infrastructure.database.mappers.jquants_listed_info_mapper import JQuantsListedInfoMapper
+from app.infrastructure.database.models.jquants_listed_info import ListedInfoModel
 
 
-class TestListedInfoMapper:
-    """Test cases for ListedInfoMapper."""
+class TestJQuantsListedInfoMapper:
+    """Test cases for JQuantsListedInfoMapper."""
     
     @pytest.fixture
     def mapper(self):
         """Create mapper instance."""
-        return ListedInfoMapper()
+        return JQuantsListedInfoMapper()
     
     @pytest.fixture
     def sample_entity(self):
-        """Create sample ListedInfo entity."""
-        return ListedInfo(
+        """Create sample JQuantsListedInfo entity."""
+        return JQuantsListedInfo(
             date=date(2024, 1, 1),
             code=StockCode("1234"),
             company_name="Test Company",
@@ -60,7 +60,7 @@ class TestListedInfoMapper:
         """Test converting model to entity."""
         entity = mapper.to_entity(sample_model)
         
-        assert isinstance(entity, ListedInfo)
+        assert isinstance(entity, JQuantsListedInfo)
         assert entity.date == sample_model.date
         assert entity.code == StockCode(sample_model.code)
         assert entity.company_name == sample_model.company_name
@@ -128,7 +128,7 @@ class TestListedInfoMapper:
         entities = mapper.to_entities(models)
         
         assert len(entities) == 2
-        assert all(isinstance(e, ListedInfo) for e in entities)
+        assert all(isinstance(e, JQuantsListedInfo) for e in entities)
     
     def test_to_models_batch(self, mapper, sample_entity):
         """Test batch conversion from entities to models."""

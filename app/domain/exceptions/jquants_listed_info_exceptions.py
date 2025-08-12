@@ -9,19 +9,19 @@ class ListedInfoError(DomainException):
     pass
 
 
-class ListedInfoAPIError(ListedInfoError):
+class JQuantsListedInfoAPIError(ListedInfoError):
     """API 通信エラー"""
 
     pass
 
 
-class ListedInfoDataError(ListedInfoError):
+class JQuantsListedInfoDataError(ListedInfoError):
     """データ形式エラー"""
 
     pass
 
 
-class ListedInfoStorageError(ListedInfoError):
+class JQuantsListedInfoStorageError(ListedInfoError):
     """データ保存エラー"""
 
     pass

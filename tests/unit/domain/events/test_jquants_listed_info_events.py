@@ -3,7 +3,7 @@ import pytest
 from datetime import date
 from uuid import uuid4
 
-from app.domain.events.listed_info_events import (
+from app.domain.events.jquants_listed_info_events import (
     ListedInfoFetched,
     ListedInfoStored,
     NewListingDetected,

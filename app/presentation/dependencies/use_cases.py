@@ -8,7 +8,7 @@ from app.application.use_cases.auth_use_case import AuthUseCase
 from app.application.use_cases.manage_listed_info_schedule import ManageListedInfoScheduleUseCase
 from app.domain.repositories.schedule_repository_interface import ScheduleRepositoryInterface
 from app.domain.repositories.auth_repository_interface import AuthRepositoryInterface
-from app.domain.repositories.listed_info_repository_interface import ListedInfoRepositoryInterface
+from app.domain.repositories.jquants_listed_info_repository_interface import JQuantsListedInfoRepositoryInterface
 from app.infrastructure.events.schedule_event_publisher import ScheduleEventPublisher
 from .repositories import get_schedule_repository, get_auth_repository
 from .services import get_schedule_event_publisher

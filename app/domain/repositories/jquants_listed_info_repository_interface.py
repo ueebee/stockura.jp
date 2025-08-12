@@ -3,15 +3,15 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import List, Optional
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
-class ListedInfoRepositoryInterface(ABC):
+class JQuantsListedInfoRepositoryInterface(ABC):
     """上場銘柄情報リポジトリのインターフェース"""
 
     @abstractmethod
-    async def save_all(self, listed_infos: List[ListedInfo]) -> None:
+    async def save_all(self, listed_infos: List[JQuantsListedInfo]) -> None:
         """複数の上場銘柄情報を保存
 
         Args:
@@ -25,7 +25,7 @@ class ListedInfoRepositoryInterface(ABC):
     @abstractmethod
     async def find_by_code_and_date(
         self, code: StockCode, target_date: date
-    ) -> Optional[ListedInfo]:
+    ) -> Optional[JQuantsListedInfo]:
         """銘柄コードと日付で検索
 
         Args:
@@ -33,7 +33,7 @@ class ListedInfoRepositoryInterface(ABC):
             target_date: 基準日
 
         Returns:
-            ListedInfo: 上場銘柄情報
+            JQuantsListedInfo: 上場銘柄情報
             None: データが見つからない場合
 
         Raises:
@@ -42,14 +42,14 @@ class ListedInfoRepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    async def find_all_by_date(self, target_date: date) -> List[ListedInfo]:
+    async def find_all_by_date(self, target_date: date) -> List[JQuantsListedInfo]:
         """日付で全銘柄を検索
 
         Args:
             target_date: 基準日
 
         Returns:
-            List[ListedInfo]: 指定日付の全上場銘柄情報
+            List[JQuantsListedInfo]: 指定日付の全上場銘柄情報
 
         Raises:
             StorageError: 検索に失敗した場合
@@ -57,14 +57,14 @@ class ListedInfoRepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    async def find_latest_by_code(self, code: StockCode) -> Optional[ListedInfo]:
+    async def find_latest_by_code(self, code: StockCode) -> Optional[JQuantsListedInfo]:
         """銘柄コードで最新の情報を検索
 
         Args:
             code: 銘柄コード
 
         Returns:
-            ListedInfo: 最新の上場銘柄情報
+            JQuantsListedInfo: 最新の上場銘柄情報
             None: データが見つからない場合
 
         Raises:

@@ -21,7 +21,7 @@ class ListedInfoClientInterface(ABC):
             List of listed company information dictionaries.
 
         Raises:
-            ListedInfoAPIError: If API request fails.
+            JQuantsListedInfoAPIError: If API request fails.
             ValidationError: If response data is invalid.
         """
         pass
@@ -40,7 +40,7 @@ class ListedInfoClientInterface(ABC):
             List of all listed company information dictionaries.
 
         Raises:
-            ListedInfoAPIError: If API request fails.
+            JQuantsListedInfoAPIError: If API request fails.
             ValidationError: If response data is invalid.
         """
         pass

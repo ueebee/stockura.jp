@@ -6,14 +6,14 @@ from sqlalchemy import Column, Date, DateTime, Index, PrimaryKeyConstraint, Stri
 from app.infrastructure.database.connection import Base
 
 
-class ListedInfoModel(Base):
-    """Listed info SQLAlchemy model for J-Quants listed company information."""
+class JQuantsListedInfoModel(Base):
+    """J-Quants listed info SQLAlchemy model for J-Quants listed company information."""
 
-    __tablename__ = "listed_info"
+    __tablename__ = "jquants_listed_info"
     __table_args__ = (
         PrimaryKeyConstraint("date", "code"),
-        Index("idx_listed_info_code", "code"),
-        Index("idx_listed_info_date", "date"),
+        Index("idx_jquants_listed_info_code", "code"),
+        Index("idx_jquants_listed_info_date", "date"),
     )
 
     date = Column(Date, nullable=False)
@@ -34,4 +34,4 @@ class ListedInfoModel(Base):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"<ListedInfoModel(date='{self.date}', code='{self.code}', company_name='{self.company_name}')>"
+        return f"<JQuantsListedInfoModel(date='{self.date}', code='{self.code}', company_name='{self.company_name}')>"

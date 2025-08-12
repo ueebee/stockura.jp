@@ -226,7 +226,7 @@ async def trigger_listed_info_task(
     
     try:
         # 動的インポートで Celery タスクを取得
-        from app.infrastructure.celery.tasks.listed_info_task import fetch_listed_info_task
+        from app.infrastructure.celery.tasks.jquants_listed_info_task import fetch_listed_info_task
         
         # タスクを非同期で実行
         result = fetch_listed_info_task.delay(
@@ -311,7 +311,7 @@ async def trigger_listed_info_direct(
     Returns:
         Task execution result
     """
-    from app.infrastructure.celery.tasks.listed_info_task import _fetch_listed_info_async
+    from app.infrastructure.celery.tasks.jquants_listed_info_task import _fetch_listed_info_async
     from datetime import datetime
     from uuid import uuid4
     

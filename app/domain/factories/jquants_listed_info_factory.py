@@ -2,22 +2,22 @@
 from datetime import datetime
 from typing import List
 
-from app.domain.entities.listed_info import ListedInfo
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
 
 
 class ListedInfoFactory:
-    """J-Quants API レスポンスから ListedInfo エンティティを生成"""
+    """J-Quants API レスポンスから JQuantsListedInfo エンティティを生成"""
 
     @staticmethod
-    def from_jquants_response(data: dict) -> ListedInfo:
-        """J-Quants API のレスポンスから ListedInfo を生成
+    def from_jquants_response(data: dict) -> JQuantsListedInfo:
+        """J-Quants API のレスポンスから JQuantsListedInfo を生成
 
         Args:
             data: J-Quants API のレスポンスデータ
 
         Returns:
-            ListedInfo エンティティ
+            JQuantsListedInfo エンティティ
         """
         # 日付の解析
         date_str = data["Date"]
@@ -26,7 +26,7 @@ class ListedInfoFactory:
         else:  # YYYY-MM-DD 形式
             listing_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-        return ListedInfo(
+        return JQuantsListedInfo(
             date=listing_date,
             code=StockCode(data["Code"]),
             company_name=data["CompanyName"],
@@ -43,8 +43,8 @@ class ListedInfoFactory:
         )
 
     @staticmethod
-    def create_multiple(data_list: List[dict]) -> List[ListedInfo]:
-        """複数の J-Quants API レスポンスから ListedInfo リストを生成"""
+    def create_multiple(data_list: List[dict]) -> List[JQuantsListedInfo]:
+        """複数の J-Quants API レスポンスから JQuantsListedInfo リストを生成"""
         return [
             ListedInfoFactory.from_jquants_response(data)
             for data in data_list

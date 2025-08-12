@@ -1,10 +1,10 @@
 """Database models."""
-from .listed_info import ListedInfoModel
+from .jquants_listed_info import JQuantsListedInfoModel
 from .schedule import CeleryBeatSchedule
 from .task_log import TaskExecutionLog
 
 __all__ = [
-    "ListedInfoModel",
+    "JQuantsListedInfoModel",
     "CeleryBeatSchedule",
     "TaskExecutionLog",
 ]

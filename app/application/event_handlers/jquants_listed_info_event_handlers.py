@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from app.core.logger import get_logger
 from app.domain.events.base import DomainEvent, EventHandler
-from app.domain.events.listed_info_events import (
+from app.domain.events.jquants_listed_info_events import (
     CompanyNameChangeDetected,
     DelistingDetected,
     ListedInfoBulkChangesDetected,

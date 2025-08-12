@@ -2,8 +2,8 @@
 import pytest
 from datetime import date
 
-from app.domain.entities.listed_info import ListedInfo
-from app.domain.services.listed_info_service import ListedInfoService
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
+from app.domain.services.jquants_listed_info_service import ListedInfoService
 from app.domain.value_objects.stock_code import StockCode
 
 
@@ -14,7 +14,7 @@ class TestListedInfoService:
     def sample_listed_infos(self):
         """サンプル上場銘柄情報"""
         return [
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -29,7 +29,7 @@ class TestListedInfoService:
                 margin_code="1",
                 margin_code_name="信用",
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("9984"),
                 company_name="ソフトバンクグループ",
@@ -44,7 +44,7 @@ class TestListedInfoService:
                 margin_code="1",
                 margin_code_name="信用",
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("4755"),
                 company_name="楽天グループ",
@@ -59,7 +59,7 @@ class TestListedInfoService:
                 margin_code="0",
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("3769"),
                 company_name="ＧＭＯペイメントゲートウェイ",
@@ -74,7 +74,7 @@ class TestListedInfoService:
                 margin_code="1",
                 margin_code_name="信用",
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("2371"),
                 company_name="カカクコム",
@@ -89,7 +89,7 @@ class TestListedInfoService:
                 margin_code="0",
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("3990"),
                 company_name="UUUM",
@@ -205,7 +205,7 @@ class TestListedInfoService:
     def test_extract_unique_codes(self, sample_listed_infos):
         """重複なし銘柄コード抽出テスト"""
         # 重複データを追加
-        duplicate_info = ListedInfo(
+        duplicate_info = JQuantsListedInfo(
             date=date(2024, 1, 5),
             code=StockCode("7203"),
             company_name="トヨタ自動車",
@@ -230,7 +230,7 @@ class TestListedInfoService:
     def test_find_changes(self):
         """差分検出テスト"""
         old_infos = [
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -245,7 +245,7 @@ class TestListedInfoService:
                 margin_code=None,
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("9984"),
                 company_name="ソフトバンクグループ",
@@ -263,7 +263,7 @@ class TestListedInfoService:
         ]
         
         new_infos = [
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 5),  # 日付が変更
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -278,7 +278,7 @@ class TestListedInfoService:
                 margin_code=None,
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("4755"),  # 新規追加
                 company_name="楽天グループ",
@@ -309,7 +309,7 @@ class TestListedInfoService:
     def test_filter_by_date(self):
         """日付によるフィルタリングテスト"""
         infos = [
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -324,7 +324,7 @@ class TestListedInfoService:
                 margin_code=None,
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 5),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -348,7 +348,7 @@ class TestListedInfoService:
     def test_get_latest_by_code(self):
         """銘柄コード別最新情報取得テスト"""
         infos = [
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -363,7 +363,7 @@ class TestListedInfoService:
                 margin_code=None,
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 5),
                 code=StockCode("7203"),
                 company_name="トヨタ自動車",
@@ -378,7 +378,7 @@ class TestListedInfoService:
                 margin_code=None,
                 margin_code_name=None,
             ),
-            ListedInfo(
+            JQuantsListedInfo(
                 date=date(2024, 1, 4),
                 code=StockCode("9984"),
                 company_name="ソフトバンクグループ",

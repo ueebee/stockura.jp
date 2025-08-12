@@ -1,29 +1,29 @@
-"""Tests for FetchListedInfoUseCase."""
+"""Tests for FetchJQuantsListedInfoUseCase."""
 import pytest
 from datetime import date
 from unittest.mock import AsyncMock, Mock
 from typing import List
 
-from app.application.dtos.listed_info_dto import FetchListedInfoResult
-from app.application.use_cases.fetch_listed_info import FetchListedInfoUseCase
-from app.domain.entities.listed_info import ListedInfo
+from app.application.dtos.jquants_listed_info_dto import FetchJQuantsListedInfoResult
+from app.application.use_cases.fetch_jquants_listed_info import FetchJQuantsListedInfoUseCase
+from app.domain.entities.jquants_listed_info import JQuantsListedInfo
 from app.domain.value_objects.stock_code import StockCode
-from app.domain.exceptions.listed_info_exceptions import (
-    ListedInfoAPIError,
-    ListedInfoDataError,
-    ListedInfoStorageError,
+from app.domain.exceptions.jquants_listed_info_exceptions import (
+    JQuantsListedInfoAPIError,
+    JQuantsListedInfoDataError,
+    JQuantsListedInfoStorageError,
 )
 
 
-class TestFetchListedInfoUseCase:
-    """FetchListedInfoUseCase tests."""
+class TestFetchJQuantsListedInfoUseCase:
+    """FetchJQuantsListedInfoUseCase tests."""
 
     def setup_method(self):
         """テストのセットアップ"""
         self.jquants_client = AsyncMock()
         self.repository = AsyncMock()
         self.logger = Mock()
-        self.use_case = FetchListedInfoUseCase(
+        self.use_case = FetchJQuantsListedInfoUseCase(
             jquants_client=self.jquants_client,
             listed_info_repository=self.repository,
             logger=self.logger,
@@ -163,7 +163,7 @@ class TestFetchListedInfoUseCase:
     async def test_execute_api_error(self):
         """API エラーが発生した場合の処理を確認"""
         # API エラーを設定
-        self.jquants_client.get_all_listed_info.side_effect = ListedInfoAPIError(
+        self.jquants_client.get_all_listed_info.side_effect = JQuantsListedInfoAPIError(
             "API connection failed"
         )
 
@@ -183,7 +183,7 @@ class TestFetchListedInfoUseCase:
         api_data = [{"InvalidKey": "InvalidValue"}]
         self.jquants_client.get_all_listed_info.return_value = api_data
 
-        # 実行（KeyError が発生して ListedInfoDataError として処理されることを想定）
+        # 実行（KeyError が発生して JQuantsListedInfoDataError として処理されることを想定）
         result = await self.use_case.execute()
 
         # 検証
@@ -206,7 +206,7 @@ class TestFetchListedInfoUseCase:
         self.jquants_client.get_all_listed_info.return_value = api_data
 
         # リポジトリエラーを設定
-        self.repository.save_all.side_effect = ListedInfoStorageError(
+        self.repository.save_all.side_effect = JQuantsListedInfoStorageError(
             "Database connection failed"
         )
 
